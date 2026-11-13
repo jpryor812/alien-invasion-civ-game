@@ -18,11 +18,11 @@ time:
 
 map:
   width:
-    value: 96
+    value: 120
     status: placeholder
-    note: Map columns. 96 x 64 = 6144 tiles, about 1.4x a Civ V standard map.
+    note: Map columns. 120 x 72 = 8640 tiles, about 2x a Civ V standard map; land is ~1/3.
   height:
-    value: 64
+    value: 72
     status: placeholder
     note: Map rows.
   region_cols:
@@ -46,9 +46,9 @@ map:
     status: placeholder
     note: Growth weight for a frontier tile is base + (land neighbours) ^ power.
   blob_weight_power:
-    value: 2
+    value: 1
     status: placeholder
-    note: Higher gives rounder continents; lower gives stringier ones.
+    note: Higher gives rounder continents; lower gives stringier ones. 2 looked like squares.
   biome_seeds:
     value: 10
     status: placeholder
