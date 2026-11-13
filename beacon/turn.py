@@ -6,7 +6,7 @@ from typing import Any
 
 from beacon import cities, economy, fog, improvements, network
 from beacon.config import Config
-from beacon.state import ACTIVE, GameState
+from beacon.state import GameState
 from beacon.units import full_moves, max_hp
 
 
@@ -65,7 +65,3 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     fog.refresh_all(state, cfg)
     events.append({"turn": state.turn, "kind": "turn_started", "year": year(cfg, state.turn)})
     return events
-
-
-def active_cities(state: GameState, pid: str) -> list:
-    return [c for c in state.cities if c.owner == pid and c.status == ACTIVE]
