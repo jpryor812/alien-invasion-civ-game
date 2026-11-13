@@ -12,11 +12,16 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-GOLDEN_MAP_SEED_1 = "e102a98ae1de9446d09cf6d188ad4413504593a6c454431161522a3229945eaa"
+GOLDEN_MAP_SEED_1 = "1ebdb2b5797d0320aaf6d23b4d06466e5424ba971feb37b4d5c5ccdda024e205"
+
+
+MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
 
 
 def map_digest(state) -> str:
-    return canonical.digest({"tiles": to_dict(state)["tiles"], "cities": to_dict(state)["cities"]})
+    """Digest of what map generation decides (not of later economy fields)."""
+    cities = [{k: to_dict(c)[k] for k in MAP_CITY_FIELDS} for c in state.cities]
+    return canonical.digest({"tiles": to_dict(state)["tiles"], "cities": cities})
 
 
 @pytest.fixture(scope="module")

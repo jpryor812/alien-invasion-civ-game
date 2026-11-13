@@ -183,15 +183,16 @@ economy:
     note: Science from population, as percent per citizen (rounded down per city).
   city_center_yields:
     status: placeholder
-    note: Added to the city's own tile, which is always worked.
+    note: Added to the city's own tile, which is always worked. Production 2 so grassland cities
+      are not stuck at 1 production.
     food: 1
-    production: 1
+    production: 2
     science: 1
     gold: 1
   focus_weights:
     status: placeholder
     note: Tile-scoring weights per city focus when assigning citizens.
-    balanced: {food: 3, production: 2, science: 1, gold: 1, beacon: 1}
+    balanced: {food: 2, production: 2, science: 1, gold: 1, beacon: 1}
     food: {food: 6, production: 1, science: 1, gold: 1, beacon: 1}
     production: {food: 2, production: 5, science: 1, gold: 1, beacon: 1}
     science: {food: 2, production: 1, science: 5, gold: 1, beacon: 1}
