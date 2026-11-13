@@ -190,15 +190,21 @@ class Config:
     raw: dict[str, Any]
     tables: dict[str, dict[str, dict[str, Any]]]
     digest: str
+    _cache: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     def t(self, path: str) -> Any:
-        """A tuning value by dotted path, with tagging metadata stripped."""
+        """A tuning value by dotted path, with tagging metadata stripped. Treat the result as
+        read-only: it is cached and shared."""
+        if path in self._cache:
+            return self._cache[path]
         node: Any = self.raw["tuning"]
         for part in path.split("."):
             if not isinstance(node, dict) or part not in node:
                 raise KeyError(f"tuning value '{path}' is missing from data/tuning.yaml")
             node = node[part]
-        return strip_meta(node)
+        value = strip_meta(node)
+        self._cache[path] = value
+        return value
 
     def bot(self, path: str) -> Any:
         node: Any = self.raw["bots"]

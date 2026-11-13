@@ -18,6 +18,9 @@ production:
 
 combat:
   status: placeholder
-  note: The bot attacks when expected damage dealt is at least this percent of damage taken.
+  note: Attack when expected damage dealt is at least attack_ratio_pct of damage taken; retreat
+    below retreat_hp_pct of max HP; merge with a neighbour when the pair has at least
+    merge_min_hp_pct of a full stack's HP.
   attack_ratio_pct: 120
   retreat_hp_pct: 35
+  merge_min_hp_pct: 75

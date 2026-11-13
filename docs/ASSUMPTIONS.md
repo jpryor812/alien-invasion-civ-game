@@ -99,3 +99,61 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   cannot go on city hexes (they already count as roads) and do not remove features.
 - **Starting buildings**: the capital has a food depot, workshop, market and school; other known
   cities a food depot. Starting gold 100.
+
+## M3: units and combat
+
+- **Damage formula**: a side of strength S facing strength O takes
+  `30 x (S + O)^2 / (4 S^2)`, so equal strengths trade 30 each, 1.5:1 gives about 47 vs 21,
+  2:1 about 67 vs 17. Then a seeded roll of 80-120%, clamped to 1-100. Softer than a squared
+  ratio, which one-shot units at 2:1.
+- **Wounded units fight weaker**: strength scales from 100% at full HP to 50% at 0 HP (Civ V
+  style). City strength does not drop with damage.
+- **Stacks** (designer rules): two units of one type and owner merge into one unit with
+  `count = 2`, combined HP (max 200), twice the melee and ranged strength, one attack, and the
+  lower of the two units' remaining moves. Merging needs combined HP of at least 100. When the
+  stack drops below 100 HP (it has lost more than half of 200) one member dies and the killer is
+  credited; at exactly 100 nothing dies. Splitting needs more than 100 HP: the unit that moves
+  out has 100 HP and the stack's remaining moves; the rest stays. Stacks heal per member.
+  Civilians do not stack. **Balance risk:** doubling both strength and HP makes a stack roughly
+  four times as durable as one unit in a fight; watch this in M7 balance runs.
+- **One military unit (or stack) and one civilian per hex**; units of opposing sides never share
+  a hex. Players never fight each other: attacks are only possible between players and aliens.
+- **Movement**: terrain costs 1 move, hills/forest/jungle/marsh 2 (largest applies), roads 1/3
+  and rail 1/10 when both hexes have them. A unit with any moves left may enter one more hex.
+  No zone of control, no embarkation (sea transport is M6), no line-of-sight blocking.
+- **Paths** route around hostile units the player can see; an unseen hostile on the path stops
+  the move on the hex before it. The pathfinder knows true terrain (including unexplored
+  hexes), a small knowledge leak accepted for v1.
+- **Attacks** cost the attack and all remaining moves. Melee needs adjacency; land units cannot
+  attack onto water or mountains; naval melee attacks only ships and cities. Ranged units need
+  the target hex visible to their owner (spotters matter: artillery sees 1 hex, shoots 2). Recon
+  units may make weak melee attacks.
+- **Modifiers**: hills +25%, forest +25%, jungle +25%, marsh -15%, military base improvement
+  +25%, fortified +25% (applies immediately when ordered; Civ V waits a turn), flanking +10% per
+  other non-hostile military unit next to the defender (allies from other continents count).
+- **A melee winner advances** into the hex; hostile civilians there are destroyed.
+- **Cities in combat**: strength = 10 + 2 x pop + walls/base bonuses (+10 for alien-held), plus
+  50% of the garrison's defensive strength; 200 HP (+100 with a defence perimeter), healing 20
+  per turn; bombard once per turn at range 2 with no retaliation. Only land melee can take a
+  city to 0 HP; ranged and naval attacks stop at 1 HP.
+- **Liberation**: the garrison dies, the city loses 50% of its population (rounded down),
+  returns at 50% HP with an empty queue to its continent's player; the attacker's owner gets the
+  credit, and damage dealt per player is kept on the city for split credit in M7.
+- **Reclaim** happens when a player's military land unit enters a dormant city; **refounding**
+  consumes a restoration team on an empty city's hex (population 1).
+- **Credit ledger** per player: kills, units lost, cities liberated, reclaimed and refounded,
+  damage dealt.
+- **Test bot** (`beacon/bots.py`, settings in `data/bots.yaml`) reads the fog-safe view, uses
+  attack previews and acts only through commands. It is deliberately simple; 4-17% of its
+  commands are rejected (mostly unreachable targets) and logged.
+- **Performance budget** (this Mac, Python 3.13): a 100-turn, six-bot game takes about 6 s
+  (max 7.1 s over seeds 1-20); the 20-seed batch takes about 2 minutes. Pathfinding dominates.
+- **Passive aliens until M4**: with no alien movement or growth, bots free nearly every city by
+  turn 100 (0-14 alien cities left across seeds 1-20). That is expected, not a balance result.
+
+## Open items noticed (not blocking M0-M3)
+
+- DESIGN.md section 12 says defeat is "all six continents fallen at once"; section 18 proposes
+  "four or more". Needs a decision before M7.
+- Several tier 3-4 techs unlock nothing yet (automated_markets, post_scarcity, nanofabrication,
+  global_logistics); they get effects with trade (M6) and the beacon tree (M5).

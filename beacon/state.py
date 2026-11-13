@@ -137,10 +137,14 @@ class GameState:
         return [u for u in self.sorted_units() if u.tile == tile]
 
     def city_at(self, tile: int) -> City | None:
-        for city in self.cities:
-            if city.tile == tile:
-                return city
-        return None
+        # Cities never move and are never deleted, so a tile index (outside the dataclass
+        # fields, hence never serialised) stays valid; it is rebuilt if cities are added.
+        index = self.__dict__.get("_city_index")
+        if index is None or len(index) != len(self.cities):
+            index = {c.tile: c.id for c in self.cities}
+            self.__dict__["_city_index"] = index
+        cid = index.get(tile)
+        return None if cid is None else self.cities[cid]
 
     def player_ids(self) -> list[str]:
         return sorted(self.players)
