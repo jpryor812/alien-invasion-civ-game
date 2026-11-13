@@ -139,23 +139,28 @@ Alien technology can also be gained through espionage (section 10), outside the 
 - The mothership hovers over Earth. It spawns reinforcements and occasionally, somewhat randomly,
   strikes a city with a **missile barrage of its own** that severely damages it.
 - The **world barrage** is a late-game shared project, researched and built by the continents.
-  It does not require every alien city to be freed. It is a defended megaproject: building it
-  takes many turns and the aliens learn where it is being developed and target those cities more.
+  It can be researched and fired before every alien city is freed. It is a defended megaproject:
+  building it takes many turns and the aliens learn where it is being developed and target those
+  cities more.
 - Researching it can stop reinforcements before the mothership is destroyed. Aliens already on
   Earth keep improving.
 - Destroying the mothership ends reinforcements and the mothership's strikes. It does not end
-  the game. Remaining alien cities still progress, so humanity can still lose.
-- The endgame is deliberately short. From the start of the barrage project to its completion is a
-  fixed number of turns (**TUNE**).
-- Late-game anti-coasting: shrinking aliens become fortresses, spawns scale with how close the
-  barrage is, mothership strikes continue, and MVP credit keeps counting through the finish.
+  the game by itself: it is one of the two victory conditions (section 12). Remaining alien cities
+  still progress, so humanity can still lose.
+- From the start of the barrage project to its completion is a fixed number of turns (**TUNE**).
+- Late-game anti-coasting ideas, to be worked on after the first playable version: shrinking
+  aliens become fortresses, spawns scale with how close the barrage is, mothership strikes
+  continue, and MVP credit keeps counting through the finish. Known risk: when only a few alien
+  cities remain the outcome is obvious and the mop-up may be dull (**OPEN**, deliberately
+  deferred).
 
 ## 12. Winning, losing and MVP
 
 **Shared outcome**
-- **Victory:** the mothership is destroyed and humanity holds the world at the end of the game
-  (**OPEN**: exact end condition after the barrage, for example a stabilisation period, or alien
-  holdings below a threshold, or a turn limit with humans holding a majority of cities).
+- **Victory (decided):** the mothership is destroyed **and** every alien city on Earth has been
+  liberated. Both are required, in either order. The game ends on the turn the second one is met.
+  Because fog hides cities, late-game tools for locating the last alien cities (high-tier
+  beacons, a costly sweep) are needed so the final hunt is not a chore (**TUNE**).
 - **Defeat:** all six continents fallen at once, or the game ends with the aliens still ahead
   (**OPEN**: exact rule). Defeat is possible even after the mothership is destroyed.
 - If the world loses, everyone loses. There are no lone survivors. Scores still show how each
@@ -212,8 +217,11 @@ varied partners.
 ## 18. Open questions
 
 - Game length: start at 150 to 200 turns, tune toward Civ V robustness.
-- Exact end condition after the barrage and the exact defeat rule.
-- Do aliens ever cross water?
+- The exact defeat rule (proposed: four or more continents fallen at once, or the turn limit
+  passes without victory). Defeat stays possible after the mothership is destroyed.
+- Late-game boredom once few alien cities remain (deferred by the designer until after the
+  first playable version).
+- Do aliens ever cross water? (assumed no.)
 - Trait list and recruit lifespans.
 - MVP weights.
 - Number of beacon investment levels and cost curves.
