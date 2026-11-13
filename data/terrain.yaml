@@ -1,0 +1,33 @@
+# Terrain, elevation, features and biomes. Tile yields add terrain + elevation + feature (then
+# resource and improvement), floored at 0. Movement cost is the largest of the three, in move
+# points (multiplied by movement.scale). Defence percent adds up.
+
+terrains:
+  grassland: {status: placeholder, note: Temperate food land., water: false, yields: {food: 2}, move_cost: 1, defense_pct: 0}
+  plains: {status: placeholder, note: Balanced land., water: false, yields: {food: 1, production: 1}, move_cost: 1, defense_pct: 0}
+  desert: {status: placeholder, note: Barren unless resources., water: false, yields: {}, move_cost: 1, defense_pct: 0}
+  tundra: {status: placeholder, note: Cold and poor land., water: false, yields: {food: 1}, move_cost: 1, defense_pct: 0}
+  snow: {status: placeholder, note: Frozen land., water: false, yields: {}, move_cost: 1, defense_pct: 0}
+  coast: {status: placeholder, note: Water next to land., water: true, yields: {food: 1, gold: 1}, move_cost: 1, defense_pct: 0}
+  ocean: {status: placeholder, note: Deep water., water: true, yields: {food: 1}, move_cost: 1, defense_pct: 0}
+
+elevations:
+  flat: {status: placeholder, note: Default., passable: true, yields: {}, move_cost: 1, defense_pct: 0, vision_bonus: 0}
+  hills: {status: placeholder, note: Civ V style hills., passable: true, yields: {food: -1, production: 1}, move_cost: 2, defense_pct: 25, vision_bonus: 1}
+  mountain: {status: placeholder, note: Impassable in v1., passable: false, yields: {}, move_cost: 0, defense_pct: 0, vision_bonus: 0}
+
+features:
+  forest: {status: placeholder, note: Wooded., yields: {production: 1}, move_cost: 2, defense_pct: 25, allowed_terrains: [grassland, plains, tundra]}
+  jungle: {status: placeholder, note: Dense tropical cover., yields: {food: -1}, move_cost: 2, defense_pct: 25, allowed_terrains: [grassland, plains]}
+  marsh: {status: placeholder, note: Wetland., yields: {food: -1}, move_cost: 2, defense_pct: -15, allowed_terrains: [grassland, tundra]}
+
+# A biome sets the base terrain of a region and the percent chance of each feature on its tiles.
+biomes:
+  temperate: {status: placeholder, note: Mixed farmland and woods., terrain: grassland, features: {forest: 30}}
+  prairie: {status: placeholder, note: Open plains., terrain: plains, features: {forest: 10}}
+  savanna: {status: placeholder, note: Dry plains., terrain: plains, features: {forest: 5}}
+  arid: {status: placeholder, note: Desert., terrain: desert, features: {}}
+  boreal: {status: placeholder, note: Cold forest., terrain: tundra, features: {forest: 45, marsh: 5}}
+  arctic: {status: placeholder, note: Ice and snow., terrain: snow, features: {}}
+  tropical: {status: placeholder, note: Rainforest., terrain: grassland, features: {jungle: 50, marsh: 10}}
+  wetland: {status: placeholder, note: Floodplain and marsh., terrain: grassland, features: {marsh: 35}}

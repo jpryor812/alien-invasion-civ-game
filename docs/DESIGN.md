@@ -75,9 +75,16 @@ helping a neighbour vs your own frontier).
 - Cities grow, build, and have defence strength. Buildings include farms, factories, walls,
   ports, labs, beacons and military bases.
 - Units are shown on the map as in Civ V. Melee and ranged units, terrain and altitude bonuses.
-- **Combat is auto-resolved** in the first version when units meet, from unit strength and terrain.
-  The winner takes the hex. The rules are written once so tactical hex combat can replace the
-  auto-resolve later.
+- **Combat** follows the Civ V model (decided 2026-11-13, replacing "auto-resolved when units
+  meet"): each attack is one command, strength against strength, damage taken off hit points,
+  terrain and flanking modifiers, a small seeded variance and a damage preview for both sides.
+  Ranged units attack without retaliation. A melee winner advances into the hex.
+- **Stacking** (decided 2026-11-13): one military unit per hex, except that two units of the same
+  type and owner may merge into one stack with double strength, one attack, and combined hit
+  points. If the stack loses more than half its 200 hit points, one member dies. A stack can split;
+  the unit that moves out is the full-health one. Applies to land, ranged and sea units.
+- **Era** (decided 2026-11-13): the game starts in 2025 with present-day technology known and
+  researches into near-future technology.
 - Units can be moved to another continent (by sea) to fight beside its owner. They keep your
   ownership, so kills and liberations count for your MVP score. Moving costs transport and
   upkeep (**TUNE**).
@@ -205,8 +212,11 @@ varied partners.
 ## 17. Milestones (proposed, each needs approval before starting)
 
 - **M0:** repo, tooling, config, seeded RNG, empty state.
-- **M1:** one continent: hex map, terrain, resources, cities (known and lost), fog.
-- **M2:** cities and economy: yields, production, buildings, roads and railways.
+- **M1:** hex map, terrain, resources, cities (known and lost), fog. (All six continents are
+  generated from M1, since it costs little; AI and cross-continent play remain M6.)
+- **M2:** cities and economy: yields, production, buildings, roads and railways, and tech gating
+  for the economic, production and military trees (pulled forward from M5; the beacon tree stays
+  in M5).
 - **M3:** units and auto-resolved combat, with terrain bonuses.
 - **M4:** the aliens: growth, tech, tipping point, invasion director.
 - **M5:** four trees, beacons, recruit characters, councils, traits.

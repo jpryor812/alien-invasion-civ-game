@@ -1,0 +1,281 @@
+# Global tunables. Every number is a tunable: value, status (placeholder | calibrated), note.
+# "calibrated" here also covers values fixed by the design doc or the designer.
+# Integers only: percentages are integer percent, movement is in sub-points (movement.scale).
+
+time:
+  start_year:
+    value: 2025
+    status: calibrated
+    note: Designer decision 2026-11-13 (start in 2025, research into near-future tech).
+  turns_per_year:
+    value: 4
+    status: placeholder
+    note: One turn per quarter, so 200 turns cover 2025-2074.
+  max_turns:
+    value: 200
+    status: placeholder
+    note: DESIGN.md section 18 suggests 150 to 200 turns.
+
+map:
+  width:
+    value: 96
+    status: placeholder
+    note: Map columns. 96 x 64 = 6144 tiles, about 1.4x a Civ V standard map.
+  height:
+    value: 64
+    status: placeholder
+    note: Map rows.
+  region_cols:
+    value: 3
+    status: placeholder
+    note: Continents are laid out in a grid of regions, region_cols x region_rows, one each.
+  region_rows:
+    value: 2
+    status: placeholder
+    note: Six regions for six continents.
+  ocean_margin:
+    value: 3
+    status: placeholder
+    note: Ocean tiles kept clear inside each region edge, so continents never touch.
+  land_tiles:
+    value: 480
+    status: placeholder
+    note: Land tiles per continent before its land_pct; about 20 cities at radius 2 need ~400.
+  blob_weight_base:
+    value: 1
+    status: placeholder
+    note: Growth weight for a frontier tile is base + (land neighbours) ^ power.
+  blob_weight_power:
+    value: 2
+    status: placeholder
+    note: Higher gives rounder continents; lower gives stringier ones.
+  biome_seeds:
+    value: 10
+    status: placeholder
+    note: Voronoi seeds per continent; each land tile takes the biome of its nearest seed.
+  hill_pct:
+    value: 15
+    status: placeholder
+    note: Chance a land tile is hills.
+  mountain_ranges:
+    value: 3
+    status: placeholder
+    note: Random-walk mountain ranges per continent.
+  mountain_range_length:
+    value: 7
+    status: placeholder
+    note: Steps per mountain range walk.
+  resource_pct:
+    value: 12
+    status: placeholder
+    note: Chance a land or coast tile gets a resource (if any resource fits it).
+
+cities:
+  min_distance:
+    value: 4
+    status: placeholder
+    note: Minimum hex distance between any two city sites.
+  known_count:
+    value: 4
+    status: placeholder
+    note: Cities known at the start per continent; DESIGN.md says "a handful", e.g. four.
+  work_radius:
+    value: 2
+    status: placeholder
+    note: Tiles a city can work (19 at radius 2). Civ V uses 3; 2 suits 20 cities per continent.
+  lost_state_weights:
+    status: placeholder
+    note: Relative weights for the starting state of each unknown city.
+    dormant: 40
+    empty: 25
+    overrun: 35
+  start_pop:
+    status: placeholder
+    note: Starting population by starting role.
+    capital: 5
+    known: 3
+    dormant: 2
+    overrun: 3
+    empty: 0
+  start_buildings:
+    status: placeholder
+    note: Buildings present at the start, by role.
+    capital: [food_depot, workshop, market, school]
+    known: [food_depot]
+  refound_pop:
+    value: 1
+    status: placeholder
+    note: Population of a city refounded by a restoration team.
+  liberation_pop_loss_pct:
+    value: 50
+    status: placeholder
+    note: Population lost (rounded down) when a city is liberated in battle.
+  liberated_hp_pct:
+    value: 50
+    status: placeholder
+    note: City HP after liberation, as percent of its maximum.
+  site_score:
+    status: placeholder
+    note: Weights used to score city sites from the yields within work radius.
+    food: 3
+    production: 2
+    science: 1
+    gold: 1
+    beacon: 0
+    coastal_bonus: 6
+  vision:
+    value: 1
+    status: placeholder
+    note: City sight radius before buildings.
+  base_strength:
+    value: 10
+    status: placeholder
+    note: City combat strength before population, buildings and garrison.
+  strength_per_pop:
+    value: 2
+    status: placeholder
+    note: City combat strength per population.
+  garrison_share_pct:
+    value: 50
+    status: placeholder
+    note: Share of the garrison's effective strength added to the city's.
+  alien_strength_bonus:
+    value: 10
+    status: placeholder
+    note: Extra combat strength for alien-held cities (alien walls stand-in until M4).
+  base_hp:
+    value: 200
+    status: placeholder
+    note: City hit points before walls.
+  heal_per_turn:
+    value: 20
+    status: placeholder
+    note: City HP regained each turn.
+  attack_range:
+    value: 2
+    status: placeholder
+    note: City bombardment range.
+
+economy:
+  start_gold:
+    value: 100
+    status: placeholder
+    note: Treasury at the start.
+  food_per_pop:
+    value: 2
+    status: placeholder
+    note: Food eaten per population per turn.
+  growth_base:
+    value: 15
+    status: placeholder
+    note: Food to grow from population 1; threshold = base + per_pop*(p-1) + quad*(p-1)^2.
+  growth_per_pop:
+    value: 6
+    status: placeholder
+    note: Linear growth threshold term.
+  growth_quad:
+    value: 1
+    status: placeholder
+    note: Quadratic growth threshold term.
+  science_per_pop_pct:
+    value: 50
+    status: placeholder
+    note: Science from population, as percent per citizen (rounded down per city).
+  city_center_yields:
+    status: placeholder
+    note: Added to the city's own tile, which is always worked.
+    food: 1
+    production: 1
+    science: 1
+    gold: 1
+  focus_weights:
+    status: placeholder
+    note: Tile-scoring weights per city focus when assigning citizens.
+    balanced: {food: 3, production: 2, science: 1, gold: 1, beacon: 1}
+    food: {food: 6, production: 1, science: 1, gold: 1, beacon: 1}
+    production: {food: 2, production: 5, science: 1, gold: 1, beacon: 1}
+    science: {food: 2, production: 1, science: 5, gold: 1, beacon: 1}
+    gold: {food: 2, production: 1, science: 1, gold: 5, beacon: 1}
+  purchase_pct:
+    value: 200
+    status: placeholder
+    note: Gold to buy an item outright, as percent of its production cost.
+  project_conversion_pct:
+    value: 50
+    status: placeholder
+    note: Production converted to gold or science by the wealth and research projects.
+  unit_upkeep:
+    value: 1
+    status: placeholder
+    note: Gold per unit member per turn beyond the free allowance.
+  free_units_per_city:
+    value: 2
+    status: placeholder
+    note: Unit members supported free per active city.
+
+movement:
+  scale:
+    value: 30
+    status: calibrated
+    note: Sub-points per move point. Structural, so roads (1/3) and rail (1/10) are integers.
+
+combat:
+  unit_max_hp:
+    value: 100
+    status: calibrated
+    note: HP of one unit. Designer rule - a two-unit stack has combined HP (max 200).
+  stack_size:
+    value: 2
+    status: calibrated
+    note: Designer decision 2026-11-13; a stack fights at stack_size x strength.
+  base_damage:
+    value: 30
+    status: placeholder
+    note: Damage each side takes at equal strength.
+  min_damage:
+    value: 1
+    status: placeholder
+    note: Floor on damage from one attack.
+  max_damage:
+    value: 100
+    status: placeholder
+    note: Cap on damage from one attack.
+  variance_pct:
+    value: 20
+    status: placeholder
+    note: Damage is scaled by a seeded roll in 100 +/- variance percent.
+  wound_floor_pct:
+    value: 50
+    status: placeholder
+    note: Strength percent at 0 HP; strength scales linearly from 100% at full HP.
+  fortify_pct:
+    value: 25
+    status: placeholder
+    note: Defence bonus for a fortified unit.
+  flanking_pct:
+    value: 10
+    status: placeholder
+    note: Melee attack bonus per other friendly military unit next to the defender.
+  heal:
+    status: placeholder
+    note: HP healed per unit member per turn if the unit did not act.
+    city: 25
+    own_territory: 15
+    neutral: 10
+
+start:
+  units:
+    status: placeholder
+    note: Units each player starts with, placed at and around the capital.
+    list:
+      - {type: infantry, count: 2}
+      - {type: artillery, count: 1}
+      - {type: recon_team, count: 1}
+      - {type: engineers, count: 2}
+      - {type: restoration_team, count: 1}
+
+aliens:
+  garrison:
+    status: placeholder
+    note: Alien units placed in each overrun city at the start (the first sits in the city).
+    list: [alien_hive_guard, alien_warrior]

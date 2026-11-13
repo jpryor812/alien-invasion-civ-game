@@ -1,0 +1,30 @@
+# Technology for the economic, production and military trees (the beacon tree arrives in M5).
+# Tier 0 is present-day technology, known at the start (2025). Tiers 1-4 are near-future.
+# Cross-tree merges: automated_markets, railguns, hover_armour.
+# Techs with no unlocks yet gain effects in later milestones (trade M6, beacons M5).
+
+techs:
+  market_economy: {status: calibrated, note: Present day; designer start-era decision., tree: economic, tier: 0, cost: 0, prereqs: [], known_at_start: true}
+  industrial_base: {status: calibrated, note: Present day., tree: production, tier: 0, cost: 0, prereqs: [], known_at_start: true}
+  modern_warfare: {status: calibrated, note: Present day., tree: military, tier: 0, cost: 0, prereqs: [], known_at_start: true}
+
+  digital_finance: {status: placeholder, note: Financial centres., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
+  vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
+  global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 2, cost: 250, prereqs: [digital_finance], known_at_start: false}
+  biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 2, cost: 250, prereqs: [vertical_farming], known_at_start: false}
+  automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics, applied_ai], known_at_start: false}
+  post_scarcity: {status: placeholder, note: Late economy; effects later., tree: economic, tier: 4, cost: 700, prereqs: [automated_markets, biotech_medicine], known_at_start: false}
+
+  high_speed_rail: {status: placeholder, note: Railways., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
+  advanced_manufacturing: {status: placeholder, note: Factories., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
+  radio_beacon_network: {status: placeholder, note: Radio beacons and towers (DESIGN.md 5; mid-game)., tree: production, tier: 2, cost: 250, prereqs: [high_speed_rail], known_at_start: false}
+  applied_ai: {status: placeholder, note: Research labs., tree: production, tier: 2, cost: 250, prereqs: [advanced_manufacturing], known_at_start: false}
+  fusion_power: {status: placeholder, note: Fusion plants., tree: production, tier: 3, cost: 450, prereqs: [applied_ai], known_at_start: false}
+  nanofabrication: {status: placeholder, note: Late industry; effects later., tree: production, tier: 4, cost: 700, prereqs: [fusion_power], known_at_start: false}
+
+  fortification_doctrine: {status: placeholder, note: City walls and military bases., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
+  mechanized_warfare: {status: placeholder, note: Mechanized infantry., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
+  drone_warfare: {status: placeholder, note: Drone recon., tree: military, tier: 2, cost: 250, prereqs: [modern_warfare], known_at_start: false}
+  powered_exoskeletons: {status: placeholder, note: Exo infantry., tree: military, tier: 2, cost: 250, prereqs: [mechanized_warfare], known_at_start: false}
+  railguns: {status: placeholder, note: Merge with production., tree: military, tier: 3, cost: 450, prereqs: [powered_exoskeletons, advanced_manufacturing], known_at_start: false}
+  hover_armour: {status: placeholder, note: Merge with production., tree: military, tier: 4, cost: 700, prereqs: [railguns, fusion_power], known_at_start: false}

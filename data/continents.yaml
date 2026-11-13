@@ -1,0 +1,71 @@
+# The six continents. Shapes are procedural (designer decision 2026-11-13: procedural,
+# Earth-flavoured); the climate mix, resources and city names give each its character.
+# cities: 20 names; the first `cities.known_count` are known at the start, the first is the capital.
+# land_pct scales map.land_tiles. biomes and resources are relative weights.
+
+continents:
+  north_america:
+    status: placeholder
+    note: Temperate and prairie core, boreal north, arid south-west.
+    name: North America
+    order: 0
+    land_pct: 105
+    biomes: {temperate: 30, prairie: 25, boreal: 20, arid: 12, arctic: 6, tropical: 7}
+    resources: {wheat: 15, cattle: 15, fish: 10, timber: 10, gold_ore: 5, coffee: 3, oil: 12, aluminum: 8, uranium: 5, rare_earths: 4}
+    cities: [Toronto, New York, Los Angeles, Mexico City, Chicago, Houston, Vancouver, Montreal,
+             Atlanta, Denver, Seattle, Miami, Phoenix, Monterrey, Guadalajara, Havana, Calgary,
+             Boston, San Francisco, Panama City]
+  south_america:
+    status: placeholder
+    note: Rainforest heartland, savanna and dry west.
+    name: South America
+    order: 1
+    land_pct: 95
+    biomes: {tropical: 40, savanna: 20, temperate: 15, arid: 10, wetland: 10, prairie: 5}
+    resources: {wheat: 8, cattle: 14, fish: 10, timber: 12, gold_ore: 8, coffee: 12, oil: 10, aluminum: 6, uranium: 3, rare_earths: 5}
+    cities: [Sao Paulo, Buenos Aires, Lima, Bogota, Rio de Janeiro, Santiago, Caracas, Quito,
+             Montevideo, Asuncion, La Paz, Medellin, Salvador, Brasilia, Recife, Manaus, Cordoba,
+             Guayaquil, Fortaleza, Cali]
+  europe:
+    status: placeholder
+    note: Dense temperate farmland, cold north.
+    name: Europe
+    order: 2
+    land_pct: 85
+    biomes: {temperate: 45, prairie: 20, boreal: 20, wetland: 5, arid: 5, arctic: 5}
+    resources: {wheat: 16, cattle: 14, fish: 12, timber: 10, gold_ore: 4, coffee: 0, oil: 6, aluminum: 8, uranium: 6, rare_earths: 3}
+    cities: [London, Paris, Berlin, Rome, Madrid, Warsaw, Vienna, Stockholm, Amsterdam, Athens,
+             Kyiv, Prague, Lisbon, Oslo, Budapest, Bucharest, Helsinki, Dublin, Barcelona, Hamburg]
+  asia:
+    status: placeholder
+    note: The largest and most varied continent.
+    name: Asia
+    order: 3
+    land_pct: 115
+    biomes: {temperate: 20, prairie: 15, arid: 20, boreal: 15, tropical: 15, arctic: 5, savanna: 10}
+    resources: {wheat: 14, cattle: 8, fish: 12, timber: 8, gold_ore: 5, coffee: 4, oil: 14, aluminum: 6, uranium: 5, rare_earths: 10}
+    cities: [Tokyo, Beijing, Mumbai, Jakarta, Seoul, Shanghai, Delhi, Bangkok, Manila, Dhaka,
+             Karachi, Tehran, Istanbul, Singapore, Hanoi, Kolkata, Osaka, Almaty, Ulaanbaatar,
+             Riyadh]
+  africa:
+    status: placeholder
+    note: Desert north, savanna centre, rainforest belt.
+    name: Africa
+    order: 4
+    land_pct: 110
+    biomes: {savanna: 35, arid: 35, tropical: 20, wetland: 5, temperate: 5}
+    resources: {wheat: 6, cattle: 12, fish: 10, timber: 8, gold_ore: 12, coffee: 10, oil: 12, aluminum: 6, uranium: 8, rare_earths: 8}
+    cities: [Cairo, Lagos, Nairobi, Johannesburg, Kinshasa, Addis Ababa, Casablanca, Accra, Dakar,
+             Algiers, Luanda, Dar es Salaam, Khartoum, Abidjan, Cape Town, Tunis, Kampala, Lusaka,
+             Maputo, Antananarivo]
+  oceania:
+    status: placeholder
+    note: Arid interior, fertile and tropical coasts.
+    name: Oceania
+    order: 5
+    land_pct: 80
+    biomes: {arid: 35, savanna: 20, tropical: 20, temperate: 20, wetland: 5}
+    resources: {wheat: 10, cattle: 14, fish: 16, timber: 6, gold_ore: 10, coffee: 4, oil: 6, aluminum: 10, uranium: 8, rare_earths: 6}
+    cities: [Sydney, Auckland, Melbourne, Port Moresby, Brisbane, Perth, Adelaide, Wellington,
+             Christchurch, Suva, Hobart, Darwin, Canberra, Noumea, Honiara, Apia, Cairns,
+             Townsville, Port Vila, Nukualofa]

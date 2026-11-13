@@ -1,0 +1,23 @@
+# Settings for the simple deterministic test bot (beacon/bots.py). Not the M6 AI.
+
+production:
+  status: placeholder
+  note: The bot keeps about this many military units per active city and this many engineers.
+  military_per_city_pct: 100
+  engineers: 2
+  restoration_teams: 1
+  recon: 1
+  building_priority: [workshop, food_depot, market, school, military_base, port, factory,
+                      research_lab, defence_perimeter, vertical_farm, financial_center, hospital,
+                      radio_tower, fusion_plant]
+  military_priority: [hover_tank, exo_infantry, mech_infantry, tank, infantry]
+  ranged_every:
+    value: 3
+    status: placeholder
+    note: Every third military unit the bot builds is ranged, if one is available.
+
+combat:
+  status: placeholder
+  note: The bot attacks when expected damage dealt is at least this percent of damage taken.
+  attack_ratio_pct: 120
+  retreat_hp_pct: 35

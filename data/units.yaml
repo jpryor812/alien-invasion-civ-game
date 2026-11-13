@@ -1,0 +1,24 @@
+# Unit types. moves are move points (x movement.scale sub-points). strength defends and attacks in
+# melee; ranged_strength and range are for ranged attacks (0 = none). vision is sight radius.
+# Optional: requires_resource (one strategic resource per unit member).
+# Alien units are placeholders for tests and garrisons until the alien milestone (M4).
+
+units:
+  recon_team: {status: placeholder, note: Scouts., faction: player, domain: land, role: recon, cost: 40, moves: 3, strength: 10, ranged_strength: 0, range: 0, vision: 2, tech: modern_warfare}
+  drone_recon: {status: placeholder, note: Fast aerial scouts on the ground grid., faction: player, domain: land, role: recon, cost: 60, moves: 5, strength: 8, ranged_strength: 0, range: 0, vision: 3, tech: drone_warfare}
+  infantry: {status: placeholder, note: Line infantry., faction: player, domain: land, role: melee, cost: 70, moves: 2, strength: 30, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare}
+  mech_infantry: {status: placeholder, note: Armoured carriers., faction: player, domain: land, role: melee, cost: 110, moves: 3, strength: 42, ranged_strength: 0, range: 0, vision: 1, tech: mechanized_warfare}
+  exo_infantry: {status: placeholder, note: Powered-armour troops., faction: player, domain: land, role: melee, cost: 160, moves: 3, strength: 60, ranged_strength: 0, range: 0, vision: 1, tech: powered_exoskeletons, requires_resource: rare_earths}
+  tank: {status: placeholder, note: Main battle tank., faction: player, domain: land, role: melee, cost: 140, moves: 4, strength: 50, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare, requires_resource: oil}
+  hover_tank: {status: placeholder, note: Future armour., faction: player, domain: land, role: melee, cost: 240, moves: 5, strength: 85, ranged_strength: 0, range: 0, vision: 1, tech: hover_armour, requires_resource: rare_earths}
+  artillery: {status: placeholder, note: Field guns., faction: player, domain: land, role: ranged, cost: 110, moves: 2, strength: 15, ranged_strength: 38, range: 2, vision: 1, tech: modern_warfare}
+  railgun_artillery: {status: placeholder, note: Electromagnetic guns., faction: player, domain: land, role: ranged, cost: 200, moves: 2, strength: 22, ranged_strength: 65, range: 3, vision: 1, tech: railguns, requires_resource: aluminum}
+  engineers: {status: placeholder, note: Build improvements and routes., faction: player, domain: land, role: civilian, cost: 50, moves: 2, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: industrial_base}
+  restoration_team: {status: placeholder, note: Refounds empty cities (consumed)., faction: player, domain: land, role: civilian, cost: 70, moves: 2, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: industrial_base}
+  destroyer: {status: placeholder, note: Surface combatant., faction: player, domain: sea, role: melee, cost: 120, moves: 5, strength: 45, ranged_strength: 0, range: 0, vision: 2, tech: modern_warfare}
+  railgun_cruiser: {status: placeholder, note: Long-range warship., faction: player, domain: sea, role: ranged, cost: 230, moves: 5, strength: 40, ranged_strength: 70, range: 3, vision: 2, tech: railguns, requires_resource: aluminum}
+
+  alien_drone: {status: placeholder, note: Fast skirmisher (M4 placeholder)., faction: alien, domain: land, role: melee, cost: 0, moves: 3, strength: 20, ranged_strength: 0, range: 0, vision: 2, tech: null}
+  alien_warrior: {status: placeholder, note: Line fighter (M4 placeholder)., faction: alien, domain: land, role: melee, cost: 0, moves: 2, strength: 38, ranged_strength: 0, range: 0, vision: 1, tech: null}
+  alien_spitter: {status: placeholder, note: Ranged bio-artillery (M4 placeholder)., faction: alien, domain: land, role: ranged, cost: 0, moves: 2, strength: 18, ranged_strength: 36, range: 2, vision: 1, tech: null}
+  alien_hive_guard: {status: placeholder, note: City garrison (M4 placeholder)., faction: alien, domain: land, role: melee, cost: 0, moves: 1, strength: 55, ranged_strength: 0, range: 0, vision: 1, tech: null}

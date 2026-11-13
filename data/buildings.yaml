@@ -1,0 +1,19 @@
+# City buildings. yields are flat per turn; yield_pct adds percent to the city's yields after
+# flat sources. Optional: requires_building, coastal, city_strength, city_hp, vision,
+# unit_production_pct (bonus production toward units).
+
+buildings:
+  food_depot: {status: placeholder, note: Granary stand-in., cost: 60, maintenance: 1, tech: market_economy, yields: {food: 2}, yield_pct: {}}
+  workshop: {status: placeholder, note: Light industry., cost: 70, maintenance: 1, tech: industrial_base, yields: {production: 2}, yield_pct: {}}
+  market: {status: placeholder, note: Commerce., cost: 80, maintenance: 0, tech: market_economy, yields: {gold: 2}, yield_pct: {gold: 25}}
+  school: {status: placeholder, note: Education., cost: 80, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}}
+  port: {status: placeholder, note: Harbour; trade role arrives in M6., cost: 90, maintenance: 1, tech: market_economy, yields: {food: 1, gold: 1}, yield_pct: {}, coastal: true}
+  military_base: {status: placeholder, note: Barracks and depots., cost: 100, maintenance: 2, tech: modern_warfare, yields: {}, yield_pct: {}, unit_production_pct: 25, city_strength: 4}
+  defence_perimeter: {status: placeholder, note: City walls., cost: 100, maintenance: 1, tech: fortification_doctrine, yields: {}, yield_pct: {}, city_strength: 8, city_hp: 100}
+  radio_tower: {status: placeholder, note: Wider city sight., cost: 70, maintenance: 1, tech: radio_beacon_network, yields: {}, yield_pct: {}, vision: 2}
+  factory: {status: placeholder, note: Heavy industry., cost: 140, maintenance: 2, tech: advanced_manufacturing, yields: {production: 1}, yield_pct: {production: 25}, requires_building: workshop}
+  research_lab: {status: placeholder, note: Applied research., cost: 150, maintenance: 2, tech: applied_ai, yields: {science: 3}, yield_pct: {science: 25}, requires_building: school}
+  vertical_farm: {status: placeholder, note: Indoor agriculture., cost: 130, maintenance: 2, tech: vertical_farming, yields: {food: 4}, yield_pct: {}}
+  financial_center: {status: placeholder, note: Banking., cost: 150, maintenance: 1, tech: digital_finance, yields: {gold: 3}, yield_pct: {gold: 25}, requires_building: market}
+  hospital: {status: placeholder, note: Healthcare., cost: 110, maintenance: 2, tech: biotech_medicine, yields: {food: 2, science: 1}, yield_pct: {}}
+  fusion_plant: {status: placeholder, note: Clean power., cost: 220, maintenance: 3, tech: fusion_power, yields: {}, yield_pct: {production: 35}, requires_building: factory}
