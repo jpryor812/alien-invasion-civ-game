@@ -36,3 +36,19 @@ additional:
     climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics], known_at_start: false}
     quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 700, prereqs: [fusion_power, applied_ai], known_at_start: false}
     directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 4, cost: 700, prereqs: [railguns], known_at_start: false}
+    urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
+    sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 2, cost: 250, prereqs: [digital_finance], known_at_start: false}
+    carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics], known_at_start: false}
+    robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 2, cost: 250, prereqs: [industrial_base], known_at_start: false}
+    mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 2, cost: 250, prereqs: [advanced_manufacturing], known_at_start: false}
+    orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 3, cost: 450, prereqs: [radio_beacon_network, applied_ai], known_at_start: false}
+    militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
+    combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 3, cost: 450, prereqs: [mechanized_warfare, drone_warfare], known_at_start: false}
+    stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 700, prereqs: [drone_warfare, railguns], known_at_start: false}
+    ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 4, cost: 700, prereqs: [railguns, applied_ai], known_at_start: false}
+    quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
+    reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
+    deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 3, cost: 450, prereqs: [radio_beacon_network, applied_ai], known_at_start: false}
+    synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 3, cost: 450, prereqs: [biotech_medicine], known_at_start: false}
+    orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 3, cost: 450, prereqs: [fortification_doctrine, railguns], known_at_start: false}
+    antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 4, cost: 700, prereqs: [fusion_power, quantum_theory], known_at_start: false}
