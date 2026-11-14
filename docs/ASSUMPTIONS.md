@@ -324,3 +324,20 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   except isolationists) and funds shared ones; as chooser it takes the first offered tech.
 - **Balance**: 7/20 victories by turn 200 (turns 131-195), 0 defeats, barrage fired in every game,
   espionage in 16/20, slowest game 19.8 s. See `docs/BALANCE_M7.md`.
+
+## M8: the web client (first playable)
+
+- **No build step, no new dependencies**: `web/server.py` uses the Python standard library
+  (`http.server`), the client is plain HTML, CSS and JavaScript drawing on a canvas. One game per
+  server process, in memory; saves are JSON states in `runs/saves/` (git-ignored).
+- **The server stays fog-safe**: the client gets `observe()` plus details of the player's own
+  units and cities, and combat previews only for targets the player can see. Known leaks
+  accepted for now: a selected unit's reachable hexes are highlighted even where they run into
+  fog (Civ does the same), and the diplomacy screen shows each AI's character.
+- **Turn order with a human**: the human acts first; on Next turn the five AIs act in player
+  order, then the turn resolves. Events shown are the player's own plus world events.
+- **Look**: original flat vector art, nothing taken from Civ V; the reference screenshots shaped
+  the layout only (top bar, unit and city panels, combat preview, tech columns, minimap, Next
+  turn button). Units are badges with a three-letter type code; aliens are violet with a green
+  rim; stacks show ×2.
+- **Ending a turn with open decisions** asks for a second press instead of a browser dialog.

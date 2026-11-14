@@ -20,6 +20,7 @@ branch that recruits alien characters, and an MVP score.
 - One run: `uv run python -m beacon.runner run --seed 1 --turns 100 --out runs/s1`
   (`--driver ai|bot`, default ai; `--human europe` leaves a seat to a human client)
 - Batch: `uv run python -m beacon.runner batch --seeds 1-20 --turns 100 --driver ai`
+- Play in the browser: `uv run python -m web.server` then open http://127.0.0.1:8765
 
 ## Working agreements
 - Plan before coding. A milestone spec approved by the designer may be built without stopping
@@ -39,6 +40,7 @@ beacon/   config, rng, canonical, hexgrid, state, mapgen, fog, economy, tech, un
 data/     tuning, terrain, resources, improvements, buildings, units, techs, continents,
           aliens, bots, ai
 docs/     DESIGN, SPEC_*, ASSUMPTIONS, BALANCE_*
+web/      server.py (stdlib HTTP + JSON API), session.py, static/ (HTML, CSS, JS client)
 tests/
-runs/     run output (git-ignored)
+runs/     run output and saves (git-ignored)
 ```
