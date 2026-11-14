@@ -136,5 +136,34 @@ quantum_theory stays as a stepping stone, since it is a real prerequisite.
 1. **Beacon tree:** later, not now.
 2. **Military percent key:** accepted. Recruits use `military_pct` for unit strength and unit
    production. It sits outside the point budget.
-3. **Every tech unlocks at least one item.** No tech exists only to gate another tech. The 17 empty
-   techs need an unlock item each, or they should be merged or cut.
+3. **Most techs unlock items. Some techs are bonus-only.** A bonus-only tech gives a flat or percent
+   effect and unlocks nothing. Techs that are only a stepping stone with no effect should be merged.
+   This needs an optional `effects` field on techs, a schema change for the other chat to make.
+
+## Empty techs: proposed fix
+
+Each empty tech either unlocks a new item (`item`) or becomes bonus-only (`bonus`). Proposed effect
+keys: `yield_pct`, `unit_strength_pct`, `ranged_strength_pct`, `city_strength`, `city_hp`.
+
+| Tech | Proposal | Detail |
+|---|---|---|
+| urban_planning (econ T1) | bonus | food +10% in cities |
+| sovereign_bonds (econ T2) | bonus | gold +10% in cities |
+| automated_markets (econ T3) | item | stock_exchange building (gold) |
+| carbon_markets (econ T3) | cut | fold into climate_engineering |
+| synthetic_biology (econ T3) | item | biofoundry building (food) |
+| militia_reserves (mil T1) | item | militia unit, moved from industrial_base |
+| reactive_armour (mil T1) | bonus | unit_strength_pct +5 |
+| combined_arms (mil T3) | item | combined_arms_command building (unit production) |
+| orbital_defence_grid (mil T3) | item | orbital_battery building (city strength) |
+| ai_targeting (mil T4) | bonus | ranged_strength_pct +10 |
+| stealth_tech (mil T4) | item | stealth_drones unit |
+| quantum_theory (prod T1) | bonus | science +10% in cities |
+| mass_production (prod T2) | bonus | production +10% in cities |
+| robotics (prod T2) | item | robotic_engineers unit (faster engineers) |
+| deep_space_radar (prod T3) | item | deep_radar_station building (vision) |
+| orbital_launch (prod T3) | item | orbital_relay building, moved from nanofabrication |
+| antimatter_power (prod T4) | item | antimatter_reactor building (production) |
+
+Result: 13 items and 4 bonus-only techs. Count the 17 empty techs: 15 get a home and 1 is cut
+(carbon_markets). Each new building, unit or bonus needs its numbers tagged placeholder.
