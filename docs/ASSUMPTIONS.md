@@ -310,9 +310,9 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   unit (xeno trooper, plasma lancer) or a building (bio-reactor, phase scanner, translation hub,
   chitin bulwark); research cannot reach them.
 - **Endings**: victory when the mothership is destroyed and no alien city remains (checked at
-  the end of every turn, either order); defeat when all six continents have fallen at once;
-  reaching turn 200 ends the game unfinished (**default for DESIGN.md 18's open turn-limit
-  question**). The runner stops at any outcome.
+  the end of every turn, either order); defeat when all six continents have fallen at once. No
+  turn limit (designer, 2026-11-13); batch runs stop at a horizon only to measure. The runner
+  stops at either outcome.
 - **MVP**: weighted ledger in `data/mvp.yaml`. Liberation credit is split by the damage each
   player dealt to the city (100 hundredths per city; the liberator gets rounding). Population
   saved counts freed, reclaimed and refounded cities' population. Unit-turns abroad accrue each
@@ -322,5 +322,5 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   character sends a share of its most productive cities (25-50%) and half its spare gold to the
   barrage while it needs progress; it opens espionage operations above a gold reserve (shared,
   except isolationists) and funds shared ones; as chooser it takes the first offered tech.
-- **Balance**: 7/20 victories (turns 131-195), 0 defeats, barrage fired in every game,
+- **Balance**: 7/20 victories by turn 200 (turns 131-195), 0 defeats, barrage fired in every game,
   espionage in 16/20, slowest game 19.8 s. See `docs/BALANCE_M7.md`.

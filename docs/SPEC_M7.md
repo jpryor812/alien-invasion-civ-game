@@ -57,7 +57,8 @@ DESIGN.md 12 asks for late-game tools so the final hunt is not a chore:
 - **Victory**: the mothership is destroyed and no alien city remains, in either order. The game
   ends on the turn the second is met.
 - **Defeat**: all six continents fallen at once.
-- **Turn limit** (`time.max_turns`, 200): the game ends without a win.
+- **No turn limit** (designer, 2026-11-13): a game runs until victory or defeat. Batch runs stop
+  at a chosen horizon (200 turns) only to measure.
 - The outcome and its turn are stored on the state. The runner stops at an outcome.
 
 ## 6. MVP score
@@ -85,8 +86,7 @@ barrage funding capped at its cost, espionage cost 800, fortress cap 70%, MVP we
 
 ## Defaults to review
 
-1. **Turn limit**: 200 turns without victory ends the game unfinished, which is not a win; scores
-   still rank. (DESIGN.md 18 leaves this open.)
+1. **Turn limit**: decided after review: none.
 2. **Strike strength**: 2.5% chance per turn; the city drops to 40% HP and loses 25% of its
    population.
 3. **Barrage**: costs 3,000 progress; at least 20 turns from start to firing; gold converts at
@@ -103,7 +103,7 @@ barrage funding capped at its cost, espionage cost 800, fortress cap 70%, MVP we
   - barrage start, contributions, minimum turns, pause while the host is lost, and firing;
   - radar reveal;
   - espionage, both solo and shared, including the choice and its default;
-  - victory in either order, defeat, and the turn limit;
+  - victory in either order, defeat, and no turn limit;
   - MVP lines sum to the total, and liberation credit splits by damage;
   - replay is exact.
 - **Batch**: 20 seeds, up to 200 turns, six AIs. Targets:

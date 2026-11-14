@@ -234,12 +234,11 @@ varied partners.
 
 ## 18. Open questions
 
-- Game length: start at 150 to 200 turns, tune toward Civ V robustness.
+- Game length: no turn limit; AI games are won around turns 130-200 (M7 balance runs).
 - Late-game boredom once few alien cities remain (deferred by the designer until after the
   first playable version).
 - Do aliens ever cross water? (assumed no.) Aliens see through fog (decided 2026-11-13).
-- Turn limit without victory: M7 default, the game ends unfinished at turn 200 (not a win); scores
-  still rank. Awaiting the designer's confirmation.
+- Turn limit (decided 2026-11-13): none. A game runs until victory or defeat.
 - Trait list and recruit lifespans.
 - MVP weights.
 - Number of beacon investment levels and cost curves.

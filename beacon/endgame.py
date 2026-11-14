@@ -9,7 +9,7 @@ late-game radar, and victory and defeat.
 - Espionage operations are gold-funded, solo or shared; the largest contributor picks one of the
   offered alien techs.
 - Victory: mothership destroyed and no alien city left. Defeat: all six continents fallen at once.
-  The turn limit ends the game unfinished.
+  There is no turn limit (designer, 2026-11-13): a game runs until one of the two.
 """
 
 from __future__ import annotations
@@ -312,8 +312,6 @@ def check_outcome(state: GameState, cfg: Config) -> Events:
         outcome = "victory"
     elif state.players and all(p.fallen for p in state.players.values()):
         outcome = "defeat"
-    elif state.turn >= cfg.t("time.max_turns"):
-        outcome = "turn_limit"
     if outcome is None:
         return []
     state.outcome, state.outcome_turn = outcome, state.turn

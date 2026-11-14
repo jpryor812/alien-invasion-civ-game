@@ -17,7 +17,6 @@ from beacon.commands import (
 )
 from beacon.economy import process_city
 from beacon.liberation import liberation_shares, update_fallen
-from beacon.runner import play
 from beacon.state import ACTIVE, ALIENS, OVERRUN
 from beacon.units import create_unit
 
@@ -205,11 +204,14 @@ def test_defeat_when_every_continent_falls(cfg):
     assert endgame.check_outcome(s, cfg)[0]["outcome"] == "defeat"
 
 
-def test_turn_limit_ends_the_run():
-    cfg = overrides(**{"tuning.time.max_turns.value": 3})
-    state, events, _ = play(cfg, seed=4, turns=10, driver="ai")
-    assert state.outcome == "turn_limit" and state.turn == 3
-    assert events[-1]["kind"] == "game_over"
+def test_there_is_no_turn_limit(cfg):
+    """Designer, 2026-11-13: a game runs until victory or defeat."""
+    s = arena(cfg)
+    add_city(s, cfg, at(3, 3), ACTIVE, EU)
+    add_city(s, cfg, at(6, 6), OVERRUN, ALIENS)
+    s.turn = 10_000
+    assert endgame.check_outcome(s, cfg) == [] and s.outcome is None
+    assert "max_turns" not in cfg.raw["tuning"]["time"]
 
 
 # -- MVP -----------------------------------------------------------------------------------------

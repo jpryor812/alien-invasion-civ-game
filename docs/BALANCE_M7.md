@@ -1,13 +1,14 @@
 # Balance report: M7 (mothership, barrage, espionage, endings, MVP)
 
 Run: `uv run python -m beacon.runner batch --seeds 1-20 --turns 200 --driver ai`, six AI players,
-full-length games (the run stops at an outcome). Reproducible.
+games stop at victory or defeat, or at the 200-turn measuring horizon (there is no turn limit
+in the rules; designer, 2026-11-13). Reproducible.
 
 ## Gates (docs/SPEC_M7.md)
 
 | Gate | Target | Result | |
 |---|---|---|---|
-| Victory | 30-70% of games | 7/20 (35%), on turns 131, 135, 138, 143, 152, 187, 195 | met |
+| Victory by turn 200 | 30-70% of games | 7/20 (35%), on turns 131, 135, 138, 143, 152, 187, 195 | met |
 | Defeat | at most 10% | 0/20 | met |
 | Barrage fires | at least half | 20/20 | met |
 | Espionage completes | at least half | 16/20 | met |
@@ -18,26 +19,26 @@ full-length games (the run stops at an outcome). Reproducible.
 
 | Seed | Outcome | Turn | Barrage started | Alien cities left | Alien techs gained | MVP leader |
 |---:|---|---:|---:|---:|---:|---|
-| 1 | turn_limit | 200 | 140 | 4 | 30 | builder |
+| 1 | unfinished by 200 | - | 140 | 4 | 30 | builder |
 | 2 | victory | 138 | 117 | 0 | 18 | trader |
 | 3 | victory | 152 | 102 | 0 | 0 | fighter |
 | 4 | victory | 143 | 120 | 0 | 6 | trader |
-| 5 | turn_limit | 200 | 123 | 10 | 18 | builder |
-| 6 | turn_limit | 200 | 133 | 17 | 12 | trader |
-| 7 | turn_limit | 200 | 129 | 11 | 30 | builder |
+| 5 | unfinished by 200 | - | 123 | 10 | 18 | builder |
+| 6 | unfinished by 200 | - | 133 | 17 | 12 | trader |
+| 7 | unfinished by 200 | - | 129 | 11 | 30 | builder |
 | 8 | victory | 195 | 127 | 0 | 36 | fighter |
-| 9 | turn_limit | 200 | 124 | 13 | 0 | trader |
-| 10 | turn_limit | 200 | 113 | 11 | 0 | trader |
-| 11 | turn_limit | 200 | 115 | 8 | 0 | trader |
+| 9 | unfinished by 200 | - | 124 | 13 | 0 | trader |
+| 10 | unfinished by 200 | - | 113 | 11 | 0 | trader |
+| 11 | unfinished by 200 | - | 115 | 8 | 0 | trader |
 | 12 | victory | 187 | 131 | 0 | 36 | fighter |
-| 13 | turn_limit | 200 | 127 | 4 | 30 | fighter |
+| 13 | unfinished by 200 | - | 127 | 4 | 30 | fighter |
 | 14 | victory | 135 | 114 | 0 | 12 | builder |
-| 15 | turn_limit | 200 | 107 | 12 | 1 | trader |
+| 15 | unfinished by 200 | - | 107 | 12 | 1 | trader |
 | 16 | victory | 131 | 109 | 0 | 12 | builder |
-| 17 | turn_limit | 200 | 93 | 7 | 18 | builder |
-| 18 | turn_limit | 200 | 124 | 1 | 6 | trader |
-| 19 | turn_limit | 200 | 111 | 8 | 12 | fighter |
-| 20 | turn_limit | 200 | 138 | 1 | 6 | fighter |
+| 17 | unfinished by 200 | - | 93 | 7 | 18 | builder |
+| 18 | unfinished by 200 | - | 124 | 1 | 6 | trader |
+| 19 | unfinished by 200 | - | 111 | 8 | 12 | fighter |
+| 20 | unfinished by 200 | - | 138 | 1 | 6 | fighter |
 
 ## MVP by character (final weights)
 

@@ -11,11 +11,6 @@ time:
     value: 4
     status: placeholder
     note: One turn per quarter, so 200 turns cover 2025-2074.
-  max_turns:
-    value: 200
-    status: placeholder
-    note: DESIGN.md section 18 suggests 150 to 200 turns. Reaching it ends the game unfinished
-      (not a win; M7 default for DESIGN.md 18's open turn-limit question).
 
 map:
   width:

@@ -238,7 +238,7 @@ class GameState:
     deals: dict[str, Deal] = field(default_factory=dict)
     shipments: dict[str, Shipment] = field(default_factory=dict)
     projects: dict[str, Project] = field(default_factory=dict)
-    outcome: str | None = None  # victory | defeat | turn_limit
+    outcome: str | None = None  # victory | defeat (no turn limit)
     outcome_turn: int | None = None
     version: int = STATE_VERSION
 
