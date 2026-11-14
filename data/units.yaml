@@ -46,6 +46,11 @@ units:
   alien_shieldbearer: {status: placeholder, note: Heavy garrison., faction: alien, domain: land, role: melee, cost: 65, moves: 1, strength: 55, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: hardened_carapace}
   alien_leviathan: {status: placeholder, note: Late-game colossus., faction: alien, domain: land, role: melee, cost: 180, moves: 2, strength: 120, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: leviathan_bio}
 
+  # City defence (designer, 2026-11-14): never move, stand only on a city tile, in their own slot
+  # beside a field unit. Every own military unit in a city lends the city garrison strength.
+  city_artillery: {status: placeholder, note: Fixed city guns. Fire at range but never move., faction: player, domain: land, role: ranged, cost: 70, moves: 0, strength: 20, ranged_strength: 32, range: 2, vision: 2, tech: modern_warfare, fixed: true}
+  home_guard: {status: placeholder, note: Fixed city defenders. Only protect; never move or attack., faction: player, domain: land, role: melee, cost: 45, moves: 0, strength: 34, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare, fixed: true, no_attack: true}
+
   # M6: carries traded goods overland to a port; aliens capture it unless a military unit escorts.
   trade_convoy: {status: placeholder, note: Overland trade carrier (made by deals; not buildable)., faction: player, domain: land, role: civilian, cost: 0, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true}
 

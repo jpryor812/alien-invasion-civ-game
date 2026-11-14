@@ -89,6 +89,14 @@ def garrison(state: GameState, cfg: Config, city: City) -> Unit | None:
     return None
 
 
+def garrisons(state: GameState, cfg: Config, city: City) -> list[Unit]:
+    return [
+        u
+        for u in state.units_at(city.tile)
+        if not is_civilian(cfg, u.type) and u.owner == city.owner
+    ]
+
+
 def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
     lines = [
         {"source": "city_base", "kind": "base", "value": cfg.t("cities.base_strength")},
@@ -127,8 +135,7 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
         lines.append({"source": source, "kind": "pct", "value": pct})
     if pcts:
         total = total * (100 + sum(pct for _, pct in pcts)) // 100
-    guard = garrison(state, cfg, city)
-    if guard is not None:
+    for guard in garrisons(state, cfg, city):  # a field unit and a city defence unit both help
         share = unit_strength(state, cfg, guard, ranged=False, defending=True).total
         extra = share * cfg.t("cities.garrison_share_pct") // 100
         lines.append(
@@ -205,7 +212,9 @@ def attack_problem(
     spec = cfg.units[unit.type]
     if spec["role"] == "civilian":
         return "civilians cannot attack"
-    if unit.attacks_left <= 0 or unit.moves_left <= 0:
+    if spec.get("no_attack"):
+        return "this unit only defends its city"
+    if unit.attacks_left <= 0 or (unit.moves_left <= 0 and not spec.get("fixed")):
         return "no attack left this turn"
     if seen is not None and target not in seen:
         return "target is not visible"

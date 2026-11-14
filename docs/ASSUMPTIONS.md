@@ -340,4 +340,44 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   the layout only (top bar, unit and city panels, combat preview, tech columns, minimap, Next
   turn button). Units are badges with a three-letter type code; aliens are violet with a green
   rim; stacks show ×2.
-- **Ending a turn with open decisions** asks for a second press instead of a browser dialog.
+- **Ending a turn with open decisions** asks for a second press instead of a browser dialog (superseded 2026-11-14 by the action button, below).
+
+## After M8: real geography, city defence, action button (designer, 2026-11-14)
+
+- **Real geography**: each continent is its real outline (whole-degree lon/lat polygons in
+  `data/continents.yaml`), fitted into its own box on a 192 x 116 map at its own scale, so all six
+  have similar land (about 870-1080 hexes, roughly twice the procedural continents). Distances
+  are true within a continent, not between continents. Islands near a continent (Britain,
+  Ireland, Japan, Sri Lanka, Madagascar, Tasmania, New Guinea) are joined to it by the shortest
+  causeway so every continent stays one landmass; New Zealand and island chains are left out.
+  Seas inside a continent are cut out as lakes (the Caspian).
+- **Climate and relief**: biomes come from hand-placed climate seeds (nearest seed wins, with a
+  seeded blend at the borders); mountain ranges and hill country follow real ranges (Rockies,
+  Andes, Alps, Himalaya and so on). Mountains never cut a continent's passable land in two and
+  never sit on or beside a city. The seed still varies forests, extra hills, resources and which
+  lost cities are dormant, ruined or held by aliens; the shapes and city sites are fixed.
+- **Cities**: 15 real cities per continent, chosen to stay at least 5 hexes apart (a test checks
+  it; Paris sits a little south of its true spot to keep 5 from London). Three are known at the
+  start, chosen spread out: New York, Chicago, Mexico City; Sao Paulo, Buenos Aires, Bogota;
+  London, Berlin, Rome; Beijing, Delhi, Tokyo; Cairo, Lagos, Johannesburg; Sydney, Perth, Darwin.
+- **Starting roads are unowned**: the known cities are still joined to the capital by road (so
+  they produce from turn 1), but nobody owns those roads, so they no longer show through the fog
+  (owned routes stay in sight); they appear only where the map is explored, and alien raiders
+  ignore them.
+- **Starting forces**: two infantry are the only field army. The recon team, two engineers and
+  the restoration team are kept (exploration and roads start on turn 1, and the bigger
+  continents need it). Every known city starts with a city artillery.
+- **City defence units** (`fixed: true` in `data/units.yaml`): city artillery (ranged; fires but
+  never moves) and home guard (melee; never moves or attacks, `no_attack: true`). They are placed
+  only on a city tile, one per city, in their own slot beside a field unit and a civilian. Every
+  own military unit in a city adds its garrison share to the city's strength. They die if the
+  city falls. Bots fire city artillery each turn and never count defence units as field army.
+- **Bots scout first**: every continent's city list is public (real cities), so while some of its
+  own cities are still unfound, a bot builds its recon teams before more military.
+- **Next-turn button**: it names the next decision (choose research, choose production, unit
+  needs orders, answer a proposal...) and opens it; it says Next turn only when nothing is left.
+  Shift-click or Shift+Enter ends the turn anyway. This replaces the press-twice confirmation.
+
+- **Balance after the change** (20 AI seeds to turn 200): 11/20 victories (turns 160-183, in the
+  30-70% band), 0 defeats, barrage fired in every game, the other nine end with 1-2 alien cities
+  left. Games are slower on the bigger map: 25-60 s per 200 turns (was up to 20 s).

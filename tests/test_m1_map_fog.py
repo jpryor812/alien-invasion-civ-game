@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: M4 assigns lost-city states by exact quota per continent.
-GOLDEN_MAP_SEED_1 = "00f26dfcd0d0a3961dda32fd58619cebff152f6c8e7edfa380dcdf2075ec0c8d"
+# Last change: continents drawn from real geography with real city sites (designer 2026-11-14).
+GOLDEN_MAP_SEED_1 = "207eba04e0ea444023eab2a3ea6d87d760da86b6207f6d1c4e0906b80245e085"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
@@ -39,12 +39,17 @@ def test_golden_map_digest(world):
     assert map_digest(world) == GOLDEN_MAP_SEED_1
 
 
-def test_continents_are_single_landmasses_near_target(cfg, world):
+def test_continents_are_single_landmasses_of_similar_size(cfg, world):
     w, h = world.width, world.height
+    sizes = {
+        cid: sum(1 for t in world.tiles if t.continent == cid and not is_water(cfg, t))
+        for cid in cfg.continent_ids()
+    }
+    mean = sum(sizes.values()) // len(sizes)
+    assert mean >= 850  # about twice the procedural continents (designer 2026-11-14)
     for cid in cfg.continent_ids():
         land = [i for i, t in enumerate(world.tiles) if t.continent == cid and not is_water(cfg, t)]
-        target = cfg.t("map.land_tiles") * cfg.continents[cid]["land_pct"] // 100
-        assert abs(len(land) - target) * 10 <= target, cid
+        assert abs(len(land) - mean) * 100 <= mean * 20, cid  # every continent similar in size
         land_set = set(land)
         assert (
             reachable(land[0], lambda i: hexgrid.neighbours(i, w, h), land_set.__contains__)
@@ -62,7 +67,7 @@ def test_cities_placed_spaced_and_known(cfg, world):
     min_d = cfg.t("cities.min_distance")
     for cid in cfg.continent_ids():
         mine = [c for c in world.cities if c.continent == cid]
-        assert len(mine) >= 18
+        assert [c.name for c in mine] == [c["name"] for c in cfg.continents[cid]["cities"]]
         active = [c for c in mine if c.status == ACTIVE]
         assert len(active) == cfg.t("cities.known_count")
         assert sum(c.is_capital for c in mine) == 1
@@ -88,6 +93,8 @@ def test_capital_joined_to_known_cities_by_road(cfg, world):
         for city in world.cities:
             if city.owner == pid:
                 assert city.tile in net, city.name
+    # starting roads belong to nobody, so they stay hidden in the fog until explored
+    assert all(t.built_by is None for t in world.tiles if t.route is not None)
 
 
 def test_all_lost_states_occur_and_overrun_cities_are_garrisoned(cfg):
@@ -110,8 +117,15 @@ def test_starting_units_near_capital(cfg, world):
     for pid in world.player_ids():
         capital = next(c for c in world.cities if c.owner == pid and c.is_capital)
         mine = [u for u in world.units.values() if u.owner == pid]
-        assert len(mine) == expected
-        assert all(hexgrid.distance(u.tile, capital.tile, world.width) <= radius for u in mine)
+        field = [u for u in mine if not cfg.units[u.type].get("fixed")]
+        fixed = [u for u in mine if cfg.units[u.type].get("fixed")]
+        assert len(field) == expected
+        assert all(hexgrid.distance(u.tile, capital.tile, world.width) <= radius for u in field)
+        # every starting city holds its city defence units, on the city tile (they never move)
+        owned = [c for c in world.cities if c.owner == pid]
+        assert len(fixed) == len(owned) * len(cfg.t("start.city_units.list"))
+        assert sorted(u.tile for u in fixed) == sorted(c.tile for c in owned)
+        assert all(u.moves_left == 0 for u in fixed)
 
 
 def test_view_hides_unexplored_tiles_and_unseen_units(cfg, world):

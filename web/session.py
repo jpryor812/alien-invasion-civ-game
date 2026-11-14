@@ -124,7 +124,7 @@ class Session:
                 "id": c,
                 "name": cfg.continents[c]["name"],
                 "note": note(cfg, "continents", c),
-                "capital": cfg.continents[c]["cities"][0],
+                "capital": cfg.continents[c]["cities"][0]["name"],
             }
             for c in cfg.continent_ids()
         ]

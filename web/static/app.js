@@ -25,7 +25,7 @@ const pretty = (id) => String(id).replace(/_/g, " ").replace(/\b\w/g, (c) => c.t
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const code = (type) => {
   const special = { infantry: "INF", artillery: "ART", recon_team: "RCN", engineers: "ENG", restoration_team: "RST",
-    tank: "TNK", mech_infantry: "MEC", trade_convoy: "CVY", destroyer: "DD" };
+    tank: "TNK", mech_infantry: "MEC", trade_convoy: "CVY", destroyer: "DD", city_artillery: "GUN", home_guard: "GRD" };
   if (special[type]) return special[type];
   const words = type.replace(/^alien_/, "").split("_");
   return (words.length > 1 ? words.map((w) => w[0]).join("") : words[0].slice(0, 3)).toUpperCase().slice(0, 3);
@@ -699,8 +699,10 @@ function renderChrome() {
   log.innerHTML = "";
   for (const ev of v.events.slice(-40).reverse()) { const li = document.createElement("li"); li.textContent = describeEvent(ev); log.appendChild(li); }
   const btn = $("endturn");
-  btn.textContent = v.outcome ? pretty(v.outcome) : v.pending.length ? `Next turn (${v.pending.length})` : "Next turn";
-  btn.classList.toggle("waiting", v.pending.length > 0);
+  const next = nextAction();
+  btn.textContent = v.outcome ? pretty(v.outcome) : next ? ACTION_LABEL[next.kind] : "Next turn";
+  btn.title = next ? "Takes you to it. Shift-click to end the turn anyway." : "End the turn (Enter)";
+  btn.classList.toggle("waiting", !!next);
   btn.disabled = !!v.outcome;
   if (v.outcome && !S.shownOutcome) { S.shownOutcome = true; openScreen("scores"); }
 }
@@ -782,10 +784,11 @@ function renderUnitPanel() {
   side.innerHTML = `
     <div class="title">${esc(pretty(u.type))}${u.count > 1 ? " ×2" : ""}</div>
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
-    <div class="row">HP ${u.hp}/${100 * u.count} · moves ${moves}/${spec.moves}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
+    ${spec.fixed ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
+    <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
     <div class="bar"><i style="width:${Math.round(100 * u.hp / (100 * u.count))}%"></i></div>
     <div class="actions" id="uactions"></div>
-    <div class="muted" style="font-size:12px">Click a highlighted hex to move; red hexes can be attacked (hover for the odds).</div>`;
+    <div class="muted" style="font-size:12px">${spec.fixed ? (spec.no_attack ? "" : "Red hexes can be fired on (hover for the odds).") : "Click a highlighted hex to move; red hexes can be attacked (hover for the odds)."}</div>`;
   const a = $("uactions");
   const add = (label, fn, title = "") => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.onclick = fn; a.appendChild(b); };
   if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }));
@@ -853,24 +856,34 @@ async function send(cmd) {
   S.busy = false;
   await refresh(true);
 }
-async function endTurn() {
-  if (S.busy || !S.view || S.view.outcome) return;
-  const units = S.view.pending.filter((p) => p.kind === "unit_needs_orders").length;
-  const other = S.view.pending.length - units;
-  const now = Date.now();
-  if (other && !(S.confirmUntil && now < S.confirmUntil)) {
-    S.confirmUntil = now + 5000;
-    toast(`${other} decision(s) still open. Press Next turn again to end the turn anyway.`);
-    return;
+// Like Civ V, the big button names the next thing that needs you and takes you there; it only
+// says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
+const ACTION_ORDER = ["choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+  "deal_received", "offer_received", "recruit_unseated"];
+const ACTION_LABEL = {
+  choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
+  choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
+  recruit_unseated: "Seat a recruit",
+};
+function nextAction() {
+  if (!S.view) return null;
+  for (const kind of ACTION_ORDER) {
+    const p = S.view.pending.find((x) => x.kind === kind);
+    if (p) return p;
   }
-  S.confirmUntil = 0;
+  return null;
+}
+async function mainButton(force = false) {
+  if (S.busy || !S.view || S.view.outcome) return;
+  const next = nextAction();
+  if (next && !force) return resolvePending(next);
   S.busy = true;
   $("endturn").textContent = "Aliens moving…";
   try { await api("/api/end_turn", {}); } catch (err) { toast(err.message); }
   S.busy = false;
   await refresh(true);
 }
-$("endturn").onclick = endTurn;
+$("endturn").onclick = (e) => mainButton(e.shiftKey);
 
 // =============================================================================================
 // map input
@@ -983,7 +996,7 @@ window.addEventListener("keydown", (e) => {
     if (!$("modal").classList.contains("hidden")) closeModal();
     else if (S.selected) clearSelection();
     else openScreen("menu");
-  } else if (e.key === "Enter") endTurn();
+  } else if (e.key === "Enter") mainButton(e.shiftKey);
   else if (e.key === " " || e.key === "n") { e.preventDefault(); const p = S.view.pending.find((x) => x.kind === "unit_needs_orders"); if (p) resolvePending(p); }
   else if (e.key === "f" && S.options) send({ kind: "fortify", unit: S.options.unit.id });
   else if (e.key === "s" && S.options) send({ kind: "skip_unit", unit: S.options.unit.id });

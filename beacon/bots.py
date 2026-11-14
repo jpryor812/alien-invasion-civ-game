@@ -112,7 +112,7 @@ class Bot:
                 counts["restoration"] += 1
             elif spec["role"] == "recon":
                 counts["recon"] += 1
-            elif spec["role"] in ("melee", "ranged"):
+            elif spec["role"] in ("melee", "ranged") and not spec.get("fixed"):
                 counts["military"] += u.count
         return counts
 
@@ -126,6 +126,7 @@ class Bot:
                 if o.startswith("unit:")
                 and self.cfg.units[o[5:]]["role"] == "ranged"
                 and self.cfg.units[o[5:]]["domain"] == "land"
+                and not self.cfg.units[o[5:]].get("fixed")
                 and economy.resource_available(self.state, self.cfg, self.pid, o[5:])
             ]
             if ranged:
@@ -154,6 +155,14 @@ class Bot:
         counts = self._counts()
         cities = [c for c in self.view.my_cities() if c.status == "active"]
         empties = self.known(EMPTY, self.pid)
+        # Every continent's city list is public (real cities): while some are still unfound in
+        # the fog, scouting comes first.
+        found = sum(
+            1
+            for k in self.view.player.known_cities
+            if self.state.cities[int(k)].continent == self.pid
+        )
+        searching = found < len(self.cfg.continents[self.pid]["cities"])
         for city in cities:
             head = city.queue[0] if city.queue else ""
             starved = head.startswith("unit:") and not economy.resource_available(
@@ -177,6 +186,8 @@ class Bot:
                 )
             if item is not None:
                 pass
+            elif searching and counts["recon"] < bot["recon"] and "unit:recon_team" in options:
+                item = "unit:recon_team"
             elif counts["military"] * 100 < len(cities) * bot["military_per_city_pct"]:
                 item = self._military_choice(city, counts)
             elif counts["engineers"] < bot["engineers"] and "unit:engineers" in options:
@@ -414,6 +425,7 @@ class Bot:
             for u in self.view.my_units()
             if self.cfg.units[u.type]["role"] in ("melee", "ranged")
             and self.cfg.units[u.type]["domain"] == "land"
+            and not self.cfg.units[u.type].get("fixed")
         ]
         out: dict[int, int] = {}
         taken: set[int] = set()
@@ -457,6 +469,14 @@ class Bot:
                 return
         if unit.order != "fortify":
             self.submit(Fortify(player=self.pid, unit=unit.id))
+
+    def city_defence(self, unit: Unit) -> None:
+        """City defence units never move: a gun fires at the best target in range."""
+        if not self.alive(unit) or self.cfg.units[unit.type].get("no_attack"):
+            return
+        target = self._best_attack(unit)
+        if target is not None:
+            self.submit(Attack(player=self.pid, unit=unit.id, target=target))
 
     def bombard(self) -> None:
         for city in self.view.my_cities():
@@ -585,6 +605,9 @@ class Bot:
 
     def play_units(self, net: set[int], claimed: set[int], garrisons: dict[int, int]) -> None:
         for unit in self.view.my_units():
+            if self.cfg.units[unit.type].get("fixed"):
+                self.city_defence(unit)
+                continue
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
             if unit.id in self.reserved:

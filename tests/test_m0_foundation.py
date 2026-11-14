@@ -26,7 +26,7 @@ def test_real_data_loads(cfg):
     assert len(cfg.continents) == 6
     assert cfg.t("combat.stack_size") == 2
     assert cfg.continent_ids()[0] == "north_america"
-    assert all(len(c["cities"]) == 20 for c in cfg.continents.values())
+    assert all(len(c["cities"]) == 15 for c in cfg.continents.values())
 
 
 def _override(fn):

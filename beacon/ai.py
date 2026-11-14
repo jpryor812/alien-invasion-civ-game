@@ -219,6 +219,7 @@ class AIPlayer(Bot):
             if self.here(u) == self.pid
             and self.cfg.units[u.type]["role"] in ("melee", "ranged")
             and self.cfg.units[u.type]["domain"] == "land"
+            and not self.cfg.units[u.type].get("fixed")
             and u.id not in garrisons
         ]
         abroad = sum(1 for u in self.view.my_units() if self.here(u) != self.pid)

@@ -126,8 +126,8 @@ TABLES: dict[str, TableSpec] = {
     "continents": TableSpec(
         "continents",
         "continents",
-        ("name", "order", "land_pct", "biomes", "resources", "cities"),
-        {"biomes": "biomes", "resources": "resources"},
+        ("name", "order", "resources", "geo", "cities"),
+        {"resources": "resources"},
     ),
 }
 
@@ -377,6 +377,20 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
     for entry_id, entry in tables["legendary_recruits"].items():
         if set(entry["scores"]) - set(DOMAINS):
             raise ConfigError(f"legendary_recruits.{entry_id}: scores must be domains")
+    for cid, cont in tables["continents"].items():
+        geo = cont["geo"]
+        for key in ("box", "x_scale_pct", "size_pct", "outline", "islands", "lakes"):
+            if key not in geo:
+                raise ConfigError(f"continents.{cid}.geo: missing {key}")
+        for biome, *_ in geo["biome_seeds"]:
+            if biome not in tables["biomes"]:
+                raise ConfigError(f"continents.{cid}.geo: unknown biome {biome!r}")
+        for ridge in geo["ridges"]:
+            if ridge["kind"] not in ("mountain", "hills"):
+                raise ConfigError(f"continents.{cid}.geo: ridge kind must be mountain or hills")
+        for city in cont["cities"]:
+            if set(city) != {"name", "lon", "lat"}:
+                raise ConfigError(f"continents.{cid}.cities: each needs name, lon and lat")
     orders = [c["order"] for c in tables["continents"].values()]
     if len(set(orders)) != len(orders):
         raise ConfigError("continents: order values must be unique")

@@ -402,7 +402,7 @@ def test_bot_games_are_deterministic_and_replay_from_the_log(cfg):
 
 
 def test_bots_recover_cities(cfg):
-    state, _, _ = play(cfg, seed=2, turns=25)
+    state, _, _ = play(cfg, seed=2, turns=60)  # continents are big: scouting takes a while
     for pid, player in state.players.items():
         recovered = sum(
             player.credits.get(k, 0)

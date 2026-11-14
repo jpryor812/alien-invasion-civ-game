@@ -56,6 +56,10 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
             for _ in range(entry["count"]):
                 if place_unit(state, cfg, entry["type"], pid, capital.tile, radius) is None:
                     raise ValueError(f"no room for starting {entry['type']} near {capital.name}")
+        for city in (c for c in state.cities if c.owner == pid):
+            for unit_type in cfg.t("start.city_units.list"):
+                if place_unit(state, cfg, unit_type, pid, city.tile, 0) is None:
+                    raise ValueError(f"no room for {unit_type} in {city.name}")
     state.aliens.start_cities = sum(1 for c in state.cities if c.status == OVERRUN)
     assign_characters(cfg, state)
     # Modern nations are in contact: each knows where the others' cities are (docs/SPEC_M6.md).

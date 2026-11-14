@@ -14,53 +14,36 @@ time:
 
 map:
   width:
-    value: 120
+    value: 192
     status: placeholder
-    note: Map columns. 120 x 72 = 8640 tiles, about 2x a Civ V standard map; land is ~1/3.
+    note: Map columns. 192 x 116 = 22272 tiles (designer 2026-11-14 - continents about twice as
+      big, about 1000 land hexes each, for 15 well-spaced real cities). Each continent's box is
+      in data/continents.yaml.
   height:
-    value: 72
+    value: 116
     status: placeholder
     note: Map rows.
-  region_cols:
-    value: 3
-    status: placeholder
-    note: Continents are laid out in a grid of regions, region_cols x region_rows, one each.
-  region_rows:
+  ocean_margin:
     value: 2
     status: placeholder
-    note: Six regions for six continents.
-  ocean_margin:
+    note: Ocean hexes kept clear inside each continent box edge, so continents never touch.
+  min_island_tiles:
     value: 3
     status: placeholder
-    note: Ocean tiles kept clear inside each region edge, so continents never touch.
-  land_tiles:
-    value: 480
+    note: Islands smaller than this are dropped; larger ones are joined to their continent by
+      the shortest causeway, so every continent is one landmass.
+  biome_blend_pct:
+    value: 30
     status: placeholder
-    note: Land tiles per continent before its land_pct; about 20 cities at radius 2 need ~400.
-  blob_weight_base:
-    value: 1
-    status: placeholder
-    note: Growth weight for a frontier tile is base + (land neighbours) ^ power.
-  blob_weight_power:
-    value: 1
-    status: placeholder
-    note: Higher gives rounder continents; lower gives stringier ones. 2 looked like squares.
-  biome_seeds:
-    value: 10
-    status: placeholder
-    note: Voronoi seeds per continent; each land tile takes the biome of its nearest seed.
+    note: Chance a hex near a climate border takes the neighbouring zone's biome instead.
   hill_pct:
-    value: 15
+    value: 8
     status: placeholder
-    note: Chance a land tile is hills.
-  mountain_ranges:
-    value: 3
+    note: Chance a land tile is hills, on top of the hill ridges.
+  ridge_flank_hill_pct:
+    value: 35
     status: placeholder
-    note: Random-walk mountain ranges per continent.
-  mountain_range_length:
-    value: 7
-    status: placeholder
-    note: Steps per mountain range walk.
+    note: Chance a flat hex beside a mountain range is hills.
   resource_pct:
     value: 12
     status: placeholder
@@ -68,13 +51,16 @@ map:
 
 cities:
   min_distance:
-    value: 4
+    value: 5
     status: placeholder
-    note: Minimum hex distance between any two city sites.
+    note: Minimum hex distance between any two cities. The real city list in
+      data/continents.yaml is chosen to keep it (checked by a test); designer 2026-11-14 asked
+      for more space between cities.
   known_count:
-    value: 4
+    value: 3
     status: placeholder
-    note: Cities known at the start per continent; DESIGN.md says "a handful", e.g. four.
+    note: Cities known at the start per continent (designer 2026-11-14 - three, spread out, e.g.
+      New York, Chicago and Mexico City); the other twelve must be liberated.
   work_radius:
     value: 2
     status: placeholder
@@ -111,15 +97,6 @@ cities:
     value: 50
     status: placeholder
     note: City HP after liberation, as percent of its maximum.
-  site_score:
-    status: placeholder
-    note: Weights used to score city sites from the yields within work radius.
-    food: 3
-    production: 2
-    science: 1
-    gold: 1
-    beacon: 0
-    coastal_bonus: 6
   vision:
     value: 1
     status: placeholder
@@ -261,14 +238,19 @@ combat:
 start:
   units:
     status: placeholder
-    note: Units each player starts with, placed at and around the capital. Modern nations start
-      with standing armies (raised from 2 infantry and 1 artillery after M4 balance runs).
+    note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
+      two infantry as the only field army; the scout and civilians are kept so exploration and
+      roads can start on turn 1 (docs/ASSUMPTIONS.md).
     list:
-      - {type: infantry, count: 3}
-      - {type: artillery, count: 2}
+      - {type: infantry, count: 2}
       - {type: recon_team, count: 1}
       - {type: engineers, count: 2}
       - {type: restoration_team, count: 1}
+  city_units:
+    status: placeholder
+    note: City defence units placed on the tile of every city a player owns at the start
+      (designer 2026-11-14 - a city artillery that cannot move).
+    list: [city_artillery]
 
 aliens:
   garrison:

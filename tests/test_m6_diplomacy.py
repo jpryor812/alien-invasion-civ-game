@@ -257,7 +257,7 @@ def test_ai_uses_no_randomness():
 
 
 def test_ai_games_trade_help_and_replay(cfg):
-    turns = 60
+    turns = 100  # troops go abroad once home is quiet, later on the bigger map
     state, events, log = play(cfg, seed=2, turns=turns, driver="ai")
     kinds = {e["kind"] for e in events}
     assert {"deal_accepted", "unit_shipped"} <= kinds

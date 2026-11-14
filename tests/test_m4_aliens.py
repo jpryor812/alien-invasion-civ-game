@@ -224,7 +224,7 @@ def test_lost_cities_split_by_quota(cfg):
 
 
 def test_aliens_take_cities_in_a_bot_game(cfg):
-    state, events, _ = play(cfg, seed=2, turns=40)
+    state, events, _ = play(cfg, seed=2, turns=60)
     kinds = {e["kind"] for e in events}
     assert {"alien_spawned", "alien_tech", "attack"} <= kinds
     assert any(e["kind"] == "city_liberated" for e in events)

@@ -22,6 +22,19 @@ def is_civilian(cfg: Config, unit_type: str) -> bool:
     return cfg.units[unit_type]["role"] == "civilian"
 
 
+def is_fixed(cfg: Config, unit_type: str) -> bool:
+    """City defence units never move and stand only on a city tile (designer, 2026-11-14)."""
+    return bool(cfg.units[unit_type].get("fixed"))
+
+
+def slot_kind(cfg: Config, unit_type: str) -> str:
+    """Each hex holds one unit of each kind: a field military unit, a city defence unit and a
+    civilian."""
+    if is_fixed(cfg, unit_type):
+        return "fixed"
+    return "civilian" if is_civilian(cfg, unit_type) else "military"
+
+
 def max_hp(cfg: Config, unit: Unit) -> int:
     return cfg.t("combat.unit_max_hp") * unit.count
 
@@ -84,13 +97,13 @@ def slot_free(
     tile: int,
     ignore: int | None = None,
 ) -> bool:
-    civ = is_civilian(cfg, unit_type)
+    kind = slot_kind(cfg, unit_type)
     for other in occ.get(tile, []):
         if other.id == ignore:
             continue
         if hostile(other.owner, owner):
             return False
-        if is_civilian(cfg, other.type) == civ:
+        if slot_kind(cfg, other.type) == kind:
             return False
     return True
 
@@ -144,6 +157,8 @@ def free_tile_near(
 def place_unit(
     state: GameState, cfg: Config, unit_type: str, owner: str, near: int, max_radius: int
 ) -> Unit | None:
+    if is_fixed(cfg, unit_type):
+        max_radius = 0  # city defence units are placed on the city tile or not at all
     tile = free_tile_near(state, cfg, unit_type, owner, near, max_radius)
     if tile is None:
         return None
