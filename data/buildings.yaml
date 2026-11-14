@@ -40,3 +40,9 @@ buildings:
   beacon_iii: {status: placeholder, note: Speed 3., cost: 320, maintenance: 3, tech: beacon_theory, yields: {beacon: 5}, yield_pct: {}, requires_building: beacon_ii}
   beacon_iv: {status: placeholder, note: Speed 4., cost: 640, maintenance: 4, tech: beacon_theory, yields: {beacon: 6}, yield_pct: {}, requires_building: beacon_iii}
   beacon_v: {status: placeholder, note: Speed 5., cost: 1280, maintenance: 5, tech: beacon_theory, yields: {beacon: 8}, yield_pct: {}, requires_building: beacon_iv}
+
+  # M7: alien-tree buildings (espionage).
+  bio_reactor: {status: placeholder, note: Living power plant., cost: 160, maintenance: 2, tech: bio_reactors, yields: {}, yield_pct: {production: 30}}
+  phase_scanner: {status: placeholder, note: Wide sight through fog., cost: 120, maintenance: 1, tech: phase_scanners, yields: {}, yield_pct: {}, vision: 4}
+  translation_hub: {status: placeholder, note: Speaks to the hive; draws recruits., cost: 140, maintenance: 2, tech: hive_linguistics, yields: {beacon: 6}, yield_pct: {}}
+  chitin_bulwark: {status: placeholder, note: Grown city walls., cost: 180, maintenance: 2, tech: organic_armour, yields: {}, yield_pct: {}, city_strength: 12, city_hp: 150}

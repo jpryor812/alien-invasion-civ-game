@@ -14,7 +14,8 @@ time:
   max_turns:
     value: 200
     status: placeholder
-    note: DESIGN.md section 18 suggests 150 to 200 turns.
+    note: DESIGN.md section 18 suggests 150 to 200 turns. Reaching it ends the game unfinished
+      (not a win; M7 default for DESIGN.md 18's open turn-limit question).
 
 map:
   width:
@@ -300,3 +301,38 @@ trade:
     value: 100
     status: placeholder
     note: Extra upkeep, as percent of normal unit upkeep, for unit members on another continent.
+
+endgame:
+  barrage_tech:
+    value: orbital_barrage
+    status: calibrated
+    note: DESIGN.md 11 - researching it stops reinforcements; it unlocks the barrage project.
+  radar_techs:
+    value: [deep_space_radar, stellar_chorus]
+    status: placeholder
+    note: Techs that reveal every alien city to their owner (DESIGN.md 12, late-game hunt tools).
+  mothership:
+    status: placeholder
+    note: Strike chance per thousand per turn; a struck city drops to strike_hp_pct of its HP and
+      loses strike_pop_pct of its population. The barrage host is host_weight times likelier to be
+      targeted than any other player city.
+    strike_permille: 25
+    strike_hp_pct: 40
+    strike_pop_pct: 25
+    host_weight: 10
+  barrage:
+    status: placeholder
+    note: Progress needed, the minimum turns from start to firing (DESIGN.md 11, a fixed number of
+      turns), gold converted to progress at gold_to_progress_pct, and the extra siege value the
+      director gives the host city.
+    cost: 3000
+    min_turns: 20
+    gold_to_progress_pct: 50
+    host_siege_value: 80
+  espionage:
+    status: placeholder
+    note: Gold to complete an operation, how many alien techs it offers, and how many turns the
+      largest contributor has to choose before the first offered is taken.
+    cost: 800
+    offered: 3
+    choose_turns: 1

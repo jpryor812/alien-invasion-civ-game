@@ -16,7 +16,7 @@ from beacon.state import ACTIVE, City, GameState, Player
 from beacon.tiles import Line, resource_active, tile_yields, totals
 from beacon.units import hostile, occupancy, place_unit
 
-PROJECTS = ("wealth", "research")
+PROJECTS = ("wealth", "research", "barrage")
 COUNCIL_YIELDS = ("food", "production", "science", "gold", "beacon")  # military: combat
 PROJECT_YIELD = {"wealth": "gold", "research": "science"}
 FOCUSES = ("balanced", "food", "production", "science", "gold")
@@ -140,7 +140,14 @@ def item_allowed(state: GameState, cfg: Config, city: City, item: str) -> str | 
     if kind == "unit":
         return unit_allowed(state, cfg, city, ident) if ident in cfg.units else "unknown"
     if kind == "project":
-        return None if ident in PROJECTS else "unknown project"
+        if ident not in PROJECTS:
+            return "unknown project"
+        if ident == "barrage":
+            from beacon.endgame import barrage_needs  # endgame imports this module's users
+
+            if barrage_needs(state) is None:
+                return "the barrage is not under way or is fully paid"
+        return None
     return f"unknown item kind {kind!r}"
 
 
@@ -261,7 +268,11 @@ def process_city(
     # production
     production = cy.totals["production"]
     head = city.queue[0] if city.queue else None
-    if head and head.startswith("project:"):
+    if head == "project:barrage":
+        from beacon.endgame import city_contribution
+
+        city_contribution(state, cfg, player.id, production)
+    elif head and head.startswith("project:"):
         out = PROJECT_YIELD[head.split(":", 1)[1]]
         cy.totals[out] += production * cfg.t("economy.project_conversion_pct") // 100
     else:

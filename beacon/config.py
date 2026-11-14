@@ -143,10 +143,11 @@ FILES = (
     "continents",
     "bots",
     "ai",
+    "mvp",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
-TREES = frozenset({"economic", "production", "military", "beacon"})
+TREES = frozenset({"economic", "production", "military", "beacon", "alien"})
 DOMAINS = ("food", "production", "military", "science", "gold", "beacon")
 
 
@@ -242,6 +243,9 @@ class Config:
 
     def bot(self, path: str) -> Any:
         return self._section("bots", path)
+
+    def mvp(self, path: str) -> Any:
+        return self._section("mvp", path)
 
     def ai(self, path: str) -> Any:
         """A value from data/ai.yaml (cached; read-only)."""

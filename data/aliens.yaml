@@ -60,7 +60,7 @@ fortress:
   per_lost_share_pct: 80
   interval_turns: 20
   per_interval_pct: 5
-  cap_pct: 80
+  cap_pct: 70
 
 reinforcements:
   status: placeholder

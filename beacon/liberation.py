@@ -28,6 +28,11 @@ CREDIT_KEYS = (
     "aid_gold",
     "aid_units",
     "aid_techs",
+    "liberation_share",
+    "pop_saved",
+    "unit_turns_abroad",
+    "espionage_gold",
+    "barrage",
 )
 
 
@@ -71,6 +76,7 @@ def reclaim(state: GameState, cfg: Config, city: City, by: str) -> Events:
     events = _restore(state, cfg, city, city.pop)
     city.hp = cities.max_hp(cfg, city)
     credit(state, by, "cities_reclaimed")
+    credit(state, by, "pop_saved", city.pop)
     return [{"kind": "city_reclaimed", "city": city.id, "by": by, "owner": city.owner}, *events]
 
 
@@ -79,7 +85,20 @@ def refound(state: GameState, cfg: Config, city: City, by: str) -> Events:
     events = _restore(state, cfg, city, cfg.t("cities.refound_pop"))
     city.hp = cities.max_hp(cfg, city)
     credit(state, by, "cities_refounded")
+    credit(state, by, "pop_saved", city.pop)
     return [{"kind": "city_refounded", "city": city.id, "by": by, "owner": city.owner}, *events]
+
+
+def liberation_shares(state: GameState, damage_by: dict[str, int], by: str) -> dict[str, int]:
+    """Split one liberation (100 hundredths) among players by the damage each dealt to the city
+    (DESIGN.md 12, "credit split by contribution when helped"). The liberator gets the rounding."""
+    damage = {p: d for p, d in damage_by.items() if p in state.players and d > 0}
+    total = sum(damage.values())
+    if total == 0:
+        return {by: 100}
+    shares = {p: d * 100 // total for p, d in sorted(damage.items())}
+    shares[by] = shares.get(by, 0) + 100 - sum(shares.values())
+    return shares
 
 
 def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
@@ -89,6 +108,9 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     city.hp = cities.max_hp(cfg, city) * cfg.t("cities.liberated_hp_pct") // 100
     city.liberated_turn = state.turn
     credit(state, by, "cities_liberated")
+    credit(state, by, "pop_saved", city.pop)
+    for pid, share in liberation_shares(state, city.damage_by, by).items():
+        credit(state, pid, "liberation_share", share)
     from beacon.recruits import freed_by_liberation  # recruits imports this module
 
     events.extend(freed_by_liberation(state, city.id, by))

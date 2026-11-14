@@ -60,3 +60,14 @@ techs:
 
   # M6: alliances need this tech on both sides (designer, 2026-11-13: not immediate, but early).
   international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 1, cost: 100, prereqs: [market_economy], known_at_start: false}
+
+  # M7: the world barrage (DESIGN.md 11). Researching it stops alien reinforcements.
+  orbital_barrage: {status: placeholder, note: The world barrage; unlocks the shared megaproject., tree: military, tier: 5, cost: 1500, prereqs: [railguns, deep_space_radar], known_at_start: false}
+
+  # M7: the alien tree. Gained only through espionage (DESIGN.md 10); research cannot reach it.
+  xeno_metallurgy: {status: placeholder, note: Alien alloys; xeno troopers., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}
+  plasma_weaving: {status: placeholder, note: Alien plasma; plasma lancers., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}
+  bio_reactors: {status: placeholder, note: Living power plants., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}
+  phase_scanners: {status: placeholder, note: Sight through walls and fog., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}
+  hive_linguistics: {status: placeholder, note: Understanding the hive tongue., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}
+  organic_armour: {status: placeholder, note: Grown city walls., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}

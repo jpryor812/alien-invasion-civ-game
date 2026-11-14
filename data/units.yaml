@@ -48,3 +48,7 @@ units:
 
   # M6: carries traded goods overland to a port; aliens capture it unless a military unit escorts.
   trade_convoy: {status: placeholder, note: Overland trade carrier (made by deals; not buildable)., faction: player, domain: land, role: civilian, cost: 0, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true}
+
+  # M7: alien-tree units (espionage).
+  xeno_trooper: {status: placeholder, note: Infantry in alien alloy., faction: player, domain: land, role: melee, cost: 150, moves: 2, strength: 70, ranged_strength: 0, range: 0, vision: 1, tech: xeno_metallurgy}
+  plasma_lancer: {status: placeholder, note: Plasma artillery., faction: player, domain: land, role: ranged, cost: 200, moves: 2, strength: 24, ranged_strength: 76, range: 3, vision: 1, tech: plasma_weaving}

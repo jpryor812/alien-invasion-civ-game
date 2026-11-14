@@ -171,6 +171,8 @@ def _land_group(
 def reinforcements(state: GameState, cfg: Config) -> Events:
     r_cfg = cfg.alien("reinforcements")
     al = state.aliens
+    if al.reinforcements_stopped or not al.mothership_alive:
+        return []
     al.reinforcement_store += r_cfg["per_turn"]
     if al.reinforcement_store < r_cfg["cost"]:
         return []
@@ -191,6 +193,8 @@ def reinforcements(state: GameState, cfg: Config) -> Events:
 def surge(state: GameState, cfg: Config) -> Events:
     s = cfg.alien("surge")
     al = state.aliens
+    if al.reinforcements_stopped or not al.mothership_alive:
+        return []  # surges come from the mothership too
     if al.surge_cooldown > 0:
         al.surge_cooldown -= 1
         return []
@@ -341,7 +345,11 @@ class Director:
     # -- order choice --------------------------------------------------------------------
 
     def siege_target(self, unit: Unit) -> int | None:
+        from beacon.endgame import barrage_running
+
         cont = self.continent(unit.tile)
+        running = barrage_running(self.state)
+        host = running.host_city if running is not None else None
         best = None
         for city in self.state.cities:
             if city.status != ACTIVE or city.owner not in self.state.players:
@@ -351,6 +359,8 @@ class Director:
             value = self.d["value_base"] + city.pop * self.d["value_per_pop"]
             if city.is_capital:
                 value += self.d["value_capital"]
+            if host is not None and city.id == host:
+                value += self.cfg.t("endgame.barrage.host_siege_value")  # the aliens know
             if city.liberated_turn is not None and (
                 self.state.turn - city.liberated_turn <= self.d["retake_turns"]
             ):
@@ -558,6 +568,9 @@ def alien_phase(state: GameState, cfg: Config) -> Events:
     events.extend(reinforcements(state, cfg))
     events.extend(surge(state, cfg))
     events.extend(Director(state, cfg).run())
+    from beacon.endgame import strikes
+
+    events.extend(strikes(state, cfg))
     events.extend(update_fallen(state))
     for e in events:
         e.setdefault("turn", state.turn)

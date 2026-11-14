@@ -13,6 +13,7 @@ from beacon import (
     combat,
     diplomacy,
     economy,
+    endgame,
     fog,
     hexgrid,
     improvements,
@@ -26,12 +27,14 @@ from beacon.commands import (
     AcceptOffer,
     Attack,
     BuildImprovement,
+    ChooseEspionageTech,
     CityAttack,
     Command,
     CommandError,
     DeclineDeal,
     DeclineOffer,
     Fortify,
+    FundProject,
     MergeUnits,
     MoveUnit,
     OfferRecruit,
@@ -45,6 +48,8 @@ from beacon.commands import (
     ShipUnit,
     SkipUnit,
     SplitUnit,
+    StartBarrage,
+    StartEspionage,
     UnseatRecruit,
 )
 from beacon.config import Config
@@ -413,6 +418,45 @@ def _ship(state: GameState, cfg: Config, cmd: ShipUnit) -> Events:
     return diplomacy.ship_unit(state, cfg, unit, cmd.city)
 
 
+# -- endgame projects -----------------------------------------------------------------------------
+
+
+@handles(StartBarrage)
+def _start_barrage(state: GameState, cfg: Config, cmd: StartBarrage) -> Events:
+    problem = endgame.start_barrage_problem(state, cfg, cmd.player, cmd.city)
+    if problem:
+        raise CommandError(problem)
+    return endgame.start_barrage(state, cfg, cmd.player, cmd.city)
+
+
+@handles(FundProject)
+def _fund(state: GameState, cfg: Config, cmd: FundProject) -> Events:
+    project = state.projects.get(str(cmd.project))
+    problem = endgame.fund_problem(state, cmd.player, project, cmd.gold)
+    if problem:
+        raise CommandError(problem)
+    assert project is not None
+    return endgame.fund(state, cfg, cmd.player, project, cmd.gold)
+
+
+@handles(StartEspionage)
+def _start_espionage(state: GameState, cfg: Config, cmd: StartEspionage) -> Events:
+    problem = endgame.start_espionage_problem(state, cmd.player, cmd.mode)
+    if problem:
+        raise CommandError(problem)
+    return endgame.start_espionage(state, cfg, cmd.player, cmd.mode)
+
+
+@handles(ChooseEspionageTech)
+def _choose(state: GameState, cfg: Config, cmd: ChooseEspionageTech) -> Events:
+    project = state.projects.get(str(cmd.project))
+    problem = endgame.choose_problem(state, cmd.player, project, cmd.tech)
+    if problem:
+        raise CommandError(problem)
+    assert project is not None
+    return endgame.choose(state, cfg, project, cmd.tech)
+
+
 def _seat_options(state: GameState, cfg: Config, rec) -> list[tuple[str, ...]]:
     options = [("general",)] + [(d,) for d in sorted(rec.scores)]
     if len(rec.scores) > 1:
@@ -539,4 +583,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for deal in sorted(state.deals.values(), key=lambda d: d.id):
         if deal.receiver == pid and not deal.active:
             out.append({"kind": "deal_received", "deal": deal.id})
+    for project in sorted(state.projects.values(), key=lambda p: p.id):
+        if project.kind == "espionage" and project.offered and project.chooser == pid:
+            out.append({"kind": "choose_espionage_tech", "project": project.id})
     return out

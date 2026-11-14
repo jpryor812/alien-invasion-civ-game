@@ -220,6 +220,42 @@ class ShipUnit(Command):
     city: int
 
 
+@register
+@dataclass(frozen=True)
+class StartBarrage(Command):
+    """Start the world barrage in one of your connected cities (needs the barrage tech)."""
+
+    kind: ClassVar[str] = "start_barrage"
+    city: int
+
+
+@register
+@dataclass(frozen=True)
+class FundProject(Command):
+    """Put gold into the barrage or an espionage operation."""
+
+    kind: ClassVar[str] = "fund_project"
+    project: int
+    gold: int
+
+
+@register
+@dataclass(frozen=True)
+class StartEspionage(Command):
+    """Open an espionage operation: mode "solo" (only you fund and gain) or "shared"."""
+
+    kind: ClassVar[str] = "start_espionage"
+    mode: str
+
+
+@register
+@dataclass(frozen=True)
+class ChooseEspionageTech(Command):
+    kind: ClassVar[str] = "choose_espionage_tech"
+    project: int
+    tech: str
+
+
 def command_to_dict(cmd: Command) -> dict[str, Any]:
     data = asdict(cmd)
     for key, value in data.items():

@@ -184,7 +184,8 @@ Alien technology can also be gained through espionage (section 10), outside the 
 Players are ranked by an MVP score from: aliens killed, cities liberated (credit split by
 contribution when helped), population saved, aid given, units contributed abroad, alien
 contribution (recruits, espionage funding), and the barrage project. Weights are **TUNE** and
-should be balanced so a builder and a fighter can both finish near the top.
+should be balanced so a builder and a fighter can both finish near the top (first tuning in M7:
+`data/mvp.yaml`, `docs/BALANCE_M7.md`).
 
 ## 13. Fallen and revived continents
 
@@ -237,7 +238,8 @@ varied partners.
 - Late-game boredom once few alien cities remain (deferred by the designer until after the
   first playable version).
 - Do aliens ever cross water? (assumed no.) Aliens see through fog (decided 2026-11-13).
-- Turn limit without victory: not yet decided.
+- Turn limit without victory: M7 default, the game ends unfinished at turn 200 (not a win); scores
+  still rank. Awaiting the designer's confirmation.
 - Trait list and recruit lifespans.
 - MVP weights.
 - Number of beacon investment levels and cost curves.

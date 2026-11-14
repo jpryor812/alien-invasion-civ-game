@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 4
+STATE_VERSION = 5
 ALIENS = "aliens"
 
 # City status values.
@@ -196,6 +196,27 @@ class AlienState:
     surge_cooldown: int = 0
     start_cities: int = 0
     orders: dict[str, AlienOrder] = field(default_factory=dict)  # by unit id
+    mothership_alive: bool = True
+    reinforcements_stopped: bool = False  # once the barrage is researched (DESIGN.md 11)
+
+
+@dataclass
+class Project:
+    """A shared project: the world barrage or an espionage operation (docs/SPEC_M7.md)."""
+
+    id: int
+    kind: str  # barrage | espionage
+    starter: str
+    mode: str  # shared | solo
+    started_turn: int
+    cost: int
+    progress: int = 0
+    host_city: int | None = None  # barrage only
+    contributions: dict[str, int] = field(default_factory=dict)
+    done: bool = False
+    offered: list[str] = field(default_factory=list)  # espionage: alien techs on offer
+    chooser: str | None = None
+    choose_by: int | None = None
 
 
 @dataclass
@@ -216,6 +237,9 @@ class GameState:
     offers: dict[str, Offer] = field(default_factory=dict)
     deals: dict[str, Deal] = field(default_factory=dict)
     shipments: dict[str, Shipment] = field(default_factory=dict)
+    projects: dict[str, Project] = field(default_factory=dict)
+    outcome: str | None = None  # victory | defeat | turn_limit
+    outcome_turn: int | None = None
     version: int = STATE_VERSION
 
     # -- lookups -------------------------------------------------------------------------------

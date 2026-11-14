@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from beacon import ai, bots, canonical
+from beacon import ai, bots, canonical, endgame, mvp
 from beacon.actions import apply_command
 from beacon.commands import Command, CommandError, command_from_dict, command_to_dict
 from beacon.config import Config, load
@@ -55,6 +55,8 @@ def play(
         return out
 
     for _ in range(turns):
+        if state.outcome is not None:
+            break
         for pid in state.player_ids():
             if state.players[pid].controller != "human":
                 take_turn(state, cfg, pid, submit)
@@ -74,6 +76,8 @@ def replay(
     accepted = [e for e in log if e["ok"]]
     i = 0
     for _ in range(turns):
+        if state.outcome is not None:
+            break
         while i < len(accepted) and accepted[i]["turn"] == state.turn:
             apply_command(state, cfg, command_from_dict(accepted[i]["cmd"]))
             i += 1
@@ -83,7 +87,22 @@ def replay(
     return state
 
 
-def summary(state: GameState, log: list[dict[str, Any]], elapsed_ms: int) -> dict[str, Any]:
+def _barrage_summary(state: GameState) -> dict[str, Any] | None:
+    b = endgame.barrage(state)
+    if b is None:
+        return None
+    return {
+        "started": b.started_turn,
+        "progress": b.progress,
+        "done": b.done,
+        "host": b.host_city,
+        "contributions": dict(b.contributions),
+    }
+
+
+def summary(
+    state: GameState, log: list[dict[str, Any]], elapsed_ms: int, cfg: Config
+) -> dict[str, Any]:
     status_counts: dict[str, int] = {}
     for city in state.cities:
         status_counts[city.status] = status_counts.get(city.status, 0) + 1
@@ -114,6 +133,14 @@ def summary(state: GameState, log: list[dict[str, Any]], elapsed_ms: int) -> dic
         "shipped_units": sum(1 for e in log if e["ok"] and e["cmd"]["kind"] == "ship_unit"),
         "alliances": sum(len(p.allies) for p in state.players.values()) // 2,
         "characters": {pid: p.character for pid, p in state.players.items()},
+        "outcome": state.outcome,
+        "outcome_turn": state.outcome_turn,
+        "mothership_alive": state.aliens.mothership_alive,
+        "barrage": _barrage_summary(state),
+        "alien_techs_gained": sum(
+            1 for p in state.players.values() for t in p.techs if t in endgame.alien_techs(cfg)
+        ),
+        "mvp": [[r["player"], r["total"]] for r in mvp.ranking(state, cfg)],
         "commands": len(log),
         "rejected_commands": sum(1 for e in log if not e["ok"]),
         "credits": credits,
@@ -163,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
         start = time.perf_counter()
         humans = tuple(h for h in args.human.split(",") if h)
         state, events, log = play(cfg, args.seed, args.turns, continents, args.driver, humans)
-        info = summary(state, log, int((time.perf_counter() - start) * 1000))
+        info = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
         out = Path(args.out or f"runs/seed{args.seed}")
         write_run(out, state, events, log, info)
         print(canonical.dumps(info, indent=2))
@@ -173,8 +200,7 @@ def main(argv: list[str] | None = None) -> int:
     for seed in _parse_seeds(args.seeds):
         start = time.perf_counter()
         state, _, log = play(cfg, seed, args.turns, continents, args.driver)
-        row = summary(state, log, int((time.perf_counter() - start) * 1000))
-        del row["credits"]
+        row = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
         rows.append(row)
         print(canonical.dumps(row))
     out = Path(args.out)

@@ -13,7 +13,9 @@ def available(cfg: Config, player: Player) -> list[str]:
     return sorted(
         t
         for t, spec in cfg.techs.items()
-        if t not in known and all(p in known for p in spec["prereqs"])
+        if t not in known
+        and spec["tree"] != "alien"  # alien techs come only from espionage (DESIGN.md 10)
+        and all(p in known for p in spec["prereqs"])
     )
 
 

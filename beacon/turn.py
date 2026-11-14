@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import cities, diplomacy, economy, fog, improvements, network, recruits
+from beacon import (
+    cities,
+    diplomacy,
+    economy,
+    endgame,
+    fog,
+    improvements,
+    liberation,
+    network,
+    recruits,
+)
 from beacon.config import Config
 from beacon.state import GameState
 from beacon.units import full_moves, max_hp
@@ -63,6 +73,7 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
         events.extend(improvements.progress_jobs(state, cfg, pid))
         network.update_connections(state, cfg, pid)
     events.extend(diplomacy.end_of_turn(state, cfg))
+    events.extend(endgame.end_of_turn(state, cfg))
     for pid in state.player_ids():
         events.extend(recruits.arrivals(state, cfg, pid))
     events.extend(recruits.end_of_turn(state, cfg))
@@ -71,4 +82,6 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     state.turn += 1
     fog.refresh_all(state, cfg)
     events.append({"turn": state.turn, "kind": "turn_started", "year": year(cfg, state.turn)})
+    events.extend(liberation.update_fallen(state))
+    events.extend(endgame.check_outcome(state, cfg))
     return events

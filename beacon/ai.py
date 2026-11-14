@@ -11,15 +11,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import diplomacy, economy, tech
+from beacon import diplomacy, economy, endgame, tech
 from beacon.bots import Bot, Submit
 from beacon.commands import (
     AcceptDeal,
+    ChooseEspionageTech,
     DeclineDeal,
+    FundProject,
     MoveUnit,
     ProposeDeal,
     SetProduction,
     ShipUnit,
+    StartBarrage,
+    StartEspionage,
 )
 from beacon.config import Config
 from beacon.state import ACTIVE, DORMANT, EMPTY, OVERRUN, DealTerms, GameState
@@ -31,6 +35,11 @@ class AIPlayer(Bot):
         self.char = cfg.ai(f"characters.{state.players[pid].character}")
 
     def param(self, path: str) -> Any:
+        if path == "research.priority":
+            return [
+                *self.char["overrides"].get(path, self.cfg.bot(path)),
+                *self.cfg.ai("endgame.research"),
+            ]
         return self.char["overrides"].get(path, self.cfg.bot(path))
 
     # -- valuing deals -----------------------------------------------------------------------
@@ -231,6 +240,62 @@ class AIPlayer(Bot):
                     )
                 )
 
+    # -- endgame -------------------------------------------------------------------------------
+
+    def endgame(self) -> None:
+        me = self.view.player
+        mine = [c for c in self.view.my_cities() if c.status == ACTIVE]
+        b = endgame.barrage(self.state)
+        if b is None and self.cfg.t("endgame.barrage_tech") in me.techs:
+            hosts = [c for c in mine if c.connected]
+            if hosts:
+                host = next((c for c in hosts if c.is_capital), max(hosts, key=lambda c: c.pop))
+                self.submit(StartBarrage(player=self.pid, city=host.id))
+                b = endgame.barrage(self.state)
+        running = endgame.barrage_needs(self.state)
+        if running is not None and endgame.host_held(self.state, running):
+            want = max(1, len(mine) * self.char["barrage_share_pct"] // 100)
+            prod = sorted(
+                (c for c in mine if c.connected),
+                key=lambda c: (
+                    -economy.city_yields(self.state, self.cfg, c).totals["production"],
+                    c.id,
+                ),
+            )
+            for city in prod[:want]:
+                if not city.queue or city.queue[0] != "project:barrage":
+                    self.submit(
+                        SetProduction(player=self.pid, city=city.id, items=("project:barrage",))
+                    )
+            spare = me.gold - self.char["aid_reserve"]
+            gift = spare * self.cfg.ai("endgame.barrage_gold_pct") // 100
+            if gift > 0:
+                self.submit(FundProject(player=self.pid, project=running.id, gold=gift))
+        elif running is None:
+            for city in mine:
+                if city.queue and city.queue[0] == "project:barrage":
+                    self.submit(SetProduction(player=self.pid, city=city.id, items=()))
+        self.espionage()
+
+    def espionage(self) -> None:
+        me = self.view.player
+        for p in sorted(self.state.projects.values(), key=lambda x: x.id):
+            if p.kind == "espionage" and p.offered and p.chooser == self.pid:
+                best = max(p.offered, key=lambda t: (t in self.char.get("espionage_prefs", []), t))
+                self.submit(ChooseEspionageTech(player=self.pid, project=p.id, tech=best))
+        reserve = self.char["espionage_reserve"]
+        if endgame.open_operation(self.state, self.pid) is None and me.gold > reserve:
+            pool = [t for t in endgame.alien_techs(self.cfg) if t not in me.techs]
+            if pool:
+                self.submit(StartEspionage(player=self.pid, mode=self.char["espionage_mode"]))
+        for p in sorted(self.state.projects.values(), key=lambda x: x.id):
+            if p.kind != "espionage" or p.done or me.gold <= reserve:
+                continue
+            if p.starter == self.pid or p.mode == "shared":
+                gold = min(me.gold - reserve, p.cost - p.progress)
+                if gold > 0:
+                    self.submit(FundProject(player=self.pid, project=p.id, gold=gold))
+
     # -- turn --------------------------------------------------------------------------------
 
     def play(self) -> None:
@@ -243,6 +308,7 @@ class AIPlayer(Bot):
         self.alliances()
         self.trades()
         self.aid()
+        self.endgame()
         net = self._network()
         garrisons = {uid: tile for tile, uid in self._garrisons().items()}
         self.expeditions(set(garrisons))

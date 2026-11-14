@@ -288,3 +288,39 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   chase cities on the continent they stand on.
 - **Balance**: see `docs/BALANCE_M6.md`. All M6 gates met; M4 bands under AI play: captures 15/20,
   alien-share band 11/20.
+
+## M7: mothership, barrage, espionage, endings and MVP
+
+- **Mothership strikes**: 2.5% chance per turn while the mothership lives; one player city (the
+  barrage host ten times likelier once the project runs) drops to 40% HP and loses 25% of its
+  population, and counts as besieged (no healing that turn).
+- **Reinforcements and surges stop** for good as soon as any player knows Orbital Barrage (DESIGN.md
+  11, "researching it can stop reinforcements"); surges count as mothership landings.
+- **The barrage**: Orbital Barrage is military tier 5 (cost 1,500, needs Railguns and Deep Space
+  Radar). One barrage per game, hosted in a connected city of a player who knows the tech. Anyone
+  may contribute, with or without the tech: production from a city building `project:barrage`, or
+  gold at 50%. It fires at 3,000 progress and at least 20 turns after it started, with the host in
+  player hands; contributions stop at the cost and gold is only charged for what is taken. The
+  director adds 80 to the host's siege score.
+- **Late-game hunt**: Deep Space Radar and Stellar Chorus reveal every alien-held city to their
+  owner each turn.
+- **Espionage**: gold-funded only (800); solo (starter funds and gains) or shared (anyone funds,
+  everyone gains). Offers 3 alien techs that some recipient lacks; the largest contributor chooses
+  within one turn, else the first offered is taken. The alien tree has six techs, each unlocking a
+  unit (xeno trooper, plasma lancer) or a building (bio-reactor, phase scanner, translation hub,
+  chitin bulwark); research cannot reach them.
+- **Endings**: victory when the mothership is destroyed and no alien city remains (checked at
+  the end of every turn, either order); defeat when all six continents have fallen at once;
+  reaching turn 200 ends the game unfinished (**default for DESIGN.md 18's open turn-limit
+  question**). The runner stops at any outcome.
+- **MVP**: weighted ledger in `data/mvp.yaml`. Liberation credit is split by the damage each
+  player dealt to the city (100 hundredths per city; the liberator gets rounding). Population
+  saved counts freed, reclaimed and refounded cities' population. Unit-turns abroad accrue each
+  turn. Weights fitted on the M7 batch so builders and fighters both average in the top half.
+- **AI endgame**: after its character's research list, every AI pursues the path to Deep Space
+  Radar and Orbital Barrage; the first to learn it starts the barrage in its capital; each
+  character sends a share of its most productive cities (25-50%) and half its spare gold to the
+  barrage while it needs progress; it opens espionage operations above a gold reserve (shared,
+  except isolationists) and funds shared ones; as chooser it takes the first offered tech.
+- **Balance**: 7/20 victories (turns 131-195), 0 defeats, barrage fired in every game,
+  espionage in 16/20, slowest game 19.8 s. See `docs/BALANCE_M7.md`.

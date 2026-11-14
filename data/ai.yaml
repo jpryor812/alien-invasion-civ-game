@@ -7,6 +7,9 @@
 # - accept_ratio_pct: accepts a deal when value received is at least this percent of value given
 # - lend_price: gold per turn it asks per strategic resource unit it lends
 # - allies: whether it proposes alliances (all accept alliances)
+# - barrage_share_pct: share of its cities that build the barrage while it runs (M7)
+# - espionage_mode / espionage_reserve: the operations it opens, and the gold it keeps before
+#   starting or funding one (M7)
 
 characters:
   builder:
@@ -26,6 +29,9 @@ characters:
     accept_ratio_pct: 90
     lend_price: 2
     allies: true
+    barrage_share_pct: 50
+    espionage_mode: shared
+    espionage_reserve: 300
   fighter:
     status: placeholder
     note: Large army, liberates aggressively, sends troops abroad.
@@ -43,6 +49,9 @@ characters:
     accept_ratio_pct: 100
     lend_price: 3
     allies: true
+    barrage_share_pct: 25
+    espionage_mode: shared
+    espionage_reserve: 400
   trader:
     status: placeholder
     note: Ports early, many deals, lends resources.
@@ -60,6 +69,9 @@ characters:
     accept_ratio_pct: 80
     lend_price: 2
     allies: true
+    barrage_share_pct: 40
+    espionage_mode: shared
+    espionage_reserve: 250
   isolationist:
     status: placeholder
     note: Defends its own continent and rarely trades or helps until a continent falls.
@@ -77,6 +89,9 @@ characters:
     accept_ratio_pct: 120
     lend_price: 4
     allies: false
+    barrage_share_pct: 30
+    espionage_mode: solo
+    espionage_reserve: 500
 
 value:
   status: placeholder
@@ -100,3 +115,12 @@ aid:
   note: The AI gives aid to a fallen continent, or else to the player holding the fewest cities if
     that is at most need_pct percent of its own count (50 left a quarter of games with no aid; 75 left one).
   need_pct: 85
+
+endgame:
+  status: placeholder
+  note: Research every AI pursues after its character's list, in order (each when available), so
+    the radar and the barrage come in reach; spare gold above the reserve goes to the barrage at
+    barrage_gold_pct.
+  research: [mechanized_warfare, advanced_manufacturing, powered_exoskeletons, railguns,
+             high_speed_rail, radio_beacon_network, applied_ai, deep_space_radar, orbital_barrage]
+  barrage_gold_pct: 50
