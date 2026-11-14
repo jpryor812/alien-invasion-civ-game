@@ -7,7 +7,6 @@ production:
     once military reaches capital_build_military_pct of the city count.
   military_per_city_pct: 250
   engineers: 2
-  restoration_teams: 2
   recon: 2
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
                       research_lab, defence_perimeter, vertical_farm, financial_center, hospital,

@@ -439,7 +439,7 @@ function draw(t = performance.now()) {
   for (const [i, sx, sy, shown] of visible) {
     if (!shown) continue;
     const t1 = S.tilesByIndex.get(i);
-    if (t1.improvement && z > 0.45) drawImprovement(t1.improvement, sx, sy, R);
+    if (t1.improvement && z > 0.3) { drawImprovedHex(i, t1.improvement, sx, sy, R); drawImprovement(t1.improvement, sx, sy, R); }
     if (t1.resource && t1.visible && z > 0.6) drawResource(t1.resource, sx, sy, R);
   }
   // 5. fog, and a light veil over remembered city hexes not seen right now
@@ -469,6 +469,22 @@ function draw(t = performance.now()) {
   drawMinimap();
 }
 
+// Improved tiles stand out: a tinted hex with a bright inner rim, and a small figure when one of
+// your citizens works it.
+const IMP_TINT = { farm: "230,200,80", mine: "170,120,70", extractor: "90,90,90", hydroponic_plot: "120,210,140",
+  solar_array: "90,170,230", wind_turbines: "200,220,240" };
+function drawImprovedHex(i, kind, sx, sy, R) {
+  const tint = IMP_TINT[kind] || "120,180,200";
+  hexPath(ctx, sx, sy, R * 0.86);
+  ctx.fillStyle = `rgba(${tint},0.18)`; ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},0.85)`; ctx.lineWidth = Math.max(1.5, R * 0.06); ctx.setLineDash([R * 0.18, R * 0.1]); ctx.stroke(); ctx.setLineDash([]);
+  const w = S.view.worked && S.view.worked[i];
+  if (w && S.cam.zoom > 0.5) {
+    const x = sx - R * 0.42, y = sy - R * 0.42, r = R * 0.12;
+    ctx.fillStyle = "#f2d38a"; ctx.beginPath(); ctx.arc(x, y - r * 0.9, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - r, y + r); ctx.quadraticCurveTo(x, y - r * 0.6, x + r, y + r); ctx.fill();
+  }
+}
 function drawImprovement(kind, sx, sy, R) {
   if (kind === "farm") {
     ctx.fillStyle = "rgba(230,205,95,0.85)";
@@ -724,6 +740,7 @@ function describePending(p) {
     offer_received: "A recruit is offered to you",
     deal_received: "A deal is proposed to you",
     choose_espionage_tech: "Choose your alien technology",
+    city_can_attack: `${cityName(p.city)} can attack an enemy`,
   }[p.kind] || pretty(p.kind);
 }
 async function resolvePending(p) {
@@ -733,11 +750,18 @@ async function resolvePending(p) {
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
   if (p.kind === "deal_received") return openScreen("diplomacy");
   if (p.kind === "choose_espionage_tech") return openScreen("projects");
+  if (p.kind === "city_can_attack") {
+    centerOnTile(S.view.cities[p.city].tile); await selectCity(p.city);
+    S.targetMode = "bombard"; S.dirty = true; toast("Enemy near the city: click a red hex to fire, or Hold fire.");
+  }
 }
 function describeEvent(e) {
   const m = {
     turn_started: () => `Turn ${e.turn} begins (${e.year}).`,
     city_grew: () => `${cityName(e.city)} grew to ${e.pop}.`,
+    citizen_born: () => `${e.name} was born in ${cityName(e.city)} (${statText(e.stats)}${e.traits.length ? `, ${e.traits.map(pretty).join(", ")}` : ""}).`,
+    citizen_grew_up: () => `${e.name} of ${cityName(e.city)} has grown up and can work.`,
+    citizen_job: () => "Citizen job changed.",
     building_completed: () => `${cityName(e.city)} built ${pretty(e.building)}.`,
     unit_completed: () => `${cityName(e.city)} trained ${pretty(e.type)}.`,
     tech_learned: () => `Learned ${pretty(e.tech)}.`,
@@ -799,7 +823,14 @@ function renderUnitPanel() {
   const add = (label, fn, title = "") => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.onclick = fn; a.appendChild(b); };
   if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }));
   add("Skip (S)", () => send({ kind: "skip_unit", unit: u.id }));
-  for (const imp of o.builds) add(`Build ${pretty(imp)}`, () => send({ kind: "build_improvement", unit: u.id, improvement: imp }));
+  for (const imp of o.builds) {
+    const bi = o.build_info[imp];
+    const change = Object.keys(bi.after).filter((k) => bi.after[k] !== bi.before[k]).map((k) => `${k} ${bi.before[k]} → ${bi.after[k]}`);
+    const extra = `<div class="tip-kind">${change.length ? `This tile: ${change.join(", ")}` : "No change to this tile's yields"}${bi.city ? ` · works for ${esc(bi.city)}` : " · outside your cities' land"}</div>`;
+    const short = change.length ? ` (${Object.keys(bi.after).filter((k) => bi.after[k] > bi.before[k]).map((k) => `+${bi.after[k] - bi.before[k]} ${k}`).join(", ")})` : "";
+    add(`Build ${pretty(imp)}${short}`, () => send({ kind: "build_improvement", unit: u.id, improvement: imp }));
+    a.lastChild.dataset.tip = infoHtml(pretty(imp), bi, extra); a.lastChild.title = "";
+  }
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
   for (const other of o.merges) add(`Merge with #${other}`, () => send({ kind: "merge_units", unit: u.id, into: other }), "Two units of one type become one stack");
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));
@@ -843,11 +874,15 @@ function renderCityPanel() {
       ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
     ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
     <div class="list" id="prodlist">${list}</div>`}
+    <h3>Citizens</h3>
+    <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
     <h3>Defences</h3>
     <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP)`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
-    ${d.bombard.length ? '<div class="actions"><button id="bombard">Bombard…</button></div>' : ""}`;
+    ${d.bombard.length ? `<div class="actions"><button id="bombard" class="primary">Attack with city…</button>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
+  side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
+  if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
   side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = async () => {
     if (el.dataset.item === head) return;
     S.cityListOpen = false;
@@ -874,12 +909,12 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["city_can_attack", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
   choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
-  recruit_unseated: "Seat a recruit",
+  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack",
 };
 function nextAction() {
   if (!S.view) return null;
@@ -975,6 +1010,15 @@ function showTooltip(i, x, y) {
       html += `<b>${pretty(t.terrain)}</b>${t.elevation !== "flat" ? ` · ${t.elevation}` : ""}${t.feature ? ` · ${t.feature}` : ""}`;
       if (t.resource && t.visible) html += `<br>Resource: ${pretty(t.resource)}`;
       if (t.improvement || t.route) html += `<br>${[t.improvement, t.route].filter(Boolean).map(pretty).join(", ")}`;
+      if (t.yields) {
+        const ys = Object.entries(t.yields).filter(([, v]) => v).map(([k, v]) => `<span class="y-${k}">+${v} ${k}</span>`).join(" ");
+        if (ys) html += `<br>Tile gives ${ys}`;
+      }
+      const w = S.view.worked && S.view.worked[i];
+      if (w) {
+        const bs = Object.entries(w.bonus).filter(([, v]) => v).map(([k, v]) => `+${v} ${k}`).join(", ");
+        html += `<br>Worked by <b>${esc(w.citizen)}</b> for ${esc(w.city)}${bs ? ` (adds ${bs})` : ""}`;
+      } else if (t.improvement) html += '<br><span class="muted">Not worked: no grown citizen on it</span>';
       if (!t.visible) html += '<br><span class="muted">not currently seen</span>';
     } else if (S.explored.has(i)) html = '<span class="muted">Mist: explored, not seen now</span>';
     else html = '<span class="muted">Fog: unexplored</span>';
@@ -1088,30 +1132,49 @@ function infoHtml(title, info, extra = "") {
   return `<div class="tip-title">${esc(title)}</div>${info.note ? `<div class="tip-note">${esc(info.note)}</div>` : ""}
     <ul>${info.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${extra}${info.tags.length ? `<div>${tagChips(info.tags)}</div>` : ""}`;
 }
+// The tech tree: two starter branches on the left, each tech opening two more to the right
+// (2, 4, 8, 16...). Lines join each tech to the one it needs. Present-day tech sits in its own
+// column. Each card shows turns at the current science rate and what it unlocks (hover).
+function techCard(t, d) {
+  const tags = [...new Set([...(t.tree === "beacon" ? ["beacon"] : []), ...t.unlocks.flatMap((u) => u.tags)])];
+  const when = t.status === "known" ? "Known" : t.status === "researching" ? `Researching · ${t.turns ?? "–"} turns (${d.progress}/${t.cost})`
+    : t.turns != null ? `${t.turns} turns · ${t.cost} science` : `${t.cost} science`;
+  const un = t.unlocks.map((u) => `<span class="unlock" data-tip="${esc(infoHtml(pretty(u.item.split(":")[1]), u, `<div class="tip-kind">${pretty(u.item.split(":")[0])}</div>`))}">${esc(pretty(u.item.split(":")[1]))}</span>`).join("");
+  return `<div class="tech ${t.status}" data-tech="${t.id}" data-tip="${esc(`<div class="tip-title">${esc(pretty(t.id))}</div><div class="tip-note">${esc(t.note)}</div>`)}">
+    <div class="name">${esc(pretty(t.id))}</div><div class="meta when">${when}</div>
+    ${un ? `<div class="unlocks">${un}</div>` : ""}<div class="tags">${tagChips(tags)}</div></div>`;
+}
 function techScreen(d) {
-  const main = d.techs.filter((t) => t.tree !== "alien");
-  const tiers = [...new Set(main.map((t) => t.tier))].sort((a, b) => a - b);
-  const card = (t) => {
-    const tags = [...new Set([...(t.tree === "beacon" ? ["beacon"] : []), ...t.unlocks.flatMap((u) => u.tags)])];
-    const when = t.status === "known" ? "Known" : t.status === "researching" ? `Researching · ${d.progress}/${t.cost} · ${t.turns ?? "–"} turns`
-      : t.turns != null ? `${t.turns} turns · ${t.cost} science` : `${t.cost} science`;
-    return `<div class="tech ${t.status}" data-tech="${t.id}">
-      <div class="name">${esc(pretty(t.id))}</div>
-      <div class="meta when">${when}</div>
-      ${t.note ? `<div class="meta">${esc(t.note)}</div>` : ""}
-      ${t.prereqs.length && t.status === "locked" ? `<div class="meta">needs ${t.prereqs.map(pretty).join(", ")}</div>` : ""}
-      ${t.unlocks.length ? `<div class="unlocks">${t.unlocks.map((u) => `<span class="unlock" data-tip="${esc(infoHtml(pretty(u.item.split(":")[1]), u, `<div class="tip-kind">${pretty(u.item.split(":")[0])}</div>`))}">${esc(pretty(u.item.split(":")[1]))}</span>`).join("")}</div>` : ""}
-      <div class="tags">${tagChips(tags)}</div>
-    </div>`;
+  const tree = d.techs.filter((t) => t.tree !== "alien" && t.tier > 0);
+  const byId = Object.fromEntries(tree.map((t) => [t.id, t]));
+  const kids = {};
+  for (const t of tree) for (const p of t.prereqs) if (byId[p]) (kids[p] = kids[p] || []).push(t.id);
+  const roots = tree.filter((t) => !t.prereqs.some((p) => byId[p])).map((t) => t.id);
+  const span = {};
+  const height = (id) => span[id] ?? (span[id] = Math.max(1, (kids[id] || []).reduce((a, k) => a + height(k), 0)));
+  const COLW = 250, ROWH = 96, CARDH = 84, LEFT = 230;
+  const pos = {};
+  let row = 0;
+  const place = (id, top) => {
+    let y = top;
+    for (const k of kids[id] || []) { place(k, y); y += height(k); }
+    pos[id] = { x: LEFT + (byId[id].tier - 1) * COLW, y: (top + height(id) / 2 - 0.5) * ROWH };
   };
-  const cols = tiers.map((tier) => {
-    const rows = main.filter((t) => t.tier === tier).sort((a, b) => ({ researching: 0, available: 1, known: 2, locked: 3 }[a.status] - { researching: 0, available: 1, known: 2, locked: 3 }[b.status]) || a.cost - b.cost);
-    return `<div class="techcol"><h3>${TIER_NAME[tier] || `Tier ${tier}`}</h3>${rows.map(card).join("")}</div>`;
-  }).join("");
+  for (const r of roots) { place(r, row); row += height(r); }
+  const H = row * ROWH, maxTier = Math.max(...tree.map((t) => t.tier)), W = LEFT + maxTier * COLW;
+  const lines = tree.flatMap((t) => t.prereqs.filter((p) => pos[p]).map((p) => {
+    const a = pos[p], b = pos[t.id], x1 = a.x + COLW - 30, y1 = a.y + CARDH / 2, x2 = b.x, y2 = b.y + CARDH / 2;
+    return `<path d="M${x1},${y1} C${x1 + 20},${y1} ${x2 - 20},${y2} ${x2},${y2}" class="link ${t.status}"/>`;
+  })).join("");
+  const cards = tree.map((t) => `<div class="node" style="left:${pos[t.id].x}px;top:${pos[t.id].y}px;width:${COLW - 30}px">${techCard(t, d)}</div>`).join("");
+  const heads = Array.from({ length: maxTier }, (_, k) => `<div class="levelhead" style="left:${LEFT + k * COLW}px">Level ${k + 1}</div>`).join("");
+  const present = d.techs.filter((t) => t.tree !== "alien" && t.tier === 0).map((t) => techCard(t, d)).join("");
   const alien = d.techs.filter((t) => t.tree === "alien");
-  const alienCol = alien.length ? `<div class="techcol alien"><h3>Alien (espionage only)</h3>${alien.map(card).join("")}</div>` : "";
-  return `<h2>Technology</h2><p class="muted">Present on the left, future on the right. Click a gold-edged tech to research it; hover an unlock for what it does. Science: +${S.view.economy.science_per_turn} per turn.</p>
-    <div class="techline">${cols}${alienCol}</div>`;
+  return `<h2>Technology</h2><p class="muted">Two starter branches on the left; each tech opens two more. Click a gold-edged tech to research it; hover an unlock for what it does. Science: +${S.view.economy.science_per_turn} per turn.</p>
+    <div class="techtree"><div class="treecanvas" style="width:${W}px;height:${H + 30}px">
+      <div class="present" style="height:${H}px"><div class="levelhead static">Present day (known)</div>${present}
+        ${alien.length ? `<div class="levelhead static" style="margin-top:14px">Alien (espionage only)</div>${alien.map((t) => techCard(t, d)).join("")}` : ""}</div>
+      ${heads}<svg class="links" width="${W}" height="${H + 30}">${lines}</svg>${cards}</div></div>`;
 }
 function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<span class="chip ${d}">${pretty(d)} +${v}%</span>`).join(""); }
 function councilScreen(d) {
@@ -1371,3 +1434,20 @@ window.addEventListener("resize", () => { if (S.inGame) resize(); });
 if (document.fonts) document.fonts.ready.then(() => { S.dirty = true; });
 requestAnimationFrame(frame);
 showTitle();
+
+function statText(stats) { return Object.entries(stats).map(([k, v]) => `+${v} ${k}`).join(", "); }
+
+// One citizen in the city panel: stats, trait, growing up, and a job picker (Auto, Council, or one
+// of the city's improved tiles).
+function citizenRow(p, d) {
+  const stats = Object.entries(p.stats).map(([k, v]) => `<span class="tag ${k}">+${v} ${k}</span>`).join("");
+  const traits = p.traits.map((t) => `<span class="trait" title="${esc(t.note)}">${esc(pretty(t.id))}</span>`).join("");
+  let where;
+  if (!p.adult) where = `<span class="muted">child · grows up in ${p.turns_to_grow} turns (${p.growth}/${p.growth_needed})</span>`;
+  else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}: ${statText(Object.fromEntries(Object.entries(p.bonus).filter(([, v]) => v))) || "no extra"} (half its stats)`;
+  else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${statText(Object.fromEntries(Object.entries(p.bonus).filter(([, v]) => v)))}${p.military ? `, +${p.military} city strength` : ""}`;
+  else where = '<span class="bad">idle: no improved tile or council seat free</span>';
+  const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
+  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="council" ${p.job === "council" ? "selected" : ""}>Council</option>${tiles}</select>` : "";
+  return `<div class="citizen"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div>`;
+}

@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: North America starts with New York, Los Angeles and Mexico City (designer).
-GOLDEN_MAP_SEED_1 = "a58a158e14afd3f781ec969dc171968994edb4900435779b4904b546365d0e3e"
+# Last change: every lost city alien-held; starting cities get improved tiles (designer).
+GOLDEN_MAP_SEED_1 = "f9b2f92084a812e9d895699cd3aadcad0fe2e3d66bf13413bb0dbe6b564ea6b5"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
@@ -94,14 +94,15 @@ def test_capital_joined_to_known_cities_by_road(cfg, world):
             if city.owner == pid:
                 assert city.tile in net, city.name
     # starting roads belong to nobody, so they stay hidden in the fog until explored
-    assert all(t.built_by is None for t in world.tiles if t.route is not None)
+    assert all(t.built_by is None for t in world.tiles if t.route and not t.improvement)
 
 
 def test_all_lost_states_occur_and_overrun_cities_are_garrisoned(cfg):
     for seed in (1, 2, 3):
         state = new_game(cfg, seed=seed)
         statuses = {c.status for c in state.cities}
-        assert {ACTIVE, DORMANT, EMPTY, OVERRUN} <= statuses
+        # designer 2026-11-14: every lost city is held by the aliens (no dormant cities or ruins)
+        assert statuses == {ACTIVE, OVERRUN}
         for city in state.cities:
             here = state.units_at(city.tile)
             if city.status == OVERRUN:

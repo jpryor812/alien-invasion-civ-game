@@ -15,7 +15,6 @@ from beacon.commands import (
     CommandError,
     MergeUnits,
     MoveUnit,
-    RefoundCity,
     SplitUnit,
 )
 from beacon.game import new_players
@@ -24,7 +23,6 @@ from beacon.state import (
     ACTIVE,
     ALIENS,
     DORMANT,
-    EMPTY,
     OVERRUN,
     City,
     GameState,
@@ -91,7 +89,7 @@ def calm_cfg():
 # -- movement --------------------------------------------------------------------------------
 
 
-def test_flat_hills_road_and_rail_costs(cfg):
+def test_every_land_hex_costs_one_move_roads_and_rail_less(cfg):
     s = arena(cfg)
     a = at(2, 4)
     inf = create_unit(s, cfg, "infantry", EU, a)
@@ -102,13 +100,9 @@ def test_flat_hills_road_and_rail_costs(cfg):
     inf = create_unit(s, cfg, "infantry", EU, a)
     s.tiles[east(a)].elevation = "hills"
     s.tiles[east(a, 2)].elevation = "hills"
-    apply_command(s, cfg, MoveUnit(player=EU, unit=inf.id, target=east(a)))
-    assert inf.moves_left == 0  # hills cost 2 moves
-    s = arena(cfg)
-    inf = create_unit(s, cfg, "infantry", EU, a)
-    s.tiles[east(a, 2)].elevation = "hills"
-    apply_command(s, cfg, MoveUnit(player=EU, unit=inf.id, target=east(a, 2)))
-    assert inf.tile == east(a, 2)  # 1 move left may still enter a 2-move hex
+    s.tiles[east(a, 3)].feature = "forest"
+    apply_command(s, cfg, MoveUnit(player=EU, unit=inf.id, target=east(a, 3)))
+    assert inf.tile == east(a, 2)  # one move per hex on hills and forest too (designer 2026-11-14)
 
     s = arena(cfg)
     for k in range(0, 9):
@@ -355,14 +349,6 @@ def test_reclaim_dormant_and_refound_empty(cfg):
     assert dormant.status == ACTIVE and dormant.owner == EU
     assert s.players[NA].credits["cities_reclaimed"] == 1
 
-    empty = add_city(s, cfg, at(8, 6), EMPTY, None, pop=0)
-    team = create_unit(s, cfg, "restoration_team", EU, at(8, 6))
-    apply_command(s, cfg, RefoundCity(player=EU, unit=team.id))
-    assert empty.status == ACTIVE and empty.pop == cfg.t("cities.refound_pop")
-    assert str(team.id) not in s.units
-    with pytest.raises(CommandError):
-        apply_command(s, cfg, RefoundCity(player=EU, unit=team.id))
-
 
 def test_city_bombards_once_per_turn(cfg):
     s = arena(cfg)
@@ -402,10 +388,10 @@ def test_bot_games_are_deterministic_and_replay_from_the_log(cfg):
 
 
 def test_bots_recover_cities(cfg):
-    state, _, _ = play(cfg, seed=2, turns=60)  # continents are big: scouting takes a while
-    for pid, player in state.players.items():
-        recovered = sum(
-            player.credits.get(k, 0)
-            for k in ("cities_reclaimed", "cities_refounded", "cities_liberated")
-        )
-        assert recovered >= 1, pid
+    # Every lost city starts alien-held (designer 2026-11-14), so recovering one means a siege;
+    # the simple test bot manages it on more than one continent within 100 turns.
+    state, events, _ = play(cfg, seed=2, turns=100)
+    liberators = {e["by"] for e in events if e["kind"] == "city_liberated"}
+    assert len(liberators) >= 2
+    for pid in liberators:
+        assert state.players[pid].credits.get("cities_liberated", 0) >= 1

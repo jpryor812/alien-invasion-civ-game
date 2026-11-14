@@ -107,6 +107,11 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     events = _restore(state, cfg, city, city.pop - loss)
     city.hp = cities.max_hp(cfg, city) * cfg.t("cities.liberated_hp_pct") // 100
     city.liberated_turn = state.turn
+    if city.owner is not None:
+        from beacon.improvements import auto_improve  # improvements imports fog, which is light
+
+        n = city.pop * cfg.t("cities.liberated_improved_pct") // 100
+        auto_improve(state, cfg, city, n, city.owner)
     credit(state, by, "cities_liberated")
     credit(state, by, "pop_saved", city.pop)
     for pid, share in liberation_shares(state, city.damage_by, by).items():

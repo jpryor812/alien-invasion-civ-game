@@ -392,3 +392,47 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   screens (science: tech, beacon: council, gold: diplomacy, mothership: projects). Choosing
   production closes the city panel; a city with something queued shows "Change production"
   instead of the list. Alien cities and units are red; Asia's colour moved to violet.
+
+## Citizens, one-move hexes, healing, city alert, branching tree (designer, 2026-11-14)
+
+- **No dormant cities or ruins**: every lost city starts held by the aliens (lost_state_weights
+  is overrun 100); the restoration team is removed. The engine still understands the dormant and
+  empty states, unused.
+- **Citizens** (`beacon/citizens.py`, tuning `citizens`): one per population point. Stats are 6
+  points in a seeded pattern (+1 all six, +3 in two, +2 in three, equal weights); 60% have one
+  trait (quick, skilled, statesman, frugal, devoted). Births still come from the food store
+  reaching the growth threshold; a child gains `8 + 3 x food surplus` growth points a turn and
+  grows up at 100 (about 5 turns well fed, 13 with no surplus; quick doubles it). Children eat but
+  do not work.
+- **Working**: only improved tiles (farm, mine, extractor and the like; roads do not count) can
+  be worked, one citizen each; the tile gives its yield plus half the citizen's stats, rounded
+  down (so a +1 stat adds nothing on a tile). Military stats count only on the council.
+- **Council**: the continent council (shared with alien recruits; 3 general and 2 per domain).
+  A citizen there gives its full stats to its home city as flat yields, and military as city
+  strength (2 per point). Recruits come first: auto citizens give up seats to them; only citizens
+  the player put on the council keep their seats against recruits.
+- **Jobs**: Auto (default), Council or a chosen improved tile. Auto workers feed the city first
+  (most food while it would starve), then follow the city's focus; auto citizens with no tile left
+  take free council seats. Placement is redone each turn and after any command that changes
+  cities, seats or jobs.
+- **Starting land**: a capital starts with 6 improved tiles and other known cities with 4, chosen
+  food-first; a liberated city gets improved tiles for its surviving population.
+- **Movement**: every land hex costs one move (hills, forest, jungle and marsh included); roads
+  and railways stay faster. Defence bonuses are unchanged.
+- **Healing**: a unit that does not move or attack (fortified or resting) heals 20 HP a turn in
+  its own territory, cities included, and 10 outside, per stack member.
+- **City alert**: when a visible enemy is within a city's attack range (2), the city appears in
+  Needs attention as "can attack" and the action button takes you there; Hold fire dismisses it
+  for the turn.
+- **Tech tree**: every tech has at most one parent. Level 1: Urban Planning and Advanced
+  Manufacturing; levels 2-4 have 4, 8 and 16 techs; level 5 has 13 and level 6 one (Stellar
+  Chorus). Costs by level: 100, 200, 380, 600, 950, 1500 (the Orbital Barrage 1500). The
+  present-day techs stay known at the start. Fortification Doctrine (walls) moved to level 5 under
+  Militia Reserves.
+- **Balance after these changes** (20 AI seeds to turn 200): 5/20 victories (turns 180-199),
+  below the 30-70% band; 0 defeats; unfinished games end with 1-27 alien cities left (most under
+  10). Every continent now has 12 alien cities to take (72, against 24 before), so the war is
+  longer. Softer hardening (3% per 20 turns, cap 60%) did not help (3/20), so it was reverted.
+  Slowest game 128 s (citizens and the bigger war). Open for the designer: accept longer games or
+  retune (fewer alien garrison units, stronger early artillery...).
+

@@ -68,10 +68,9 @@ cities:
   lost_state_weights:
     status: placeholder
     note: Shares of each continent's unknown cities in each starting state (exact quota, then a
-      seeded shuffle of which city gets which state).
-    dormant: 40
-    empty: 25
-    overrun: 35
+      seeded shuffle of which city gets which state). Designer 2026-11-14 - every lost city is
+      held by the aliens (no dormant cities or ruins); beating the aliens makes it yours again.
+    overrun: 100
   start_pop:
     status: placeholder
     note: Starting population by starting role.
@@ -80,6 +79,17 @@ cities:
     dormant: 2
     overrun: 3
     empty: 0
+  start_improved:
+    status: placeholder
+    note: Improved tiles (farms, mines...) around each starting city, by role. Only improved tiles
+      can be worked (designer 2026-11-14), so these give the first citizens work.
+    capital: 6
+    known: 4
+  liberated_improved_pct:
+    value: 100
+    status: placeholder
+    note: A liberated city gets improved tiles for this percent of its surviving population (its
+      old farmland and mines), so its citizens have work at once.
   start_buildings:
     status: placeholder
     note: Buildings present at the start, by role.
@@ -230,22 +240,23 @@ combat:
     note: Melee attack bonus per other friendly military unit next to the defender.
   heal:
     status: placeholder
-    note: HP healed per unit member per turn if the unit did not act.
-    city: 25
-    own_territory: 15
+    note: HP healed per unit member per turn if the unit did not move or attack (fortified or
+      resting). Designer 2026-11-14, as in Civ V - 20 in your own territory (cities included), 10
+      outside it.
+    city: 20
+    own_territory: 20
     neutral: 10
 
 start:
   units:
     status: placeholder
     note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
-      two infantry as the only field army; the scout and civilians are kept so exploration and
+      two infantry as the only field army; the scout and engineers are kept so exploration and
       roads can start on turn 1 (docs/ASSUMPTIONS.md).
     list:
       - {type: infantry, count: 2}
       - {type: recon_team, count: 1}
       - {type: engineers, count: 2}
-      - {type: restoration_team, count: 1}
   city_units:
     status: placeholder
     note: City defence units placed on the tile of every city a player owns at the start
@@ -313,3 +324,52 @@ endgame:
     cost: 800
     offered: 3
     choose_turns: 1
+
+citizens:
+  stats:
+    status: placeholder
+    note: Every citizen has 6 points over the six domains, in one of three seeded patterns
+      (designer 2026-11-14) - +1 in all six, +3 in two, or +2 in three. Weights pick the pattern.
+    points: 6
+    patterns:
+      - {status: placeholder, note: +1 everywhere., weight: 1, picks: 6, each: 1}
+      - {status: placeholder, note: Two strengths., weight: 1, picks: 2, each: 3}
+      - {status: placeholder, note: Three strengths., weight: 1, picks: 3, each: 2}
+  tile_rate_pct:
+    value: 50
+    status: calibrated
+    note: Designer 2026-11-14 - a citizen working a tile adds half its stats there (rounded down);
+      on the council its full stats go to its home city. Military counts only on the council.
+  military_strength:
+    value: 2
+    status: placeholder
+    note: City strength per military point of a citizen on the council.
+  growing_up:
+    status: placeholder
+    note: A child grows up after `needed` points. Each turn it gains base + per_food x the city's
+      food surplus (if positive), so a well-fed city grows up its children in about 5 turns and a
+      city with no surplus in about 13 (designer asked for an initial equation). Births still come
+      from the city's food store reaching its growth threshold.
+    needed: 100
+    base: 8
+    per_food: 3
+  trait_pct:
+    value: 60
+    status: placeholder
+    note: Chance a newborn citizen has one trait.
+  traits:
+    status: placeholder
+    note: Citizen traits (one at most). grow_pct speeds growing up; tile_rate_pct replaces the
+      half rate on tiles; council_pct scales council stats; food_eaten changes upkeep.
+    quick: {note: Grows up twice as fast., grow_pct: 200}
+    skilled: {note: Works a tile at full rate instead of half., tile_rate_pct: 100}
+    statesman: {note: Gives half as much again on the council., council_pct: 150}
+    frugal: {note: Eats 1 less food., food_eaten: -1}
+    devoted: {note: +1 beacon wherever it is., beacon_flat: 1}
+  names:
+    status: placeholder
+    note: Fictional given names for citizens (no real people).
+    list: [Ari, Bex, Cai, Dov, Eli, Fay, Gus, Hal, Ira, Jun, Kit, Lio, Mae, Nia, Oli, Pax, Quin,
+           Rae, Sol, Tam, Uma, Vic, Wes, Xan, Yui, Zed, Ama, Bo, Cyd, Dex, Eno, Fin, Gia, Hux,
+           Ilo, Jem, Kai, Lux, Mo, Noe]
+

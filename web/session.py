@@ -16,6 +16,7 @@ from typing import Any
 
 from beacon import (
     ai,
+    citizens,
     combat,
     diplomacy,
     economy,
@@ -228,6 +229,15 @@ class Session:
                 "outcome_turn": s.outcome_turn,
                 "mothership_alive": s.aliens.mothership_alive,
                 "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
+                "worked": {
+                    str(c.tile): {
+                        "citizen": c.name,
+                        "city": s.cities[c.city].name,
+                        "bonus": citizens.tile_bonus(cfg, c),
+                    }
+                    for c in citizens.of_player(s, me)
+                    if c.tile is not None
+                },
                 "ranking": [[r["player"], r["total"]] for r in mvp.ranking(s, cfg)],
                 "unit_types": {
                     u: {
@@ -239,6 +249,9 @@ class Session:
                 },
             }
         )
+        for key, t in v["tiles"].items():
+            if t.get("improvement"):
+                t["yields"] = _tile_yields(cfg, s.tiles[int(key)])  # what the tile gives a city
         for unit in v["units"]:
             spec = cfg.units[unit["type"]]
             unit["max_hp"] = cfg.t("combat.unit_max_hp") * unit["count"]
@@ -303,6 +316,11 @@ class Session:
                 for i in sorted(cfg.improvements)
                 if improvements.build_problem(s, cfg, unit, i) is None
             ],
+            "build_info": {
+                i: self._build_info(unit.tile, i)
+                for i in sorted(cfg.improvements)
+                if improvements.build_problem(s, cfg, unit, i) is None
+            },
             "merges": [
                 o.id
                 for o in s.sorted_units()
@@ -324,6 +342,54 @@ class Session:
             ),
             "ships": ships,
             "spec": cfg.units[unit.type],
+        }
+
+    def _build_info(self, tile_index: int, imp: str) -> dict[str, Any]:
+        """What building `imp` here would do: its description plus the tile's yields before and
+        after (and which city it would feed)."""
+        from beacon.tiles import tile_yields
+
+        cfg, tile = self.cfg, self.state.tiles[tile_index]
+        before = tile_yields(cfg, tile)
+        if cfg.improvements[imp]["kind"] == "route":
+            after = before
+        else:
+            old = tile.improvement
+            tile.improvement = imp
+            after = tile_yields(cfg, tile)
+            tile.improvement = old
+        city = self.state.cities[tile.city] if tile.city is not None else None
+        return {
+            **describe(cfg, "improvement", imp),
+            "before": before,
+            "after": after,
+            "city": city.name if city is not None and city.owner == self.human else None,
+        }
+
+    def _citizen_row(self, c, surplus: int) -> dict[str, Any]:
+        s, cfg = self.state, self.cfg
+        traits = cfg.raw["tuning"]["citizens"]["traits"]
+        on_tile = c.tile is not None
+        return {
+            "id": c.id,
+            "name": c.name,
+            "stats": c.stats,
+            "traits": [{"id": t, "note": traits[t].get("note", "")} for t in c.traits],
+            "adult": c.adult,
+            "growth": c.growth,
+            "growth_needed": cfg.t("citizens.growing_up.needed"),
+            "turns_to_grow": None if c.adult else citizens.turns_to_grow(cfg, c, surplus),
+            "job": c.job,
+            "tile": c.tile,
+            "seats": c.seats,
+            "improvement": s.tiles[c.tile].improvement if on_tile else None,
+            "bonus": citizens.tile_bonus(cfg, c)
+            if on_tile
+            else citizens.council_bonus(cfg, c)
+            if c.seats
+            else {},
+            "military": citizens.council_military(cfg, c) if c.seats else 0,
+            "born": c.born,
         }
 
     def city_detail(self, city_id: int) -> dict[str, Any]:
@@ -370,6 +436,15 @@ class Session:
             "growth_threshold": economy.growth_threshold(cfg, c.pop),
             "worked": cy.worked,
             "options": options,
+            "citizens": [self._citizen_row(x, cy.surplus_food) for x in citizens.of_city(s, c.id)],
+            "workable": [
+                {
+                    "tile": t,
+                    "improvement": s.tiles[t].improvement,
+                    "yields": _tile_yields(cfg, s.tiles[t]),
+                }
+                for t in citizens.workable(s, cfg, c)
+            ],
             "strength": combat.city_strength(s, cfg, c).total,
             "bombard": bombard,
             "focuses": list(economy.FOCUSES),
@@ -433,8 +508,12 @@ class Session:
         s, cfg, me = self.state, self.cfg, self.human
         rs = cfg.alien("recruits")
         mine = recruits.recruits_of(s, me)
+        people = [c for c in citizens.of_player(s, me) if c.seats]
         seats = {d: sum(1 for r in mine if d in r.seats) for d in DOMAINS}
         seats["general"] = sum(1 for r in mine if "general" in r.seats)
+        for c in people:
+            for seat in c.seats:
+                seats[seat] += 1
         return {
             "recruits": [
                 dict(to_dict(r), age=s.turn - r.born, betrayal=recruits.betrayal_permille(cfg, r))
@@ -446,6 +525,13 @@ class Session:
             "domains": list(DOMAINS),
             "bonus": {d: sum(p for _, p in recruits.council_lines(s, me, d)) for d in DOMAINS},
             "offers": [to_dict(o) for o in s.offers.values() if o.to_player == me],
+            "citizens": [
+                dict(
+                    self._citizen_row(c, 0),
+                    city=s.cities[c.city].name,
+                )
+                for c in people
+            ],
         }
 
     def diplomacy(self) -> dict[str, Any]:
@@ -620,3 +706,9 @@ def _city_max_hp(state: GameState, cfg: Config, city) -> int:
     from beacon.cities import max_hp
 
     return max_hp(cfg, city, state if city.owner == ALIENS else None)
+
+
+def _tile_yields(cfg: Config, tile: Any) -> dict[str, int]:
+    from beacon.tiles import tile_yields
+
+    return tile_yields(cfg, tile)

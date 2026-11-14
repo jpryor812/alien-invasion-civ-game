@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from beacon import economy, hexgrid, network
+from beacon import cities, citizens, economy, hexgrid, network
 from beacon.actions import apply_command, pending_decisions
 from beacon.commands import (
     BuildImprovement,
@@ -17,7 +17,7 @@ from beacon.commands import (
 from beacon.config import YIELDS
 from beacon.game import new_game
 from beacon.paths import shortest_path
-from beacon.state import ACTIVE, DORMANT, state_digest, state_from_json, state_to_json
+from beacon.state import ACTIVE, OVERRUN, state_digest, state_from_json, state_to_json
 from beacon.tiles import is_passable_land
 from beacon.turn import advance_turn
 from beacon.units import create_unit
@@ -45,7 +45,10 @@ def test_yield_totals_equal_breakdown(cfg, game):
         cy = economy.city_yields(game, cfg, city)
         for y in YIELDS:
             assert cy.totals[y] == sum(v for _, yy, v in cy.lines if yy == y)
-        assert len(cy.worked) == min(city.pop, len(economy.work_tiles(game, cfg, city)))
+        # one citizen per worked tile, and only improved tiles are worked (designer 2026-11-14)
+        working = [c for c in citizens.of_city(game, city.id) if c.tile is not None]
+        assert sorted(c.tile for c in working) == cy.worked
+        assert all(game.tiles[t].improvement for t in cy.worked)
 
 
 def test_focus_changes_worked_tiles(cfg, game):
@@ -69,7 +72,7 @@ def test_growth_and_starvation(cfg, game):
     economy.process_city(game, cfg, city, player)
     assert city.pop == pop + 1 and city.food_store == 0
 
-    city.pop = len(economy.work_tiles(game, cfg, city)) + 10  # more mouths than tiles
+    city.pop = len(cities.work_tiles(game, cfg, city)) + 10  # more mouths than tiles
     city.food_store = 0
     assert economy.city_yields(game, cfg, city).surplus_food < 0
     starving = city.pop
@@ -121,7 +124,7 @@ def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
         c
         for c in game.cities
         if c.continent == PID
-        and c.status == DORMANT
+        and c.status == OVERRUN
         and not any(game.tiles[n].route for n in hexgrid.within(c.tile, 1, w, h))
     )
     dormant.status, dormant.owner = ACTIVE, PID
@@ -175,14 +178,14 @@ def test_engineers_build_a_road_over_turns(cfg, game):
 def test_tank_needs_oil(cfg, game):
     city = capital(game)
     apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=("unit:tank",)))
-    for t in economy.work_tiles(game, cfg, city):
+    for t in cities.work_tiles(game, cfg, city):
         if game.tiles[t].resource == "oil":
             game.tiles[t].resource = None
     city.production_store = cfg.units["tank"]["cost"]
     events, _ = economy.process_city(game, cfg, city, game.players[PID])
     assert any(e["kind"] == "production_stalled" for e in events)
     oil_tile = next(
-        t for t in economy.work_tiles(game, cfg, city) if is_passable_land(cfg, game.tiles[t])
+        t for t in cities.work_tiles(game, cfg, city) if is_passable_land(cfg, game.tiles[t])
     )
     game.tiles[oil_tile].resource, game.tiles[oil_tile].improvement = "oil", "extractor"
     assert economy.resource_supply(game, cfg, PID)["oil"] >= 1
@@ -232,7 +235,7 @@ def test_pending_decisions_at_start(cfg, game):
 
 def test_turns_advance_and_state_round_trips(cfg, game):
     for pid in game.player_ids():
-        apply_command(game, cfg, SetResearch(player=pid, tech="digital_finance"))
+        apply_command(game, cfg, SetResearch(player=pid, tech="urban_planning"))
         for c in game.cities:
             if c.owner == pid:
                 apply_command(

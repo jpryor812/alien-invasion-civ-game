@@ -181,6 +181,7 @@ def seat_problem(state: GameState, cfg: Config, rec: Recruit, seats: list[str]) 
         used = sum(
             1 for o in recruits_of(state, rec.patron) if o.id != rec.id and GENERAL in o.seats
         )
+        used += _pinned(state, rec.patron)[GENERAL]
         if used >= s["general_seats"]:
             return "all general seats are taken"
         return None
@@ -190,9 +191,17 @@ def seat_problem(state: GameState, cfg: Config, rec: Recruit, seats: list[str]) 
         if rec.scores.get(d, 0) <= 0:
             return f"{rec.name} has no {d} score"
         used = sum(1 for o in recruits_of(state, rec.patron) if o.id != rec.id and d in o.seats)
+        used += _pinned(state, rec.patron)[d]
         if used >= s["seats_per_domain"]:
             return f"both {d} seats are taken"
     return None
+
+
+def _pinned(state: GameState, pid: str) -> dict[str, int]:
+    """Seats held by citizens the player put on the council (auto citizens give way)."""
+    from beacon.citizens import pinned_seats  # citizens imports recruits lazily too
+
+    return pinned_seats(state, pid)
 
 
 def council_lines(state: GameState, pid: str, domain: str) -> list[tuple[str, int]]:

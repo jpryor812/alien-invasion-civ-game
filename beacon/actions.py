@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 from beacon import (
+    citizens,
     combat,
     diplomacy,
     economy,
@@ -35,6 +36,7 @@ from beacon.commands import (
     DeclineOffer,
     Fortify,
     FundProject,
+    HoldFire,
     MergeUnits,
     MoveUnit,
     OfferRecruit,
@@ -42,6 +44,7 @@ from beacon.commands import (
     Purchase,
     RefoundCity,
     SeatRecruit,
+    SetCitizenJob,
     SetFocus,
     SetProduction,
     SetResearch,
@@ -69,6 +72,10 @@ def handles(cls: type[Command]) -> Callable[[Handler], Handler]:
     return deco
 
 
+# Commands after which citizens are placed again (a city changed hands, a seat or a job changed).
+REPLACE_CITIZENS: tuple[type[Command], ...] = ()
+
+
 def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
     if cmd.player not in state.players:
         raise CommandError(f"unknown player {cmd.player!r}")
@@ -76,6 +83,8 @@ def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
     if handler is None:
         raise CommandError(f"no handler for {cmd.kind}")
     events = handler(state, cfg, cmd)
+    if isinstance(cmd, REPLACE_CITIZENS):
+        citizens.assign_all(state, cfg)  # cities, seats or tiles changed: re-place everyone
     for e in events:
         e.setdefault("turn", state.turn)
         e.setdefault("player", cmd.player)
@@ -216,6 +225,25 @@ def _city_attack(state: GameState, cfg: Config, cmd: CityAttack) -> Events:
     if problem:
         raise CommandError(problem)
     return combat.city_attack(state, cfg, city, cmd.target)
+
+
+@handles(SetCitizenJob)
+def _citizen_job(state: GameState, cfg: Config, cmd: SetCitizenJob) -> Events:
+    c = state.citizens.get(str(cmd.citizen))
+    if c is None:
+        raise CommandError(f"no citizen {cmd.citizen}")
+    problem = citizens.job_problem(state, cfg, cmd.player, c, cmd.job)
+    if problem:
+        raise CommandError(problem)
+    c.job = cmd.job
+    return [{"kind": "citizen_job", "citizen": c.id, "job": cmd.job}]
+
+
+@handles(HoldFire)
+def _hold_fire(state: GameState, cfg: Config, cmd: HoldFire) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    city.bombarded = True
+    return []
 
 
 @handles(MergeUnits)
@@ -571,6 +599,20 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for city in state.cities:
         if city.owner == pid and city.status == ACTIVE and not city.queue:
             out.append({"kind": "choose_production", "city": city.id})
+    seen: set[int] | None = None
+    for city in state.cities:
+        if city.owner != pid or city.status != ACTIVE or city.bombarded:
+            continue
+        # An enemy within the city's range: alert, so the player can fire (or hold fire).
+        if seen is None:
+            seen = _seen(state, cfg, pid)
+        if any(
+            combat.city_attack_problem(state, cfg, city, t, seen) is None
+            for t in hexgrid.within(
+                city.tile, cfg.t("cities.attack_range"), state.width, state.height
+            )
+        ):
+            out.append({"kind": "city_can_attack", "city": city.id})
     for unit in state.sorted_units():
         if unit.owner == pid and unit.moves_left > 0 and unit.order == "none" and unit.job is None:
             out.append({"kind": "unit_needs_orders", "unit": unit.id})
@@ -587,3 +629,6 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
         if project.kind == "espionage" and project.offered and project.chooser == pid:
             out.append({"kind": "choose_espionage_tech", "project": project.id})
     return out
+
+
+REPLACE_CITIZENS = (Attack, MoveUnit, SeatRecruit, UnseatRecruit, SetCitizenJob, AcceptOffer)

@@ -6,6 +6,7 @@ from typing import Any
 
 from beacon import (
     cities,
+    citizens,
     combat,
     diplomacy,
     economy,
@@ -85,5 +86,6 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     fog.refresh_all(state, cfg)
     events.append({"turn": state.turn, "kind": "turn_started", "year": year(cfg, state.turn)})
     events.extend(liberation.update_fallen(state))
+    citizens.assign_all(state, cfg)
     events.extend(endgame.check_outcome(state, cfg))
     return events

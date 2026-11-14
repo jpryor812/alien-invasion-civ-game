@@ -92,6 +92,25 @@ class CityAttack(Command):
 
 @register
 @dataclass(frozen=True)
+class SetCitizenJob(Command):
+    """job: "auto", "council" or "tile:<index>" (an improved tile of the citizen's city)."""
+
+    kind: ClassVar[str] = "set_citizen_job"
+    citizen: int
+    job: str
+
+
+@register
+@dataclass(frozen=True)
+class HoldFire(Command):
+    """The city will not fire this turn (answers the 'city can attack' alert)."""
+
+    kind: ClassVar[str] = "city_hold_fire"
+    city: int
+
+
+@register
+@dataclass(frozen=True)
 class MergeUnits(Command):
     """Move `unit` onto `into` (same type and owner) and merge them into one stack."""
 

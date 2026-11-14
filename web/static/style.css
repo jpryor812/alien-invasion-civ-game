@@ -190,3 +190,26 @@ th { color: var(--brass); font-weight: 600; font-size: 12px; }
 button.link { background: none; border: none; box-shadow: none; padding: 0; color: var(--brass); text-decoration: underline; cursor: pointer; }
 button.link:hover { color: var(--brass-hi); background: none; }
 @media (max-width: 640px) { .advisor-card { grid-template-columns: 1fr; } .advisor-side { border-left: none; border-top: 1px solid rgba(217,174,85,0.25); flex-direction: row; } .advisor-emblem { width: 56px; height: 56px; } }
+
+.citizens { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.citizen { border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; background: #121b24; }
+.citizen .row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.citizen select { font-size: 11px; max-width: 150px; }
+.citizen .small { font-size: 11px; }
+.trait { font-size: 10px; padding: 0 5px; border-radius: 8px; background: #2a2140; color: var(--beacon); cursor: help; }
+.tag.military { border-color: #e5705f; color: #e5705f; }
+#tooltip .y-food { color: var(--food); } #tooltip .y-production { color: var(--production); }
+#tooltip .y-science { color: var(--science); } #tooltip .y-gold { color: var(--gold); } #tooltip .y-beacon { color: var(--beacon); }
+
+.techtree { overflow: auto; max-height: 72vh; border: 1px solid var(--line); border-radius: 6px; background: #0b1118; }
+.treecanvas { position: relative; }
+.treecanvas .links { position: absolute; left: 0; top: 24px; pointer-events: none; }
+.treecanvas .links .link { fill: none; stroke: #3b4d5e; stroke-width: 2; }
+.treecanvas .links .link.known, .treecanvas .links .link.researching { stroke: #6aa35c; }
+.treecanvas .links .link.available { stroke: var(--brass); }
+.treecanvas .node { position: absolute; margin-top: 24px; }
+.treecanvas .node .tech { height: 84px; overflow: hidden; margin: 0; }
+.treecanvas .present { position: absolute; left: 8px; top: 0; width: 200px; overflow-y: auto; }
+.levelhead { position: absolute; top: 4px; font: 500 11px var(--heading); color: var(--brass); letter-spacing: 0.08em; }
+.levelhead.static { position: static; margin: 4px 0; }
+.modal-box:has(.techtree) { width: min(1400px, 96vw); }

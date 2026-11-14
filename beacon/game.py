@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from beacon import cities, fog, mapgen, network, rng
+from beacon import cities, citizens, fog, improvements, mapgen, network, rng
 from beacon.config import Config
 from beacon.state import ACTIVE, ALIENS, OVERRUN, CityMemory, GameState, Player
 from beacon.units import place_unit
@@ -70,6 +70,13 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
                 player.known_cities[str(city.id)] = CityMemory(
                     status=city.status, owner=city.owner, pop=city.pop, turn_seen=0
                 )
+    # Only improved tiles can be worked (designer 2026-11-14): known cities start with farmland.
+    improved = cfg.t("cities.start_improved")
+    for city in state.cities:
+        if city.status == ACTIVE and city.owner in state.players:
+            role = "capital" if city.is_capital else "known"
+            improvements.auto_improve(state, cfg, city, improved[role], city.owner)
+    citizens.assign_all(state, cfg)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)

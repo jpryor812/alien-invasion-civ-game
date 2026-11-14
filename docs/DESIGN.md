@@ -63,9 +63,17 @@ helping a neighbour vs your own frontier).
   Cities, once discovered, stay on your map with their live status.
 - A **radio beacon** built on a hex keeps it permanently revealed (mid-game tech). Any building on
   a hex also keeps it clear.
-- Lost cities are in three states: **dormant** (still standing, not producing), **empty**
-  (needs re-founding) and **overrun** (taken by aliens, must be liberated in battle). The longer
-  you take to reach a city, the likelier it becomes overrun (**TUNE**).
+- Every lost city is held by the aliens and must be liberated in battle; a liberated city is its
+  continent's again, with its farms and some of its people. (Updated 2026-11-14 by the designer:
+  previously lost cities could also be dormant, reclaimed by walking in, or empty ruins rebuilt
+  by a restoration team; both are gone, and so is the restoration team.)
+- **Citizens** (designer 2026-11-14): a city's population is its citizens. Spare food brings
+  births; a newborn is a child and must grow up (faster with more food) before it works. Each
+  citizen has 6 stat points (+1 in all six domains, +3 in two, or +2 in three) and maybe a trait,
+  shown like a recruit's. A grown citizen works one **improved** tile (bare tiles cannot be
+  worked), adding half its stats there, or sits on the continent council, adding its full stats to
+  its home city. Example: a mine gives +3 production; a +2 production/science/gold citizen on it
+  makes the tile +4 production, +1 science, +1 gold; on the council it adds +2 of each instead.
 - A city must be reconnected by road or railway to a connected city before it produces.
 - Hex improvements: resource extraction, farmland, military bases, roads, railways, beacons.
 - Resources work as in Civ: developing a resource tile grants the resource and bonus yield.
@@ -92,18 +100,17 @@ helping a neighbour vs your own frontier).
   ownership, so kills and liberations count for your MVP score. Moving costs transport and
   upkeep (**TUNE**).
 
-## 7. Four tech trees
+## 7. The tech tree
 
-| Tree | Purpose |
-|------|---------|
-| Economic | gold, trade, growth, ports |
-| Production | buildings, industry, infrastructure |
-| Military | units, defence, weapons |
-| Beacon | alien recruitment, alien power, alien council |
+(Updated 2026-11-14 by the designer: one branching tree instead of four separate trees.) Two
+starter branches, each tech opening two more: 2, then 4, 8 and 16 techs, and it keeps branching
+past that. Every tech has one parent, so choosing a branch is a real commitment. The screen shows
+the tree left to right with projected turns, and tags on each unlock (military, science, food...)
+show what a branch is good for instead of labelling trees.
 
-Trees pull against one another (you cannot research everything) and sometimes merge (a late tech
-needs two trees). Science, production and buildings feed the beacon tree, but beacon is its own
-branch and its own investment.
+- Urban Planning: International Accords (alliances, finance, farming) and Beacon Theory (the
+  beacon rarity chain, radio beacons, deep space radar, the Orbital Barrage).
+- Advanced Manufacturing: Applied AI (science, industry) and Mechanized Warfare (the army).
 
 Alien technology can also be gained through espionage (section 10), outside the normal trees.
 

@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 5
+STATE_VERSION = 6
 ALIENS = "aliens"
 
 # City status values.
@@ -173,6 +173,24 @@ class Recruit:
 
 
 @dataclass
+class Citizen:
+    """One person of a player's city (designer 2026-11-14). Born a child, grows up, then works an
+    improved tile (half its stats added there) or sits on the council (full stats to its city)."""
+
+    id: int
+    city: int
+    name: str
+    stats: dict[str, int]  # domain -> points (6 in all)
+    traits: list[str]
+    born: int
+    growth: int = 0  # points toward adulthood
+    adult: bool = False
+    job: str = "auto"  # "auto", "council" or "tile:<index>" (the player's choice)
+    tile: int | None = None  # the tile it works now (set by citizens.assign)
+    seats: list[str] = field(default_factory=list)  # council seat held now ("general"/a domain)
+
+
+@dataclass
 class Offer:
     id: int
     recruit: int
@@ -234,6 +252,7 @@ class GameState:
     combat_seq: int = 0
     aliens: AlienState = field(default_factory=AlienState)
     recruits: dict[str, Recruit] = field(default_factory=dict)
+    citizens: dict[str, Citizen] = field(default_factory=dict)
     offers: dict[str, Offer] = field(default_factory=dict)
     deals: dict[str, Deal] = field(default_factory=dict)
     shipments: dict[str, Shipment] = field(default_factory=dict)

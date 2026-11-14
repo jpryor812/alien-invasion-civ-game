@@ -115,6 +115,13 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
                     "value": cfg.buildings[b]["city_strength"],
                 }
             )
+    from beacon.citizens import council_military, of_city
+
+    for c in of_city(state, city.id):
+        if c.seats and council_military(cfg, c):
+            lines.append(
+                {"source": f"citizen:{c.name}", "kind": "base", "value": council_military(cfg, c)}
+            )
     pcts: list[tuple[str, int]] = []
     if city.owner == ALIENS:
         lines.append(

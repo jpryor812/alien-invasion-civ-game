@@ -1,4 +1,7 @@
-# Technology for the economic, production and military trees (the beacon tree arrives in M5).
+# Technology (designer 2026-11-14): one branching tree. Two starter branches (Urban Planning,
+# Advanced Manufacturing), each tech opening two more: 2, 4, 8 and 16 techs, then a partial fifth
+# and sixth level. Every tech has exactly one parent. `tier` is the level; cost follows the level.
+# `tree` remains only as a category hint. Formerly: economic, production and military trees.
 # Tier 0 is present-day technology, known at the start (2025). Tiers 1-4 are near-future.
 # Cross-tree merges: automated_markets, railguns, hover_armour.
 # Techs with no unlocks yet gain effects in later milestones (trade M6, beacons M5).
@@ -8,61 +11,61 @@ techs:
   industrial_base: {status: calibrated, note: Present day., tree: production, tier: 0, cost: 0, prereqs: [], known_at_start: true}
   modern_warfare: {status: calibrated, note: Present day., tree: military, tier: 0, cost: 0, prereqs: [], known_at_start: true}
 
-  digital_finance: {status: placeholder, note: Financial centres., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
-  vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
-  global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 2, cost: 250, prereqs: [digital_finance], known_at_start: false}
-  biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 2, cost: 250, prereqs: [vertical_farming], known_at_start: false}
-  automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics, applied_ai], known_at_start: false}
-  post_scarcity: {status: placeholder, note: Late economy; effects later., tree: economic, tier: 4, cost: 700, prereqs: [automated_markets, biotech_medicine], known_at_start: false}
+  digital_finance: {status: placeholder, note: Financial centres., tree: economic, tier: 3, cost: 380, prereqs: [international_accords], known_at_start: false}
+  vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 3, cost: 380, prereqs: [international_accords], known_at_start: false}
+  global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 4, cost: 600, prereqs: [digital_finance], known_at_start: false}
+  biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 4, cost: 600, prereqs: [vertical_farming], known_at_start: false}
+  automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false}
+  post_scarcity: {status: placeholder, note: Late economy; effects later., tree: economic, tier: 5, cost: 950, prereqs: [sovereign_bonds], known_at_start: false}
 
-  high_speed_rail: {status: placeholder, note: Railways., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
-  advanced_manufacturing: {status: placeholder, note: Factories., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
-  radio_beacon_network: {status: placeholder, note: Radio beacons and towers (DESIGN.md 5; mid-game)., tree: production, tier: 2, cost: 250, prereqs: [high_speed_rail], known_at_start: false}
-  applied_ai: {status: placeholder, note: Research labs., tree: production, tier: 2, cost: 250, prereqs: [advanced_manufacturing], known_at_start: false}
-  fusion_power: {status: placeholder, note: Fusion plants., tree: production, tier: 3, cost: 450, prereqs: [applied_ai], known_at_start: false}
-  nanofabrication: {status: placeholder, note: Late industry; effects later., tree: production, tier: 4, cost: 700, prereqs: [fusion_power], known_at_start: false}
+  high_speed_rail: {status: placeholder, note: Railways., tree: production, tier: 4, cost: 600, prereqs: [radio_beacon_network], known_at_start: false}
+  advanced_manufacturing: {status: placeholder, note: Factories., tree: production, tier: 1, cost: 100, prereqs: [], known_at_start: false}
+  radio_beacon_network: {status: placeholder, note: Radio beacons and towers (DESIGN.md 5; mid-game)., tree: production, tier: 3, cost: 380, prereqs: [beacon_theory], known_at_start: false}
+  applied_ai: {status: placeholder, note: Research labs., tree: production, tier: 2, cost: 200, prereqs: [advanced_manufacturing], known_at_start: false}
+  fusion_power: {status: placeholder, note: Fusion plants., tree: production, tier: 4, cost: 600, prereqs: [quantum_theory], known_at_start: false}
+  nanofabrication: {status: placeholder, note: Late industry; effects later., tree: production, tier: 5, cost: 950, prereqs: [fusion_power], known_at_start: false}
 
-  fortification_doctrine: {status: placeholder, note: City walls and military bases., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
-  mechanized_warfare: {status: placeholder, note: Mechanized infantry., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
-  drone_warfare: {status: placeholder, note: Drone recon., tree: military, tier: 2, cost: 250, prereqs: [modern_warfare], known_at_start: false}
-  powered_exoskeletons: {status: placeholder, note: Exo infantry., tree: military, tier: 2, cost: 250, prereqs: [mechanized_warfare], known_at_start: false}
-  railguns: {status: placeholder, note: Merge with production., tree: military, tier: 3, cost: 450, prereqs: [powered_exoskeletons, advanced_manufacturing], known_at_start: false}
-  hover_armour: {status: placeholder, note: Merge with production., tree: military, tier: 4, cost: 700, prereqs: [railguns, fusion_power], known_at_start: false}
+  fortification_doctrine: {status: placeholder, note: City walls and military bases., tree: military, tier: 5, cost: 950, prereqs: [militia_reserves], known_at_start: false}
+  mechanized_warfare: {status: placeholder, note: Mechanized infantry., tree: military, tier: 2, cost: 200, prereqs: [advanced_manufacturing], known_at_start: false}
+  drone_warfare: {status: placeholder, note: Drone recon., tree: military, tier: 3, cost: 380, prereqs: [mechanized_warfare], known_at_start: false}
+  powered_exoskeletons: {status: placeholder, note: Exo infantry., tree: military, tier: 3, cost: 380, prereqs: [mechanized_warfare], known_at_start: false}
+  railguns: {status: placeholder, note: Merge with production., tree: military, tier: 4, cost: 600, prereqs: [powered_exoskeletons], known_at_start: false}
+  hover_armour: {status: placeholder, note: Merge with production., tree: military, tier: 5, cost: 950, prereqs: [railguns], known_at_start: false}
 
   # Promoted in M5 from the proposed content (commit 0b79762).
-  climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics], known_at_start: false}
-  quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 700, prereqs: [fusion_power, applied_ai], known_at_start: false}
-  directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 4, cost: 700, prereqs: [railguns], known_at_start: false}
-  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 120, prereqs: [market_economy], known_at_start: false}
-  sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 2, cost: 250, prereqs: [digital_finance], known_at_start: false}
-  carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics], known_at_start: false}
-  robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 2, cost: 250, prereqs: [industrial_base], known_at_start: false}
-  mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 2, cost: 250, prereqs: [advanced_manufacturing], known_at_start: false}
-  orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 3, cost: 450, prereqs: [radio_beacon_network, applied_ai], known_at_start: false}
-  militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
-  combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 3, cost: 450, prereqs: [mechanized_warfare, drone_warfare], known_at_start: false}
-  stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 700, prereqs: [drone_warfare, railguns], known_at_start: false}
-  ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 4, cost: 700, prereqs: [railguns, applied_ai], known_at_start: false}
-  quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 1, cost: 120, prereqs: [industrial_base], known_at_start: false}
-  reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 1, cost: 120, prereqs: [modern_warfare], known_at_start: false}
-  deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 3, cost: 450, prereqs: [radio_beacon_network, applied_ai], known_at_start: false}
-  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 3, cost: 450, prereqs: [biotech_medicine], known_at_start: false}
-  orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 3, cost: 450, prereqs: [fortification_doctrine, railguns], known_at_start: false}
-  antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 4, cost: 700, prereqs: [fusion_power, quantum_theory], known_at_start: false}
+  climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 4, cost: 600, prereqs: [vertical_farming], known_at_start: false}
+  quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 600, prereqs: [quantum_theory], known_at_start: false}
+  directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 5, cost: 950, prereqs: [railguns], known_at_start: false}
+  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 100, prereqs: [], known_at_start: false}
+  sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 4, cost: 600, prereqs: [digital_finance], known_at_start: false}
+  carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false}
+  robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false}
+  mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false}
+  orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 4, cost: 600, prereqs: [signal_amplification], known_at_start: false}
+  militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 4, cost: 600, prereqs: [powered_exoskeletons], known_at_start: false}
+  combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false}
+  stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false}
+  ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 5, cost: 950, prereqs: [quantum_computing], known_at_start: false}
+  quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false}
+  reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false}
+  deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 4, cost: 600, prereqs: [radio_beacon_network], known_at_start: false}
+  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 950, prereqs: [biotech_medicine], known_at_start: false}
+  orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 5, cost: 950, prereqs: [orbital_launch], known_at_start: false}
+  antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 5, cost: 950, prereqs: [fusion_power], known_at_start: false}
 
   # Beacon tree (M5): each tech is one rarity level for recruits (data/aliens.yaml recruits.levels).
   # Costs rise steeply (designer). beacon_theory also unlocks the Beacon building chain (speed).
-  beacon_theory: {status: placeholder, note: Rarity 1; unlocks Beacon buildings., tree: beacon, tier: 1, cost: 150, prereqs: [industrial_base], known_at_start: false}
-  signal_amplification: {status: placeholder, note: Rarity 2., tree: beacon, tier: 2, cost: 350, prereqs: [beacon_theory], known_at_start: false}
-  harmonic_lattice: {status: placeholder, note: Rarity 3; legendary recruits can arrive., tree: beacon, tier: 3, cost: 700, prereqs: [signal_amplification, applied_ai], known_at_start: false}
-  deep_resonance: {status: placeholder, note: Rarity 4., tree: beacon, tier: 4, cost: 1200, prereqs: [harmonic_lattice], known_at_start: false}
-  stellar_chorus: {status: placeholder, note: Rarity 5., tree: beacon, tier: 5, cost: 2000, prereqs: [deep_resonance, quantum_computing], known_at_start: false}
+  beacon_theory: {status: placeholder, note: Rarity 1; unlocks Beacon buildings., tree: beacon, tier: 2, cost: 200, prereqs: [urban_planning], known_at_start: false}
+  signal_amplification: {status: placeholder, note: Rarity 2., tree: beacon, tier: 3, cost: 380, prereqs: [beacon_theory], known_at_start: false}
+  harmonic_lattice: {status: placeholder, note: Rarity 3; legendary recruits can arrive., tree: beacon, tier: 4, cost: 600, prereqs: [signal_amplification], known_at_start: false}
+  deep_resonance: {status: placeholder, note: Rarity 4., tree: beacon, tier: 5, cost: 950, prereqs: [harmonic_lattice], known_at_start: false}
+  stellar_chorus: {status: placeholder, note: Rarity 5., tree: beacon, tier: 6, cost: 1500, prereqs: [deep_resonance], known_at_start: false}
 
   # M6: alliances need this tech on both sides (designer, 2026-11-13: not immediate, but early).
-  international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 1, cost: 100, prereqs: [market_economy], known_at_start: false}
+  international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 2, cost: 200, prereqs: [urban_planning], known_at_start: false}
 
   # M7: the world barrage (DESIGN.md 11). Researching it stops alien reinforcements.
-  orbital_barrage: {status: placeholder, note: The world barrage; unlocks the shared megaproject., tree: military, tier: 5, cost: 1500, prereqs: [railguns, deep_space_radar], known_at_start: false}
+  orbital_barrage: {status: placeholder, note: The world barrage; unlocks the shared megaproject., tree: military, tier: 5, cost: 1500, prereqs: [deep_space_radar], known_at_start: false}
 
   # M7: the alien tree. Gained only through espionage (DESIGN.md 10); research cannot reach it.
   xeno_metallurgy: {status: placeholder, note: Alien alloys; xeno troopers., tree: alien, tier: 0, cost: 0, prereqs: [], known_at_start: false}

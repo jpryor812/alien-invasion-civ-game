@@ -147,14 +147,12 @@ class Bot:
                 "capital_priority",
                 "military_per_city_pct",
                 "engineers",
-                "restoration_teams",
                 "recon",
                 "building_priority",
             )
         }
         counts = self._counts()
         cities = [c for c in self.view.my_cities() if c.status == "active"]
-        empties = self.known(EMPTY, self.pid)
         # Every continent's city list is public (real cities): while some are still unfound in
         # the fog, scouting comes first.
         found = sum(
@@ -192,12 +190,6 @@ class Bot:
                 item = self._military_choice(city, counts)
             elif counts["engineers"] < bot["engineers"] and "unit:engineers" in options:
                 item = "unit:engineers"
-            elif (
-                empties
-                and counts["restoration"] < bot["restoration_teams"]
-                and "unit:restoration_team" in options
-            ):
-                item = "unit:restoration_team"
             elif counts["recon"] < bot["recon"] and "unit:recon_team" in options:
                 item = "unit:recon_team"
             if item is None:
@@ -283,7 +275,7 @@ class Bot:
             for city in self.view.my_cities():
                 if not city.connected:
                     continue
-                for t in economy.work_tiles(self.state, self.cfg, city):
+                for t in cities.work_tiles(self.state, self.cfg, city):
                     imp = self._improvement_for(t)
                     if imp and t not in claimed and self.state.city_at(t) is None:
                         targets.append((t, imp))

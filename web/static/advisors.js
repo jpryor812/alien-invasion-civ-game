@@ -20,29 +20,35 @@
       body: "Aliens have taken much of Earth and a fog covers everything. Six continents fight them together; nobody fights anybody else. The world wins only when the mothership is destroyed <b>and</b> every alien city is free.",
       more: "Your MVP score ranks how much you did for the world: kills, cities freed, aid given, troops sent abroad, recruits and the barrage all count. You can see the standings under Scores." },
     first_moves: { who: "military", title: "Your first moves",
-      body: "Click a unit, then a highlighted hex to move it. Your scouts see furthest: send them into the fog to find your continent's lost cities. The big button at the bottom right always names the next thing that needs you (choose research, unit needs orders...) and takes you there; once nothing is left it says <b>Next turn</b>.",
+      body: "Click a unit, then a highlighted hex to move it. Your scouts see furthest: send them into the fog to find the cities the aliens hold. The big button at the bottom right always names the next thing that needs you (choose research, unit needs orders...) and takes you there; once nothing is left it says <b>Next turn</b>.",
       more: "Enter does the same as the button; Shift+Enter or Shift-click ends the turn anyway. Space jumps to the next unit that needs orders. F fortifies, S skips. Right-click clears the selection; drag or use the arrow keys to pan, and the mouse wheel to zoom." },
     production: { who: "economic", title: "Building your cities",
       body: "Each city builds one thing at a time. Pick from the list; hover an item for what it does. Gold can buy the current item outright.",
       more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favour food, production, science or gold." },
     research: { who: "science", title: "Research",
-      body: "Choose what your scientists work on. Four trees (economic, production, military and beacon) unlock buildings, units and improvements. You start in 2025 with today's technology; everything else lies ahead.",
-      more: "International Accords lets you form alliances. Beacon Theory starts the beacon tree. Deep Space Radar and Orbital Barrage are the path to ending the war." },
+      body: "Choose what your scientists work on. The tree starts with two branches, Urban Planning and Advanced Manufacturing, and every tech opens two more. Each card shows how many turns it takes and what it unlocks.",
+      more: "Urban Planning leads to International Accords (alliances) and Beacon Theory (recruits); Radio Beacons, Deep Space Radar and Orbital Barrage end the war. Advanced Manufacturing leads to science, industry and the army." },
     lost_cities: { who: "military", title: "Lost cities",
-      body: "Your continent is full of lost cities. Walk a soldier into a <b>dormant</b> city to reclaim it. Send a restoration team to rebuild <b>ruins</b>. Cities held by aliens must be taken in battle.",
-      more: "The longer a lost city stays unreached, the likelier the aliens take it. A soldier standing nearby keeps it safe. Freed cities always belong to their continent, but you get the credit." },
+      body: "Twelve of your continent's cities are held by the aliens. Find them in the fog, shell them with artillery and take them with a melee unit: a freed city is yours again, with its farms and some of its people.",
+      more: "Freed cities always belong to their continent, but you get the credit. Damage counts for everyone who helped, so shared sieges share the credit." },
     roads: { who: "economic", title: "Roads come first",
       body: "A city produces nothing until a road (or railway) joins it to your capital. Use engineers: move them onto the gap and build a road.",
       more: "Engineers also build farms, mines and resource extractors. Strategic resources like oil only count once improved, in a connected city." },
     aliens_seen: { who: "military", title: "The enemy",
       body: "Aliens roam the fog. They raid roads, attack weak cities and land reinforcements from the mothership. Keep a soldier in every city near them.",
-      more: "Fortified units, hills and forests all defend better. Two units of the same type can merge into one stack with double strength." },
+      more: "Fortified units, hills and forests all defend better. A unit that neither moves nor attacks heals 20 HP a turn in your territory and 10 outside. Two units of the same type can merge into one stack with double strength." },
     combat: { who: "military", title: "Reading the odds",
       body: "Before you attack, hover the red hex: the preview shows both sides' strength, every modifier, and the damage each side should take. Ranged units take no damage when they fire.",
       more: "Wounded units fight weaker. Flanking (other friendly units next to the target) adds strength. Only melee units can take a city; artillery can soften it first." },
     alien_city: { who: "military", title: "Alien strongholds",
       body: "Alien cities hit hard and harden as the aliens lose ground. Shell them with artillery, then finish them with melee units. A city that took damage this turn does not heal.",
       more: "Freeing a city kills its garrison and returns it to its continent. Damage counts toward everyone who helped, so shared sieges share the credit." },
+    citizens: { who: "economic", title: "Your citizens",
+      body: "Food brings new citizens. Each is born with 6 points of stats and maybe a trait, and must grow up before working; more spare food means faster births and faster growing up.",
+      more: "A grown citizen works one <b>improved</b> tile (farm, mine...), adding half its stats there, or sits on the council and gives its full stats to its city. Bare tiles cannot be worked, so keep your engineers building. Pick each citizen's job in the city panel, or leave it on Auto." },
+    city_attack: { who: "military", title: "Enemy at the gates",
+      body: "An enemy is within two hexes of one of your cities. Your city can fire on it once a turn: the big button takes you there. Click a red hex to fire, or Hold fire.",
+      more: "City guns (artillery) also fire on their own at the end of every turn." },
     beacon: { who: "beacon", title: "Beacons",
       body: "Beacons call aliens from other worlds to your side. Build a Beacon in a city to earn beacon points; when you have enough, a recruit arrives.",
       more: "Two levers: more and bigger Beacon buildings bring recruits faster; beacon-tree research brings rarer, stronger ones, even legends." },
@@ -133,13 +139,15 @@
     if (v.pending.some((p) => p.kind === "choose_research")) trigger("research");
     if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1) trigger("production");
     const known = Object.values(v.cities);
-    if (known.some((c) => c.continent === v.me && (c.status === "dormant" || c.status === "empty"))) trigger("lost_cities");
+    if (known.some((c) => c.continent === v.me && c.status === "overrun")) trigger("lost_cities");
     if (known.some((c) => c.owner === v.me && c.connected === false)) trigger("roads");
     if (v.units.some((u) => u.owner === "aliens")) trigger("aliens_seen");
     if (known.some((c) => c.status === "overrun" && c.hp_now != null)) trigger("alien_city");
     if (v.economy.rarity >= 1) trigger("beacon");
     if (v.pending.some((p) => p.kind === "deal_received")) trigger("diplomacy");
     if (v.pending.some((p) => p.kind === "choose_espionage_tech")) trigger("espionage");
+    if (v.pending.some((p) => p.kind === "city_can_attack")) trigger("city_attack");
+    if (v.turn >= 1) trigger("citizens");
     for (const e of v.events) {
       if (e.kind === "recruit_arrived") trigger("recruit");
       if (e.kind === "city_overrun") trigger("city_lost");

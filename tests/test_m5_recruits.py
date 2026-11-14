@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from test_m3_units_combat import EU, NA, add_city, arena, at, east
 
-from beacon import combat, economy, recruits
+from beacon import citizens, combat, economy, recruits
 from beacon.actions import apply_command
 from beacon.commands import (
     AcceptOffer,
@@ -166,6 +166,7 @@ def test_gold_council(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(5, 5), ACTIVE, EU, pop=3)
     city.connected = True
+    citizens.assign_all(s, cfg)  # the city's citizens take their places first
     before = economy.city_yields(s, cfg, city).totals["gold"]
     rec = make(s, EU, {"gold": 50}, traits=["greedy"])
     apply_command(s, cfg, SeatRecruit(player=EU, recruit=rec.id, seats=("gold",)))
@@ -179,6 +180,7 @@ def test_council_bonuses_show_in_yields_and_combat(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(5, 5), ACTIVE, EU, pop=3)
     city.connected = True
+    citizens.assign_all(s, cfg)  # the city's citizens take their places first
     before = economy.city_yields(s, cfg, city).totals["production"]
     rec = make(s, EU, {"production": 50, "military": 20})
     apply_command(s, cfg, SeatRecruit(player=EU, recruit=rec.id, seats=("production", "military")))

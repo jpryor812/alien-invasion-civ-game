@@ -8,13 +8,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from beacon import tech
-from beacon.cities import is_coastal, max_hp, work_tiles
+from beacon import citizens, tech
+from beacon.cities import is_coastal, max_hp
 from beacon.config import YIELDS, Config
 from beacon.recruits import council_lines
 from beacon.state import ACTIVE, City, GameState, Player
 from beacon.tiles import Line, resource_active, tile_yields, totals
-from beacon.units import hostile, is_fixed, occupancy, place_unit
+from beacon.units import is_fixed, place_unit
 
 PROJECTS = ("wealth", "research", "barrage")
 COUNCIL_YIELDS = ("food", "production", "science", "gold", "beacon")  # military: combat
@@ -37,19 +37,6 @@ class CityYields:
 # -- yields ------------------------------------------------------------------------------------
 
 
-def choose_worked(state: GameState, cfg: Config, city: City) -> list[int]:
-    weights = cfg.t("economy.focus_weights")[city.focus]
-    occ = occupancy(state)
-    options = []
-    for t in work_tiles(state, cfg, city):
-        if any(hostile(u.owner, city.owner or "") for u in occ.get(t, [])):
-            continue
-        ty = tile_yields(cfg, state.tiles[t])
-        options.append((-sum(weights[y] * ty[y] for y in YIELDS), t))
-    options.sort()
-    return sorted(t for _, t in options[: city.pop])
-
-
 def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
     lines: list[Line] = []
 
@@ -60,12 +47,8 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
 
     add("city_tile", tile_yields(cfg, state.tiles[city.tile]))
     add("city_centre", cfg.t("economy.city_center_yields"))
-    worked = choose_worked(state, cfg, city)
-    worked_sum = dict.fromkeys(YIELDS, 0)
-    for t in worked:
-        for y, v in tile_yields(cfg, state.tiles[t]).items():
-            worked_sum[y] += v
-    add("worked_tiles", worked_sum)
+    worked, people = citizens.city_lines(state, cfg, city)
+    lines.extend(people)
     add("population", {"science": city.pop * cfg.t("economy.science_per_pop_pct") // 100})
     for b in city.buildings:
         add(f"building:{b}", cfg.buildings[b]["yields"])
@@ -85,7 +68,7 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
         lines=lines,
         totals=totals(lines),
         worked=worked,
-        food_eaten=city.pop * cfg.t("economy.food_per_pop"),
+        food_eaten=citizens.food_eaten(state, cfg, city),
     )
 
 
@@ -256,17 +239,20 @@ def process_city(
     events: list[dict[str, Any]] = []
     cy = city_yields(state, cfg, city)
 
-    # growth
+    # growth: food brings births, and children grow up faster in a well-fed city
+    events.extend(citizens.grow(state, cfg, city, cy.surplus_food))
     city.food_store += cy.surplus_food
     threshold = growth_threshold(cfg, city.pop)
     if city.food_store >= threshold:
         city.food_store -= threshold
         city.pop += 1
         events.append({"kind": "city_grew", "city": city.id, "pop": city.pop})
+        events.append(citizens.born(state, cfg, city))
     elif city.food_store < 0:
         city.food_store = 0
         if city.pop > 1:
             city.pop -= 1
+            citizens.remove_youngest(state, city)
             events.append({"kind": "city_starved", "city": city.id, "pop": city.pop})
 
     # production
@@ -331,6 +317,7 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
     player = state.players[pid]
     events: list[dict[str, Any]] = []
     science = 0
+    citizens.assign(state, cfg, pid)
     for city in state.cities:
         if city.owner != pid or city.status != ACTIVE or not city.connected:
             continue

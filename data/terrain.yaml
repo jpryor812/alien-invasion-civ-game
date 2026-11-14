@@ -13,13 +13,13 @@ terrains:
 
 elevations:
   flat: {status: placeholder, note: Default., passable: true, yields: {}, move_cost: 1, defense_pct: 0, vision_bonus: 0}
-  hills: {status: placeholder, note: Civ V style hills., passable: true, yields: {food: -1, production: 1}, move_cost: 2, defense_pct: 25, vision_bonus: 1}
+  hills: {status: placeholder, note: Civ V style hills; moving in costs 1 (designer 2026-11-14 - one move per hex everywhere)., passable: true, yields: {food: -1, production: 1}, move_cost: 1, defense_pct: 25, vision_bonus: 1}
   mountain: {status: placeholder, note: Impassable in v1., passable: false, yields: {}, move_cost: 0, defense_pct: 0, vision_bonus: 0}
 
 features:
-  forest: {status: placeholder, note: Wooded., yields: {production: 1}, move_cost: 2, defense_pct: 25, allowed_terrains: [grassland, plains, tundra]}
-  jungle: {status: placeholder, note: Dense tropical cover., yields: {food: -1}, move_cost: 2, defense_pct: 25, allowed_terrains: [grassland, plains]}
-  marsh: {status: placeholder, note: Wetland., yields: {food: -1}, move_cost: 2, defense_pct: -15, allowed_terrains: [grassland, tundra]}
+  forest: {status: placeholder, note: Wooded., yields: {production: 1}, move_cost: 1, defense_pct: 25, allowed_terrains: [grassland, plains, tundra]}
+  jungle: {status: placeholder, note: Dense tropical cover., yields: {food: -1}, move_cost: 1, defense_pct: 25, allowed_terrains: [grassland, plains]}
+  marsh: {status: placeholder, note: Wetland., yields: {food: -1}, move_cost: 1, defense_pct: -15, allowed_terrains: [grassland, tundra]}
 
 # A biome sets the base terrain of a region and the percent chance of each feature on its tiles.
 biomes:
