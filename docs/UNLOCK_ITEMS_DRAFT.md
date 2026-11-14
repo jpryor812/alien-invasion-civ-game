@@ -32,7 +32,7 @@ Notes:
 
 | Unit | Unlocked by | Domain | Role | Cost | Moves | Strength | Vision | Other |
 |---|---|---|---|---|---|---|---|---|
-| stealth_drones | stealth_tech (T4, mil) | land | recon | 110 | 4 | 12 | 3 | |
+| stealth_drones | stealth_tech (T3, mil) | land | recon | 110 | 4 | 8 | 3 | hidden from aliens until they attack; no ranged attack |
 | robotic_engineers | robotics (T2, prod) | land | civilian | 70 | 2 | 0 | 1 | build speed +25% (new key) |
 
 Notes:
@@ -75,14 +75,13 @@ additions here. Each needs a decision before the other chat adds them.
 
 - **Bonus-only techs apply to all cities.**
 - **Stealth drones are hidden from aliens until they attack.** An attack reveals them for that
-  turn. This is a new rule and needs a `stealth` flag on the unit.
-- **Conflict to resolve:** the M4 spec says aliens see the whole map, including player units
-  (decided). Stealth as written breaks that rule. Options:
-  1. Keep the M4 rule and exempt stealth units only.
-  2. Change the M4 rule so aliens do not see stealth units.
-  Either way, the M4 spec needs a note.
+  turn. This needs a `stealth` flag on the unit.
+- **M4 rule changed:** aliens can't see stealth units. `docs/SPEC_M4.md` has a note on this.
+- **Stealth tech moves from tier 4 to tier 3 (mid-to-late game).** The change belongs in
+  `data/techs.yaml`, which the other chat owns, so it still needs to be made there.
+- **Stealth drones deal little damage.** Strength is 8 and they have no ranged attack.
 
 ## Open questions
 
 - Confirm the placeholder values before any promotion.
-- Which option for the stealth conflict above?
+- How strong should stealth drones be relative to the other recon units? Strength 8 is a guess.

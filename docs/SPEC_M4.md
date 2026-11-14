@@ -98,7 +98,9 @@ exists). Each turn it:
 Randomness: the director draws only from the `events` stream (seeded per turn) to break ties
 and vary targets; unit movement itself is deterministic.
 
-- Aliens see the whole map, including player units (decided).
+- Aliens see the whole map, including player units (decided), except stealth units. Stealth units
+  are hidden from aliens until they attack, and are visible to aliens for the turn they attack
+  (revised 2026-11-13 with the stealth unit, see docs/UNLOCK_ITEMS_DRAFT.md).
 - An alien unit on a hex with a player-built improvement or route may spend its turn destroying
   it, which can disconnect cities (decided).
 - **Water:** aliens never cross water (DESIGN.md 3 and 18, assumed).
