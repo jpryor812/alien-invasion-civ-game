@@ -71,8 +71,18 @@ Keys already in use or proposed:
 The new keys (`unit_strength_pct`, `ranged_strength_pct`, `build_speed_pct`) are the only schema
 additions here. Each needs a decision before the other chat adds them.
 
+## Decisions
+
+- **Bonus-only techs apply to all cities.**
+- **Stealth drones are hidden from aliens until they attack.** An attack reveals them for that
+  turn. This is a new rule and needs a `stealth` flag on the unit.
+- **Conflict to resolve:** the M4 spec says aliens see the whole map, including player units
+  (decided). Stealth as written breaks that rule. Options:
+  1. Keep the M4 rule and exempt stealth units only.
+  2. Change the M4 rule so aliens do not see stealth units.
+  Either way, the M4 spec needs a note.
+
 ## Open questions
 
-- Is stealth a rule (hidden from aliens), or only a unit name for now?
-- Should bonus-only techs apply to every city, or only the capital?
 - Confirm the placeholder values before any promotion.
+- Which option for the stealth conflict above?
