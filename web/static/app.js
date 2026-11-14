@@ -544,7 +544,7 @@ function drawBanner(c, sx, sy, R) {
   const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : "";
   const label = (c.is_capital ? "★ " : "") + c.name + status;
   const fs = Math.max(10, Math.round(11 * Math.min(1.35, S.cam.zoom)));
-  ctx.font = `600 ${fs}px Palatino, Georgia, serif`;
+  ctx.font = `500 ${fs}px Roboto, Arial, sans-serif`;
   const tw = ctx.measureText(label).width;
   const info = mine ? S.myCityInfo.get(c.id) : null;
   const prodText = info && info.head ? `${info.turns ?? "–"}` : "";
@@ -557,9 +557,9 @@ function drawBanner(c, sx, sy, R) {
   ctx.fillStyle = bg; roundRect(bx, by, bw, bh, bh / 2); ctx.fill();
   ctx.strokeStyle = mine ? "#f2d38a" : shade(owner, -0.1); ctx.lineWidth = mine ? 1.6 : 1.2; ctx.stroke();
   ctx.fillStyle = owner; ctx.beginPath(); ctx.arc(bx + bh / 2, by + bh / 2, bh / 2 - 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#0b0f13"; ctx.font = `700 ${fs}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#0b0f13"; ctx.font = `700 ${fs}px Roboto, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(String(c.pop), bx + bh / 2, by + bh / 2 + 0.5);
-  ctx.fillStyle = "#f6efdc"; ctx.font = `600 ${fs}px Palatino, Georgia, serif`; ctx.textAlign = "left";
+  ctx.fillStyle = "#f6efdc"; ctx.font = `500 ${fs}px Roboto, Arial, sans-serif`; ctx.textAlign = "left";
   ctx.fillText(label, bx + bh + fs * 0.4, by + bh / 2 + 0.5);
   if (prodText) {
     const px = bx + bh + fs * 0.6 + tw + fs * 0.4;
@@ -1296,5 +1296,7 @@ async function enterGame() {
 // start
 
 window.addEventListener("resize", () => { if (S.inGame) resize(); });
+// the map is drawn on a canvas, so redraw once the web fonts have arrived
+if (document.fonts) document.fonts.ready.then(() => { S.dirty = true; });
 requestAnimationFrame(frame);
 showTitle();
