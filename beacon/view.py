@@ -1,7 +1,12 @@
 """Fog-safe player views. Bots and (later) AI and UI read the game only through these.
 
-`PlayerView` answers questions with what the player can know: explored terrain, units on
-currently visible hexes, cities as last seen. `observe()` serialises a view for clients.
+`PlayerView` answers questions with what the player can know (designer rules, 2026-11-13):
+- terrain only on hexes visible now: within a unit's sight, a city's sight, or anything the
+  player built (fog.visible_tiles); hexes go fully back to fog when units leave;
+- every city the player has discovered, with its live status, wherever it is;
+- units only on visible hexes.
+`explored` (ever seen) is kept for exploration targets but reveals no terrain.
+`observe()` serialises a view for clients.
 """
 
 from __future__ import annotations
@@ -20,6 +25,9 @@ class PlayerView:
         self.pid = pid
         self.visible = fog.visible_tiles(state, cfg, pid)
         self._explored = bits_get(state.players[pid].explored)
+        self._known_city_tiles = {
+            state.cities[int(k)].tile for k in state.players[pid].known_cities
+        } | {c.tile for c in state.cities if c.owner == pid}
 
     # -- map ---------------------------------------------------------------------------------
 
@@ -46,7 +54,13 @@ class PlayerView:
         return i in self.visible
 
     def tile(self, i: int) -> Tile | None:
-        return self._state.tiles[i] if self.is_explored(i) else None
+        """Terrain of a hex the player can see now (or a discovered city's hex)."""
+        if i in self.visible or i in self._known_city_tiles:
+            return self._state.tiles[i]
+        return None
+
+    def shown_tiles(self) -> list[int]:
+        return sorted(self.visible | self._known_city_tiles)
 
     def explored_tiles(self) -> list[int]:
         bits, out, i = self._explored, [], 0
@@ -72,14 +86,13 @@ class PlayerView:
         return [c for c in self._state.cities if c.owner == self.pid]
 
     def known_cities(self) -> dict[int, CityMemory]:
-        """Every city the player knows of, as currently seen or last remembered."""
+        """Every city the player has discovered, with its live status."""
         out = {}
-        for key, memory in self.player.known_cities.items():
+        for key in self.player.known_cities:
             city = self._state.cities[int(key)]
-            if city.tile in self.visible or city.owner == self.pid:
-                out[city.id] = CityMemory(city.status, city.owner, city.pop, self.turn)
-            else:
-                out[city.id] = memory
+            out[city.id] = CityMemory(city.status, city.owner, city.pop, self.turn)
+        for city in self.my_cities():
+            out[city.id] = CityMemory(city.status, city.owner, city.pop, self.turn)
         return out
 
     def city_tile(self, city_id: int) -> int | None:
@@ -99,7 +112,7 @@ def observe(state: GameState, cfg: Config, pid: str) -> dict[str, Any]:
     """A JSON-ready snapshot of what player `pid` knows."""
     view = PlayerView(state, cfg, pid)
     tiles = {}
-    for i in view.explored_tiles():
+    for i in view.shown_tiles():
         entry = to_dict(state.tiles[i])
         entry["visible"] = i in view.visible
         tiles[str(i)] = entry

@@ -161,4 +161,14 @@ def test_exploring_grows_memory_and_fog_returns(cfg):
     recon.tile = start
     view = PlayerView(state, cfg, pid)
     assert view.is_explored(target.tile) and not view.is_visible(target.tile)
+    # The city stays shown with live status; the land around it goes back to fog.
     assert target.id in view.known_cities()
+    assert view.tile(target.tile) is not None
+    beside = [
+        n
+        for n in hexgrid.neighbours(target.tile, state.width, state.height)
+        if n not in view.visible and state.city_at(n) is None
+    ]
+    assert beside and all(view.tile(n) is None for n in beside)
+    target.status = "overrun"
+    assert PlayerView(state, cfg, pid).known_cities()[target.id].status == "overrun"

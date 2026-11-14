@@ -56,8 +56,9 @@ helping a neighbour vs your own frontier).
 
 ## 5. Fog, exploration and lost cities
 
-- Fog is permanent. You see your cities and the hexes your units stand on. Leaving a hex returns it
-  to fog.
+- Fog is permanent. Units see one hex around them. Leaving an area returns it fully to fog,
+  terrain included, unless you have a building, road or beacon there (decided 2026-11-13).
+  Cities, once discovered, stay on your map with their live status.
 - A **radio beacon** built on a hex keeps it permanently revealed (mid-game tech). Any building on
   a hex also keeps it clear.
 - Lost cities are in three states: **dormant** (still standing, not producing), **empty**
@@ -168,8 +169,8 @@ Alien technology can also be gained through espionage (section 10), outside the 
   liberated. Both are required, in either order. The game ends on the turn the second one is met.
   Because fog hides cities, late-game tools for locating the last alien cities (high-tier
   beacons, a costly sweep) are needed so the final hunt is not a chore (**TUNE**).
-- **Defeat:** all six continents fallen at once, or the game ends with the aliens still ahead
-  (**OPEN**: exact rule). Defeat is possible even after the mothership is destroyed.
+- **Defeat (decided 2026-11-13):** all six continents fallen at once. Defeat is possible even
+  after the mothership is destroyed.
 - If the world loses, everyone loses. There are no lone survivors. Scores still show how each
   player played.
 
@@ -181,7 +182,7 @@ should be balanced so a builder and a fighter can both finish near the top.
 
 ## 13. Fallen and revived continents
 
-A continent falls when it has fewer than a threshold number of cities (**TUNE**). Its player is not
+A continent falls when it holds no cities (decided 2026-11-13). Its player is not
 removed. Another continent can send forces to liberate cities there, and the continent revives,
 weak (few cities, low population), so a rescue is a real investment. This applies to AI and human
 players alike.
@@ -227,11 +228,10 @@ varied partners.
 ## 18. Open questions
 
 - Game length: start at 150 to 200 turns, tune toward Civ V robustness.
-- The exact defeat rule (proposed: four or more continents fallen at once, or the turn limit
-  passes without victory). Defeat stays possible after the mothership is destroyed.
 - Late-game boredom once few alien cities remain (deferred by the designer until after the
   first playable version).
-- Do aliens ever cross water? (assumed no.)
+- Do aliens ever cross water? (assumed no.) Aliens see through fog (decided 2026-11-13).
+- Turn limit without victory: not yet decided.
 - Trait list and recruit lifespans.
 - MVP weights.
 - Number of beacon investment levels and cost curves.

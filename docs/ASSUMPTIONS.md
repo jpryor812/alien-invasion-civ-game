@@ -51,13 +51,14 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Cities belong to their continent's player** whoever frees them; the freeing unit's owner
   gets the credit. Work areas are fixed at map generation (nearest city wins), with no tile
   buying.
-- **Vision radius 1** for most units (2 for recon, +1 on hills), 1 for cities. DESIGN.md says
-  units see "the hexes your units stand on"; radius 0 would leave units unable to see adjacent
-  attackers or targets. Tunable in `units.yaml` and `tuning.yaml`.
+- **Vision radius 1** for most units (2 for recon, +1 on hills), 1 for cities (designer
+  decision 2026-11-13: units see one hex around them).
 - **Anything a player built** (improvement or route, including starting roads) keeps its own hex
   visible to that player, per DESIGN.md section 5. Radio beacons see 2 hexes.
-- **Three fog layers.** Explored tiles keep terrain and improvements; units appear only on
-  visible tiles; cities are remembered as last seen.
+- **Fog (designer decision 2026-11-13):** hexes go fully back to fog, terrain included, when no
+  unit, city or player-built thing sees them. Discovered cities stay shown with live status.
+  Each player keeps an "explored" bitmap (ever seen) that reveals nothing in the view; the test
+  bot plans paths from it, as a human would from memory.
 - **Line of sight is not blocked** by hills or mountains in v1.
 
 ## M2: cities and economy
@@ -153,7 +154,7 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 
 ## Open items noticed (not blocking M0-M3)
 
-- DESIGN.md section 12 says defeat is "all six continents fallen at once"; section 18 proposes
-  "four or more". Needs a decision before M7.
+- Resolved 2026-11-13: defeat is all six continents fallen at once; a continent falls when it
+  holds no cities.
 - Several tier 3-4 techs unlock nothing yet (automated_markets, post_scarcity, nanofabrication,
   global_logistics); they get effects with trade (M6) and the beacon tree (M5).

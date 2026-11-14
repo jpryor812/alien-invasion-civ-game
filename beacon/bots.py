@@ -27,7 +27,7 @@ from beacon.commands import (
 )
 from beacon.config import Config
 from beacon.paths import reachable, shortest_path
-from beacon.state import DORMANT, EMPTY, OVERRUN, GameState, Unit
+from beacon.state import DORMANT, EMPTY, OVERRUN, GameState, Tile, Unit
 from beacon.tiles import is_passable_land
 from beacon.units import can_stand, is_civilian, max_hp, occupancy
 from beacon.view import PlayerView
@@ -62,6 +62,11 @@ class Bot:
             for cid, memory in self.view.known_cities().items()
             if memory.status == status
         )
+
+    def remembered(self, i: int) -> Tile | None:
+        """Terrain of a hex the player has ever explored. The rules re-fog terrain, but the bot
+        plans as a human would, from memory of what it has seen (a test-bot allowance)."""
+        return self.state.tiles[i] if self.view.is_explored(i) else None
 
     def alive(self, unit: Unit) -> bool:
         return str(unit.id) in self.state.units
@@ -171,7 +176,7 @@ class Bot:
         lost -= {c.tile for c in self.view.my_cities()}
 
         def step(_: int, b: int) -> int | None:
-            tile = self.view.tile(b)
+            tile = self.remembered(b)
             if tile is None or not is_passable_land(self.cfg, tile) or b in lost:
                 return None
             return 0 if tile.route else 1
@@ -257,7 +262,7 @@ class Bot:
             frontier.sort(key=lambda t: (self.dist(start, t), t))
             nxt: list[int] = []
             for t in frontier:
-                tile = self.view.tile(t)
+                tile = self.remembered(t)
                 if tile is None:
                     continue
                 if (
@@ -269,7 +274,7 @@ class Bot:
                 ):
                     return
                 for n in hexgrid.neighbours(t, self.w, self.h):
-                    nt = self.view.tile(n)
+                    nt = self.remembered(n)
                     if n not in seen and nt is not None and is_passable_land(self.cfg, nt):
                         seen.add(n)
                         nxt.append(n)

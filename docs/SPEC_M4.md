@@ -1,8 +1,20 @@
 # Spec: milestone M4, the aliens
 
-Status: **draft for designer review** (2026-11-13). Nothing here is built yet. Numbers will live
-in a new `data/aliens.yaml` (all `placeholder`). Items marked **DECIDE** need the designer;
-each has a proposed default that the build will use if approved as written.
+Status: **approved 2026-11-13** with the designer's decisions below. Numbers live in
+`data/aliens.yaml` (all `placeholder`).
+
+## Designer decisions (2026-11-13)
+
+- Aliens only hold the named city sites and never found new ones; their cities harden as time
+  goes on and as they lose cities.
+- Aliens see through fog. Aliens can raid roads and improvements.
+- Aliens roam the map (patrols that cause shock encounters) and attack poorly defended cities.
+- A continent falls when its player holds no cities. Defeat: all six continents fallen at once.
+- Alien-held cities give players nothing until freed (already true).
+- Balance bands below are the gate.
+- Fog (changes M1): units see one hex; when they leave, hexes go fully back to fog, terrain
+  included, unless the player built something there. Discovered cities stay visible with live
+  status.
 
 Source: DESIGN.md section 9 (the aliens), section 5 (lost cities fall over time), section 13
 (fallen continents). The mothership's missile strikes and the barrage project stay in M7.
@@ -60,14 +72,14 @@ The tree is fixed in v1, so its order is predictable; a seeded order is an optio
 - **Spawning:** each alien city builds **alien production** per turn (from population and
   techs) and spends it on the best unlocked unit when it has room. A garrison is always rebuilt
   first.
-- **Fortresses** (DESIGN.md 9, "as they shrink they harden"): every alien city gains
-  `+fortress_pct` strength per city the aliens have lost since the start, up to a cap.
+- **Fortresses** (DESIGN.md 9, "as they shrink they harden"): every alien city gains strength
+  percent per city the aliens have lost since the start and per elapsed interval of turns, up to
+  a cap.
 - **Reinforcements** (DESIGN.md 9 and 11): the mothership fills `reinforcement_store` each turn.
   When full, a group lands at a seeded alien city (or, with none left on a continent, on open
   land at least `landing_distance` from player cities). Reinforcements never stop in M4; the
   M7 barrage project stops them.
-- **DECIDE (new cities):** aliens only ever hold the 120 named city sites; they do not found new
-  ones. *Default: yes, named sites only.*
+- Aliens only ever hold the 120 named city sites (decided).
 
 ## 5. The invasion director
 
@@ -78,18 +90,17 @@ exists). Each turn it:
    value (population, capital, recently liberated) score higher.
 2. Assigns idle alien units to groups and gives each group one objective: **garrison** (keep
    each alien city defended), **siege** (gather, then attack a target city), **raid** (pillage
-   roads and improvements to cut connections), or **retake** (a recently liberated city).
+   roads and improvements to cut connections), **patrol** (roam toward seeded points, so players
+   meet aliens unexpectedly), or **retake** (a recently liberated city).
 3. Moves and attacks with the same commands players use (attack previews, paths). A siege group
    waits until its combined strength clears `siege_ratio_pct` of the target's before it attacks.
 
 Randomness: the director draws only from the `events` stream (seeded per turn) to break ties
 and vary targets; unit movement itself is deterministic.
 
-- **DECIDE (alien knowledge):** aliens see the whole map, including player units, so the
-  director never needs scouting. Player fog is unchanged. *Default: aliens see everything (much
-  simpler; the design's "aliens roam in fog" is about what players see).*
-- **DECIDE (pillage):** an alien unit on a hex with a player-built improvement or route may spend
-  its turn destroying it, which can disconnect cities. *Default: yes.*
+- Aliens see the whole map, including player units (decided).
+- An alien unit on a hex with a player-built improvement or route may spend its turn destroying
+  it, which can disconnect cities (decided).
 - **Water:** aliens never cross water (DESIGN.md 3 and 18, assumed).
 
 ## 6. Lost cities fall over time
@@ -117,12 +128,11 @@ overruns it. M4 adds:
 
 ## 8. Fallen and revived continents (DESIGN.md 13)
 
-- A continent is **fallen** when its player holds fewer than `fall_threshold` cities; it
-  **revives** when it climbs back to the threshold. Both are recorded as events and on the
+- A continent is **fallen** when its player holds no cities; it **revives** when it holds one
+  again. Both are recorded as events and on the
   player (`fallen: bool`, `times_fallen`).
 - A fallen player keeps playing (DESIGN.md 13). No other effect in M4; scoring and defeat rules
   use it in M7.
-- **DECIDE (threshold):** *Default: fewer than 2 cities.*
 
 ## 9. Surges (anti-coasting)
 
@@ -158,11 +168,9 @@ threatened city on its own continent. It remains a test driver, not the M6 AI.
   - aliens still hold 15-50% of their starting city count at turn 100 in at least 15 of 20 seeds;
   - aliens take at least one player city in at least 15 of 20 seeds;
   - no more than 2 of 20 seeds end with every continent fallen.
-- **DECIDE (bands):** these are proposed targets to tune toward, since bots are weaker than
-  people. *Default: use them as the gate; tune `aliens.yaml` until they pass.*
 - Performance: a 100-turn game stays under 12 s on this machine.
 
 ## Out of scope for M4
 
 Mothership missile strikes and the barrage (M7), beacons and alien recruits (M5), AI players,
-trade and cross-continent troops (M6), alien espionage (M7 or later), the defeat rule (M7).
+trade and cross-continent troops (M6), alien espionage (M7 or later), the defeat check itself (M7; the rule is now all six continents fallen at once).
