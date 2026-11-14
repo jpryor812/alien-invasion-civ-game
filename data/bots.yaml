@@ -4,8 +4,10 @@ production:
   status: placeholder
   note: The bot keeps about this many military units per active city (one garrison plus one
     field unit at 200) and this many engineers. The capital builds capital_priority (beacons)
-    once military reaches capital_build_military_pct of the city count.
+    once military reaches capital_build_military_pct of the city count. It keeps at least
+    min_military units however few cities it has (one starting city, designer 2026-11-14).
   military_per_city_pct: 250
+  min_military: 4
   engineers: 2
   recon: 2
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,

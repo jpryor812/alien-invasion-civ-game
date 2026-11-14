@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from beacon import cities, citizens, fog, improvements, mapgen, network, rng
+from beacon import cities, citizens, fog, hexgrid, improvements, mapgen, network, rng
 from beacon.config import Config
 from beacon.state import ACTIVE, ALIENS, OVERRUN, CityMemory, GameState, Player
 from beacon.units import place_unit
@@ -46,9 +46,23 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
     radius = cfg.t("cities.work_radius")
     for city in state.cities:
         city.hp = cities.max_hp(cfg, city)
+    # The alien city nearest each capital is lightly held, so a first liberation comes early.
+    near: set[int] = set()
+    for capital in (c for c in state.cities if c.is_capital):
+        alien = [
+            c for c in state.cities if c.status == OVERRUN and c.continent == capital.continent
+        ]
+        if alien:
+            first = min(
+                alien, key=lambda c: (hexgrid.distance(c.tile, capital.tile, state.width), c.id)
+            )
+            near.add(first.id)
     for city in state.cities:
         if city.status == OVERRUN:
-            for unit_type in cfg.t("aliens.garrison.list"):
+            key = "near_list" if city.id in near else "list"
+            if city.id in near:
+                city.hp = city.hp * cfg.t("aliens.near_hp_pct") // 100
+            for unit_type in cfg.t(f"aliens.garrison.{key}"):
                 place_unit(state, cfg, unit_type, ALIENS, city.tile, radius)
     for pid in state.player_ids():
         capital = next(c for c in state.cities if c.owner == pid and c.is_capital)

@@ -110,6 +110,10 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
             "value": city.pop * cfg.t("cities.strength_per_pop"),
         },
     ]
+    if city.is_capital:
+        lines.append(
+            {"source": "capital", "kind": "base", "value": cfg.t("cities.capital.strength")}
+        )
     for b in city.buildings:
         if cfg.buildings[b].get("city_strength"):
             lines.append(

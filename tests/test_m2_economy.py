@@ -34,10 +34,6 @@ def capital(state, pid=PID):
     return next(c for c in state.cities if c.owner == pid and c.is_capital)
 
 
-def known_city(state, pid=PID):
-    return next(c for c in state.cities if c.owner == pid and not c.is_capital)
-
-
 def test_yield_totals_equal_breakdown(cfg, game):
     for city in game.cities:
         if city.status != ACTIVE:
@@ -87,16 +83,17 @@ def test_growth_threshold_formula(cfg):
 
 
 def test_building_completes_and_changes_yields(cfg, game):
-    city = known_city(game)
-    assert "workshop" not in city.buildings
-    before = economy.city_yields(game, cfg, city).totals["production"]
-    apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=("building:workshop",)))
-    city.production_store = cfg.buildings["workshop"]["cost"]
+    city = capital(game)  # players start with the capital only (designer 2026-11-14)
+    assert "water_treatment" not in city.buildings
+    before = economy.city_yields(game, cfg, city).totals["food"]
+    item = ("building:water_treatment",)
+    apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=item))
+    city.production_store = cfg.buildings["water_treatment"]["cost"]
     events, _ = economy.process_city(game, cfg, city, game.players[PID])
     assert any(e["kind"] == "building_completed" for e in events)
-    assert "workshop" in city.buildings and city.queue == []
-    after = economy.city_yields(game, cfg, city).totals["production"]
-    assert after == before + cfg.buildings["workshop"]["yields"]["production"]
+    assert "water_treatment" in city.buildings and city.queue == []
+    after = economy.city_yields(game, cfg, city).totals["food"]
+    assert after == before + cfg.buildings["water_treatment"]["yields"]["food"]
 
 
 def test_tech_gating(cfg, game):
@@ -195,10 +192,11 @@ def test_tank_needs_oil(cfg, game):
 
 
 def test_purchase(cfg, game):
-    city = known_city(game)
+    city = capital(game)
     player = game.players[PID]
-    apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=("building:market",)))
-    price = cfg.buildings["market"]["cost"] * cfg.t("economy.purchase_pct") // 100
+    item = ("building:air_defence_battery",)
+    apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=item))
+    price = cfg.buildings["air_defence_battery"]["cost"] * cfg.t("economy.purchase_pct") // 100
     player.gold = price - 1
     before = state_digest(game)
     with pytest.raises(CommandError, match="costs"):
@@ -206,7 +204,7 @@ def test_purchase(cfg, game):
     assert state_digest(game) == before
     player.gold = price
     apply_command(game, cfg, Purchase(player=PID, city=city.id))
-    assert "market" in city.buildings and player.gold == 0
+    assert "air_defence_battery" in city.buildings and player.gold == 0
 
 
 def test_gold_deficit_eats_research(cfg, game):

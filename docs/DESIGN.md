@@ -38,10 +38,10 @@ The signature features:
 - Single player first (you plus five AI continents). Online multiplayer later, six humans, turn
   based, simultaneous turns with a timer.
 - The map is hex based and large. Each continent has its own climate, terrain, resources and
-  15 real cities, of which three (for example New York, Los Angeles and Mexico City for North America)
-  are known at the start; the other twelve must be liberated. (Updated 2026-11-14 by the
-  designer: continents drawn from real geography, about twice as big, cities farther apart;
-  previously about 20 cities with a handful known.)
+  15 real cities. A player starts with just its capital (New York for North America); the other
+  fourteen are held by the aliens and must be liberated (designer 2026-11-14; was three known).
+  (Also 2026-11-14: continents drawn from real geography, about twice as big, cities farther
+  apart; previously about 20 cities with a handful known.)
 - Oceans are safe from aliens (**OPEN**: confirm aliens never cross water).
 - A fallen continent can be revived (see section 13).
 

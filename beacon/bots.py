@@ -158,6 +158,7 @@ class Bot:
                 "capital_build_military_pct",
                 "capital_priority",
                 "military_per_city_pct",
+                "min_military",
                 "engineers",
                 "recon",
                 "building_priority",
@@ -196,9 +197,16 @@ class Bot:
                 )
             if item is not None:
                 pass
-            elif searching and counts["recon"] < bot["recon"] and "unit:recon_team" in options:
+            elif (
+                searching
+                and counts["recon"] < bot["recon"]
+                and counts["military"] >= 2  # an army before replacing lost scouts
+                and "unit:recon_team" in options
+            ):
                 item = "unit:recon_team"
-            elif counts["military"] * 100 < len(cities) * bot["military_per_city_pct"]:
+            elif counts["military"] * 100 < max(
+                len(cities) * bot["military_per_city_pct"], bot["min_military"] * 100
+            ):
                 item = self._military_choice(city, counts)
             elif counts["engineers"] < bot["engineers"] and "unit:engineers" in options:
                 item = "unit:engineers"
@@ -434,14 +442,18 @@ class Bot:
         out: dict[int, int] = {}
         taken: set[int] = set()
         radius = self.param("combat.garrison_radius")
-        danger = self.known(OVERRUN, self.pid) + [
-            u.tile for u in self.view.visible_units() if u.owner == ALIENS
+        # alien units nearby call for a garrison; alien cities do not move, so they do not
+        danger = [
+            u.tile
+            for u in self.view.visible_units()
+            if u.owner == ALIENS and self.state.city_at(u.tile) is None  # garrisons stay home
         ]
         cities = sorted(
             (
                 c
                 for c in self.view.my_cities()
-                if c.is_capital or any(self.dist(c.tile, d) <= radius for d in danger)
+                # cities have their own guns: hold one only with aliens near (the capital included)
+                if any(self.dist(c.tile, d) <= radius for d in danger)
             ),
             key=lambda c: c.id,
         )

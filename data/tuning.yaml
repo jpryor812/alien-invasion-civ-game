@@ -57,10 +57,10 @@ cities:
       data/continents.yaml is chosen to keep it (checked by a test); designer 2026-11-14 asked
       for more space between cities.
   known_count:
-    value: 3
+    value: 1
     status: placeholder
-    note: Cities known at the start per continent (designer 2026-11-14 - three, spread out, e.g.
-      New York, Los Angeles and Mexico City); the other twelve must be liberated.
+    note: Cities a player holds at the start (designer 2026-11-14 - just the capital, e.g. New
+      York; the other fourteen are alien-held and must be liberated). Was 3.
   work_radius:
     value: 2
     status: placeholder
@@ -125,6 +125,12 @@ cities:
     status: placeholder
     note: Share of the garrison's effective strength added to the city's (50 made alien cities
       near-impregnable to early units in M4 runs).
+  capital:
+    status: placeholder
+    note: A capital's built-in defences (like Civ's palace), added to its strength and HP. With one
+      starting city (designer 2026-11-14) an undefended capital fell to the first alien sieges.
+    strength: 15
+    hp: 100
   base_hp:
     value: 200
     status: placeholder
@@ -279,8 +285,16 @@ start:
 aliens:
   garrison:
     status: placeholder
-    note: Alien units placed in each overrun city at the start (the first sits in the city).
+    note: Alien units placed in each overrun city at the start (the first sits in the city). The
+      alien city nearest each capital gets only near_list, so a first liberation comes early
+      (designer 2026-11-14, with one starting city).
     list: [alien_hive_guard, alien_warrior]
+    near_list: [alien_hatchling]
+  near_hp_pct:
+    value: 50
+    status: placeholder
+    note: The alien city nearest each capital starts at this percent of its HP (an easy first
+      liberation, designer 2026-11-14).
 
 trade:
   alliance_tech:

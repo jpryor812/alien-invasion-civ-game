@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: no starting improvements; tiles gain turret fields (designer).
-GOLDEN_MAP_SEED_1 = "519adfadc27ced4a1f6cf8dd2efacf1aee7858bb047573fa1d575e5624aaa5f2"
+# Last change: players start with the capital only (designer).
+GOLDEN_MAP_SEED_1 = "b3a978985d11e84ae75d3752af604b3f449b783bb4cb04b6b4e5942e6c08f2bc"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")

@@ -516,3 +516,23 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Unconnected roads**: 1 gold a turn per road or rail hex of yours not joined to one of your
   cities (shown in the gold breakdown).
 
+## One starting city (designer, 2026-11-14)
+
+- **Start**: each player holds only its capital (known_count 1); the other 14 cities of its
+  continent are alien-held. The capital keeps its army: 2 infantry, 1 engineer, the scout and
+  its city artillery.
+- **Easy first target**: the alien city nearest each capital is held by a single hatchling
+  instead of a hive guard and a warrior (and starts at half HP, though it heals before most
+  armies arrive).
+- **Capitals are strong**: +15 strength and +100 HP (like Civ's palace). Without it, three
+  capitals fell to the first sieges after turn 25 and their continents fell.
+- **Bots**: keep at least 4 military units however few cities they have; hold a city only when
+  alien units outside alien cities are near (city guns cover the rest); rebuild lost scouts only
+  once they have 2 military units.
+- **Result (quick check, 3 seeds to turn 60)**: first liberations by turns 5-19 on several
+  continents; the aliens often retake that city around turn 30; no capital fell.
+- **Batch (20 AI seeds to turn 200)**: 0 victories, 0 defeats; in one game Africa and South
+  America fell. At turn 200, 52-80 of the 84 alien cities were still held (players held 10-38
+  cities in all). The war barely advances with one starting city and no starting farms: open for
+  the designer (retune before relying on balance numbers).
+
