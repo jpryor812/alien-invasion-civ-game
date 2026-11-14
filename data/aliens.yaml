@@ -33,20 +33,21 @@ cities:
   max_pop: 6
   max_units_nearby: 3
   nearby_radius: 3
-  units_per_city_pct: 120
+  units_per_city_pct: 110
   garrison: alien_hive_guard
   spawn_weights: {alien_drone: 3, alien_warrior: 4, alien_spitter: 2, alien_brute: 3, alien_titan: 1}
 
 fortress:
   status: placeholder
   note: Alien city strength gets base_strength (+ wall techs), then a hardening percent of
-    per_lost_city_pct per city lost since the start plus per_interval_pct every interval_turns,
-    capped (DESIGN.md 9, "harden into fewer, stronger fortresses"; designer, "as time goes on").
+    per_lost_share_pct of the share of starting cities lost, plus per_interval_pct every
+    interval_turns, capped (DESIGN.md 9, "harden into fewer, stronger fortresses"; designer, "as
+    time goes on"). Scaling by share, not count, keeps the last cities of a small invasion hard.
   base_strength: 4
-  per_lost_city_pct: 2
+  per_lost_share_pct: 80
   interval_turns: 20
   per_interval_pct: 5
-  cap_pct: 50
+  cap_pct: 80
 
 reinforcements:
   status: placeholder

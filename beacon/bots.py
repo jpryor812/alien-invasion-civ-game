@@ -41,6 +41,7 @@ class Bot:
         self.state, self.cfg, self.pid, self._submit = state, cfg, pid, submit
         self.view = PlayerView(state, cfg, pid)
         self.w, self.h = state.width, state.height
+        self._frontier_cache: list[int] | None = None
 
     # -- helpers ---------------------------------------------------------------------------
 
@@ -255,32 +256,32 @@ class Bot:
         if self.alive(unit) and unit.tile == target and unit.moves_left > 0:
             self.submit(RefoundCity(player=self.pid, unit=unit.id))
 
-    def explorer(self, unit: Unit) -> None:
-        start = unit.tile
-        seen = {start}
-        frontier = [start]
-        attempts = self.cfg.bot("explore.attempts")
-        while frontier and attempts > 0:
-            frontier.sort(key=lambda t: (self.dist(start, t), t))
-            nxt: list[int] = []
-            for t in frontier:
-                tile = self.remembered(t)
-                if tile is None:
-                    continue
-                if t != start and any(
+    def _frontier(self) -> list[int]:
+        """Explored passable land hexes next to unexplored ones (computed once per turn)."""
+        if self._frontier_cache is None:
+            out = []
+            for t in self.view.explored_tiles():
+                tile = self.state.tiles[t]
+                if is_passable_land(self.cfg, tile) and any(
                     not self.view.is_explored(n) for n in hexgrid.neighbours(t, self.w, self.h)
                 ):
-                    if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
-                        return
-                    attempts -= 1
-                    if attempts <= 0:
-                        break
-                for n in hexgrid.neighbours(t, self.w, self.h):
-                    nt = self.remembered(n)
-                    if n not in seen and nt is not None and is_passable_land(self.cfg, nt):
-                        seen.add(n)
-                        nxt.append(n)
-            frontier = nxt
+                    out.append(t)
+            self._frontier_cache = out
+        return self._frontier_cache
+
+    def explorer(self, unit: Unit) -> None:
+        cont = self.state.tiles[unit.tile].continent
+        options = sorted(
+            (
+                t
+                for t in self._frontier()
+                if t != unit.tile and self.state.tiles[t].continent == cont
+            ),
+            key=lambda t: (self.dist(unit.tile, t), t),
+        )
+        for t in options[: self.cfg.bot("explore.attempts")]:
+            if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
+                return
         self.submit(Fortify(player=self.pid, unit=unit.id))
 
     # -- military --------------------------------------------------------------------------
@@ -308,10 +309,7 @@ class Bot:
                 )
                 good_trade = dealt * 100 >= ratio * max(1, taken)
                 if not (
-                    taken == 0
-                    or dealt >= city.hp
-                    or good_trade
-                    or (weak and taken * 2 < unit.hp)
+                    taken == 0 or dealt >= city.hp or good_trade or (weak and taken * 2 < unit.hp)
                 ):
                     continue
             elif dealt * 100 < ratio * max(1, taken):

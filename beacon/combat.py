@@ -136,8 +136,12 @@ def hardening_pct(state: GameState, cfg: Config) -> int:
     """Alien cities harden as they lose cities and as time passes (DESIGN.md 9)."""
     f = cfg.alien("fortress")
     held = sum(1 for c in state.cities if c.status == OVERRUN)
-    lost = max(0, state.aliens.start_cities - held)
-    pct = lost * f["per_lost_city_pct"] + state.turn // f["interval_turns"] * f["per_interval_pct"]
+    start = state.aliens.start_cities
+    lost_share = max(0, start - held) * 100 // start if start else 0
+    pct = (
+        lost_share * f["per_lost_share_pct"] // 100
+        + state.turn // f["interval_turns"] * f["per_interval_pct"]
+    )
     return min(f["cap_pct"], pct)
 
 

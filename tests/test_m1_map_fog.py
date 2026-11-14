@@ -12,7 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-GOLDEN_MAP_SEED_1 = "1ebdb2b5797d0320aaf6d23b4d06466e5424ba971feb37b4d5c5ccdda024e205"
+# Last change: M4 assigns lost-city states by exact quota per continent.
+GOLDEN_MAP_SEED_1 = "00f26dfcd0d0a3961dda32fd58619cebff152f6c8e7edfa380dcdf2075ec0c8d"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")

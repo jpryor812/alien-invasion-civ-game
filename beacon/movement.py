@@ -101,6 +101,7 @@ def find_path(
     best: dict[int, tuple[int, int]] = {unit.tile: start}
     prev: dict[int, int] = {}
     heap = [(start[0], start[1], unit.tile)]
+    blocked: dict[int, bool] = {}  # each hex is checked once per search
     while heap:
         turns, used, tile = heapq.heappop(heap)
         if (turns, used) > best.get(tile, (turns, used)):
@@ -114,8 +115,11 @@ def find_path(
         if max_turns is not None and turns > max_turns:
             continue
         for nxt in hexgrid.neighbours(tile, w, h):
-            if nxt != target and _blocked(state, cfg, unit, nxt, occ, seen, avoid_friends):
-                continue
+            if nxt != target:
+                if nxt not in blocked:
+                    blocked[nxt] = _blocked(state, cfg, unit, nxt, occ, seen, avoid_friends)
+                if blocked[nxt]:
+                    continue
             if nxt == target and not domain_allows(state, cfg, unit.type, unit.owner, nxt):
                 continue
             cost = step_cost(state, cfg, tile, nxt)

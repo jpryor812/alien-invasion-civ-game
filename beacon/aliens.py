@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import combat, hexgrid, rng
+from beacon import combat, fog, hexgrid, rng
 from beacon.cities import alien_effect, max_hp
 from beacon.config import Config
 from beacon.liberation import update_fallen
@@ -286,6 +286,7 @@ def pillage(state: GameState, cfg: Config, unit: Unit) -> Events:
     owner = tile.built_by
     if tile.improvement is None and tile.route is None:
         tile.built_by = None
+        fog.touch_built(state)
     unit.moves_left = 0
     unit.acted = True
     return [_ev(state, "pillaged", unit=unit.id, tile=unit.tile, lost=lost, owner=owner)]

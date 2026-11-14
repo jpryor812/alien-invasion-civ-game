@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import tech
+from beacon import fog, tech
 from beacon.config import Config
 from beacon.state import GameState, Job, Unit
 from beacon.tiles import is_passable_land
@@ -68,6 +68,7 @@ def progress_jobs(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any
         else:
             tile.improvement = imp
         tile.built_by = pid
+        fog.touch_built(state)
         unit.job = None
         unit.order = "none"
         events.append(

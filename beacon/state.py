@@ -155,7 +155,7 @@ class GameState:
         return sorted(self.units.values(), key=lambda u: u.id)
 
     def units_at(self, tile: int) -> list[Unit]:
-        return [u for u in self.sorted_units() if u.tile == tile]
+        return sorted((u for u in self.units.values() if u.tile == tile), key=lambda u: u.id)
 
     def city_at(self, tile: int) -> City | None:
         # Cities never move and are never deleted, so a tile index (outside the dataclass

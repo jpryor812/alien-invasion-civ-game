@@ -158,3 +158,56 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   holds no cities.
 - Several tier 3-4 techs unlock nothing yet (automated_markets, post_scarcity, nanofabrication,
   global_logistics); they get effects with trade (M6) and the beacon tree (M5).
+
+## M4: the aliens
+
+- **Alien state** (`GameState.aliens`): progress toward the next alien tech, techs, reinforcement
+  store, surge cooldown, starting city count, and one standing order per alien unit.
+- **Tipping point**: progress per turn = max(8, 2 + 1 per alien city + 20% of alien population).
+  Eight alien techs (walls, spitters, mines, growth, regeneration, brutes, stronger walls,
+  titans) are bought in a fixed order.
+- **Alien cities** work no tiles. They grow on their own food rule (cap 6 + techs) and make
+  production from population; they rebuild a missing garrison first, then spawn units by weight.
+  The aliens field at most 110% of their city count in units (reinforcements and surges ignore
+  the cap). Without a cap they built 800 units and swept every continent by turn 30.
+- **Fortresses**: alien cities get +4 strength (+ wall techs) and a hardening bonus of 80% of
+  the share of starting cities lost plus 5% per 20 turns, capped at 80%. Scaling by share rather
+  than count keeps the last cities of every invasion hard to take.
+- **No healing under siege** (both sides): a city that took damage this turn does not heal at
+  turn end. Without it, a city's 20 HP per turn healing out-paced early sieges.
+- **Reinforcements**: one store point per turn; every 15 turns a warrior and a drone land beside a
+  seeded alien city (or on open land if none remain). Never stopped until the M7 barrage.
+- **Director**: aliens see the whole map (designer). Each unit holds an order: siege (weight 6),
+  raid (2) or patrol (3), with a seeded choice and targets. Siege targets score on population,
+  capital and recent liberation minus defence and distance; units gather within 3 hexes and
+  attack once nearby alien strength reaches 100% of the city's defence. Raids pillage
+  player-built improvements first, then routes. Patrols roam to seeded hexes within 6, which
+  produces the designer's shock encounters. Any unit attacks a neighbour when the trade is good
+  (or it can kill), garrisons never leave their city, and units refill empty alien cities nearby.
+  No sieges or raids in the first 8 turns.
+- **Melee units capture lone civilians** (both sides): attacking a hex holding only enemy
+  civilians destroys them and moves in, with no combat.
+- **Lost-city decay**: each unreached dormant or empty city falls with chance 0.1% per 25 turns
+  elapsed (cap 0.4% per turn), never with a player military unit within 2 hexes. It gets a hive
+  guard. Distance to alien cities no longer matters (it made decay the main source of alien
+  cities).
+- **Lost-city states by quota** (changes M1): each continent's 16 lost cities are split exactly
+  40/25/35 (dormant/empty/overrun), then shuffled with the seed, so every game starts with 36
+  alien cities. Independent rolls gave 20 to 46, the largest source of balance spread.
+- **Captured player cities** keep half their population, lose their queue, and record which
+  players had units nearby. If the capital falls, the largest remaining city becomes capital.
+- **Fallen continents** (designer): fallen when the player holds no cities, revived when they
+  hold one again; tracked on the player (`fallen`, `times_fallen`).
+- **Surges**: when aliens hold under 40% of their starting cities, or one player has liberated 4
+  more cities than average, 3 of the strongest unlocked units land 3 hexes from that player's
+  farthest city; 15-turn cooldown.
+- **Engine fix**: a move whose leg would end on a friendly-occupied hex now reroutes around
+  friendly units instead of failing (it left armies stuck for turns).
+- **Starting armies** raised to 3 infantry and 2 artillery; infantry costs 60 and artillery 90.
+- **Test bot**: garrisons the capital and cities within 6 hexes of known aliens; cities bombard;
+  units hunt aliens near own cities, shell alien cities and assault them on a good trade; idle
+  soldiers explore; two scouts and two restoration teams.
+- **Performance**: caches for city lookup, tuning values and player-built hexes (rebuilt when
+  improvements change), and per-search hex checks. A 100-turn game takes 3.5-5.4 s.
+- **Balance gate**: 2 of 3 bands met, the alien-share band at 13/20 instead of 15/20. See
+  `docs/BALANCE_M4.md`.

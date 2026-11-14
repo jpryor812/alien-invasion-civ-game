@@ -247,6 +247,17 @@ def _assign_work_areas(w: World) -> None:
         w.tiles[t].city = city_id
 
 
+def _lost_quota(states: list[str], weights: list[int], n: int) -> list[str]:
+    """Exactly n lost-city states in proportion to the weights (largest remainder), so every
+    continent starts with about the same alien share."""
+    total = sum(weights)
+    counts = [n * wt // total for wt in weights]
+    remainders = sorted(range(len(states)), key=lambda i: (-(n * weights[i] % total), states[i]))
+    for i in remainders[: n - sum(counts)]:
+        counts[i] += 1
+    return [s for s, c in zip(states, counts, strict=True) for _ in range(c)]
+
+
 def _make_cities(w: World, cid: str, sites: list[int]) -> None:
     cfg = w.cfg
     names = cfg.continents[cid]["cities"]
@@ -256,11 +267,13 @@ def _make_cities(w: World, cid: str, sites: list[int]) -> None:
     states = sorted(lost)
     r = rng.stream(w.seed, "cities", cid)
     start_buildings = cfg.t("cities.start_buildings")
+    lost_states = _lost_quota(states, [lost[s] for s in states], max(0, len(sites) - known_n))
+    r.shuffle(lost_states)
     for k, tile in enumerate(sites):
         if k < known_n:
             status, role = ACTIVE, ("capital" if k == 0 else "known")
         else:
-            status = rng.weighted_choice(r, states, [lost[s] for s in states])
+            status = lost_states[k - known_n]
             role = status
         city = City(
             id=len(w.cities),

@@ -73,8 +73,8 @@ The tree is fixed in v1, so its order is predictable; a seeded order is an optio
   techs) and spends it on the best unlocked unit when it has room. A garrison is always rebuilt
   first.
 - **Fortresses** (DESIGN.md 9, "as they shrink they harden"): every alien city gains strength
-  percent per city the aliens have lost since the start and per elapsed interval of turns, up to
-  a cap.
+  percent by the share of starting cities lost and per elapsed interval of turns, up to a cap.
+  The aliens' unit count is capped relative to the cities they hold.
 - **Reinforcements** (DESIGN.md 9 and 11): the mothership fills `reinforcement_store` each turn.
   When full, a group lands at a seeded alien city (or, with none left on a continent, on open
   land at least `landing_distance` from player cities). Reinforcements never stop in M4; the
@@ -169,6 +169,11 @@ threatened city on its own continent. It remains a test driver, not the M6 AI.
   - aliens take at least one player city in at least 15 of 20 seeds;
   - no more than 2 of 20 seeds end with every continent fallen.
 - Performance: a 100-turn game stays under 12 s on this machine.
+
+## Outcome (2026-11-13)
+
+Built. Balance gate partly met: captures and all-fallen bands pass; the alien-share band is
+13/20 seeds instead of 15/20 (mean 39%). Details and tuning history in `docs/BALANCE_M4.md`.
 
 ## Out of scope for M4
 

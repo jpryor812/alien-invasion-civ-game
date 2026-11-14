@@ -32,11 +32,28 @@ def visible_tiles(state: GameState, cfg: Config, pid: str) -> set[int]:
     for city in state.cities:
         if city.owner == pid:
             seen.update(hexgrid.within(city.tile, city_vision(cfg, city.buildings), w, h))
-    for i, tile in enumerate(state.tiles):
-        if tile.built_by == pid:
-            radius = cfg.improvements[tile.improvement].get("vision", 0) if tile.improvement else 0
-            seen.update(hexgrid.within(i, radius, w, h) if radius else (i,))
+    for i in built_tiles(state).get(pid, ()):
+        tile = state.tiles[i]
+        radius = cfg.improvements[tile.improvement].get("vision", 0) if tile.improvement else 0
+        seen.update(hexgrid.within(i, radius, w, h) if radius else (i,))
     return seen
+
+
+def built_tiles(state: GameState) -> dict[str, list[int]]:
+    """Hexes each player has built on. Cached outside the dataclass fields (never serialised);
+    anything that changes `Tile.built_by` must call `touch_built`."""
+    cache = state.__dict__.get("_built_tiles")
+    if cache is None:
+        cache = {}
+        for i, tile in enumerate(state.tiles):
+            if tile.built_by is not None:
+                cache.setdefault(tile.built_by, []).append(i)
+        state.__dict__["_built_tiles"] = cache
+    return cache
+
+
+def touch_built(state: GameState) -> None:
+    state.__dict__.pop("_built_tiles", None)
 
 
 def remember(state: GameState, pid: str, tiles: set[int] | list[int]) -> None:

@@ -85,7 +85,8 @@ cities:
     note: Tiles a city can work (19 at radius 2). Civ V uses 3; 2 suits 20 cities per continent.
   lost_state_weights:
     status: placeholder
-    note: Relative weights for the starting state of each unknown city.
+    note: Shares of each continent's unknown cities in each starting state (exact quota, then a
+      seeded shuffle of which city gets which state).
     dormant: 40
     empty: 25
     overrun: 35
