@@ -253,6 +253,8 @@ class Session:
             if t.get("improvement"):
                 t["yields"] = _tile_yields(cfg, s.tiles[int(key)])  # what the tile gives a city
         for unit in v["units"]:
+            if unit["owner"] == me and str(unit["id"]) in s.units:
+                unit["promotion"] = self._promotion_info(s.units[str(unit["id"])])
             spec = cfg.units[unit["type"]]
             unit["max_hp"] = cfg.t("combat.unit_max_hp") * unit["count"]
             unit["full_moves"] = spec["moves"] * cfg.t("movement.scale")
@@ -342,6 +344,22 @@ class Session:
             ),
             "ships": ships,
             "spec": cfg.units[unit.type],
+            "promotion": self._promotion_info(unit),
+        }
+
+    def _promotion_info(self, unit) -> dict[str, Any]:
+        from beacon import promotions
+
+        cfg = self.cfg
+        raw = cfg.raw["tuning"]["promotions"]["options"]
+        return {
+            "xp": unit.xp,
+            "next": promotions.next_threshold(cfg, unit.xp),
+            "due": promotions.due(cfg, unit),
+            "taken": list(unit.promotions),
+            "options": [
+                {"id": o, "note": raw[o].get("note", "")} for o in promotions.options(cfg, unit)
+            ],
         }
 
     def _build_info(self, tile_index: int, imp: str) -> dict[str, Any]:
@@ -383,9 +401,10 @@ class Session:
             "tile": c.tile,
             "seats": c.seats,
             "improvement": s.tiles[c.tile].improvement if on_tile else None,
+            # hundredths, so the client can show +1.5
             "bonus": citizens.tile_bonus(cfg, c)
             if on_tile
-            else citizens.council_bonus(cfg, c)
+            else {y: v * 100 for y, v in citizens.council_bonus(cfg, c).items()}
             if c.seats
             else {},
             "military": citizens.council_military(cfg, c) if c.seats else 0,

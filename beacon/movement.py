@@ -246,6 +246,8 @@ def merge(state: GameState, cfg: Config, unit: Unit, into: Unit, path: list[int]
         events.extend(_enter(state, cfg, unit, tile))
     into.count = 2
     into.hp += unit.hp
+    if unit.xp > into.xp:  # the stack keeps the veteran's experience and promotions
+        into.xp, into.promotions = unit.xp, list(unit.promotions)
     into.moves_left = min(into.moves_left, moves)
     into.attacks_left = min(into.attacks_left, unit.attacks_left)
     into.fortified = False
@@ -282,6 +284,7 @@ def split(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     mover.hp = full_hp
     mover.moves_left = unit.moves_left
     mover.attacks_left = unit.attacks_left
+    mover.xp, mover.promotions = unit.xp, list(unit.promotions)  # both keep the stack's record
     unit.count = 1
     unit.hp -= full_hp
     unit.fortified = False

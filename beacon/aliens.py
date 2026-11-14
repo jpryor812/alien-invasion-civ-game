@@ -402,6 +402,48 @@ class Director:
             options
         )
 
+    def hunt_target(self, unit: Unit) -> int | None:
+        """A lone player unit outside cities to pick off, weakest first (stored as its id)."""
+        cont = self.continent(unit.tile)
+        best = None
+        for u in self.state.units.values():
+            if u.owner not in self.state.players or self.state.city_at(u.tile) is not None:
+                continue
+            if self.continent(u.tile) != cont:
+                continue
+            d = self.dist(unit.tile, u.tile)
+            if d > self.d["hunt_radius"]:
+                continue
+            weak = combat.unit_strength(self.state, self.cfg, u, ranged=False, defending=True).total
+            key = (weak, d, u.id)
+            if best is None or key < best[0]:
+                best = (key, u.id)
+        return None if best is None else best[1]
+
+    def gather_cohort(self, leader: Unit, target: int) -> None:
+        """Nearby aliens without a siege join the leader's siege (a cohort of seeded size)."""
+        r = rng.stream(self.state.seed, "events", self.state.turn, "cohort", leader.id)
+        size = r.randint(self.d["cohort_min"], self.d["cohort_max"])
+        orders = self.state.aliens.orders
+        near = sorted(
+            (
+                u
+                for u in self.state.units.values()
+                if u.owner == ALIENS
+                and u.id != leader.id
+                and not is_civilian(self.cfg, u.type)
+                and self.dist(u.tile, leader.tile) <= self.d["cohort_radius"]
+                and not (
+                    self.state.city_at(u.tile) is not None
+                    and _military_on(self.state, self.cfg, u.tile) is u
+                )
+                and (str(u.id) not in orders or orders[str(u.id)].kind != "siege")
+            ),
+            key=lambda u: (self.dist(u.tile, leader.tile), u.id),
+        )
+        for u in near[: size - 1]:
+            orders[str(u.id)] = AlienOrder(kind="siege", target=target)
+
     def order_for(self, unit: Unit) -> AlienOrder | None:
         orders = self.state.aliens.orders
         current = orders.get(str(unit.id))
@@ -410,6 +452,8 @@ class Director:
         kinds = sorted(self.d["weights"])
         if self.state.turn < self.d["grace_turns"]:
             kinds = ["patrol"]
+        elif self.state.turn < self.d["city_grace_turns"]:
+            kinds = [k for k in kinds if k != "siege"]  # warm-up: no attacks on player cities
         r = rng.stream(self.state.seed, "events", self.state.turn, "order", unit.id)
         for _ in range(len(kinds)):
             kind = rng.weighted_choice(r, kinds, [self.d["weights"][k] for k in kinds])
@@ -417,9 +461,12 @@ class Director:
                 "siege": self.siege_target,
                 "raid": self.raid_target,
                 "patrol": self.patrol_target,
+                "hunt": self.hunt_target,
             }[kind](unit)
             if target is not None:
                 orders[str(unit.id)] = AlienOrder(kind=kind, target=target)
+                if kind == "siege":
+                    self.gather_cohort(unit, target)
                 return orders[str(unit.id)]
         orders.pop(str(unit.id), None)
         return None
@@ -431,6 +478,13 @@ class Director:
             return city is not None and city.status == ACTIVE and city.owner in self.state.players
         if order.kind == "raid":
             return tile.built_by in self.state.players and bool(tile.route or tile.improvement)
+        if order.kind == "hunt":
+            prey = self.state.units.get(str(order.target))
+            return (
+                prey is not None
+                and self.state.city_at(prey.tile) is None
+                and self.dist(unit.tile, prey.tile) <= 2 * self.d["hunt_radius"]
+            )
         return unit.tile != order.target
 
     # -- acting ----------------------------------------------------------------------------
@@ -538,6 +592,15 @@ class Director:
             stop = 1 if ready else self.d["gather_radius"] - 1
             if self.dist(unit.tile, city.tile) > stop:
                 self.move_toward(unit, city.tile, stop_at=stop)
+            return
+        if order.kind == "hunt":
+            prey = self.state.units[str(order.target)]
+            if self.dist(unit.tile, prey.tile) <= max(1, self.cfg.units[unit.type]["range"]):
+                if self.favourable(unit, prey.tile, allow_city=False) is not None:
+                    self.attack(unit, prey.tile)
+                return
+            if not self.move_toward(unit, prey.tile, stop_at=1):
+                self.state.aliens.orders.pop(str(unit.id), None)
             return
         if order.kind == "raid":
             if unit.tile == order.target:

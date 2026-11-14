@@ -142,9 +142,11 @@ def food_eaten(state: GameState, cfg: Config, city: City) -> int:
 
 
 def tile_bonus(cfg: Config, c: Citizen) -> dict[str, int]:
+    """What a citizen adds on a tile, in hundredths (half of +3 is 150: +1.5, not rounded; the
+    city carries the fraction from turn to turn)."""
     rate = trait(cfg, c, "tile_rate_pct", cfg.t("citizens.tile_rate_pct"))
-    out = {y: c.stats.get(y, 0) * rate // 100 for y in YIELDS}
-    out["beacon"] += trait(cfg, c, "beacon_flat", 0)
+    out = {y: c.stats.get(y, 0) * rate for y in YIELDS}
+    out["beacon"] += trait(cfg, c, "beacon_flat", 0) * 100
     return out
 
 
@@ -208,7 +210,7 @@ def _free_seat(cfg: Config, used: dict[str, int], c: Citizen) -> str | None:
 def tile_score(state: GameState, cfg: Config, city: City, c: Citizen, t: int) -> int:
     weights = cfg.t("economy.focus_weights")[city.focus]
     ty, bonus = tile_yields(cfg, state.tiles[t]), tile_bonus(cfg, c)
-    return sum(weights[y] * (ty[y] + bonus[y]) for y in YIELDS)
+    return sum(weights[y] * (ty[y] * 100 + bonus[y]) for y in YIELDS)
 
 
 def assign(state: GameState, cfg: Config, pid: str) -> None:
@@ -243,12 +245,12 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
                 c.tile = int(c.job[5:])
                 free.discard(c.tile)
         # Auto workers keep the city fed first (like Civ's governor), then follow its focus.
-        food = base_food(state, cfg, city) + sum(
-            tile_yields(cfg, state.tiles[c.tile])["food"] + tile_bonus(cfg, c)["food"]
+        food = base_food(state, cfg, city) * 100 + sum(
+            tile_yields(cfg, state.tiles[c.tile])["food"] * 100 + tile_bonus(cfg, c)["food"]
             for c in workers
             if c.tile is not None
-        )
-        eaten = food_eaten(state, cfg, city)
+        )  # hundredths
+        eaten = food_eaten(state, cfg, city) * 100
         for c in workers:
             if c.job != "auto" or c.tile is not None:
                 continue
@@ -268,7 +270,7 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
                 best = max(free, key=lambda t: (tile_score(state, cfg, city, c, t), -t))
             c.tile = best
             free.discard(best)
-            food += tile_yields(cfg, state.tiles[best])["food"] + tile_bonus(cfg, c)["food"]
+            food += tile_yields(cfg, state.tiles[best])["food"] * 100 + tile_bonus(cfg, c)["food"]
     for c in sorted(spare, key=lambda x: x.id):
         seat = _free_seat(cfg, used, c)
         if seat is not None:
@@ -312,12 +314,15 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
 
 def city_lines(
     state: GameState, cfg: Config, city: City
-) -> tuple[list[int], list[tuple[str, str, int]]]:
-    """(worked tiles, yield lines) from this city's citizens."""
+) -> tuple[list[int], list[tuple[str, str, int]], dict[str, int]]:
+    """(worked tiles, yield lines, fractions) from this city's citizens. Citizens' half stats on
+    tiles are summed in hundredths; the whole part is a line and the rest (0-99) is returned for
+    the city to carry to the next turn."""
     occ = occupancy(state)
     lines: list[tuple[str, str, int]] = []
     worked: list[int] = []
     tiles_sum = dict.fromkeys(YIELDS, 0)
+    halves = dict.fromkeys(YIELDS, 0)
     for c in of_city(state, city.id):
         if c.tile is not None:
             if any(hostile(u.owner, city.owner or "") for u in occ.get(c.tile, [])):
@@ -326,13 +331,14 @@ def city_lines(
             for y, v in tile_yields(cfg, state.tiles[c.tile]).items():
                 tiles_sum[y] += v
             for y, v in tile_bonus(cfg, c).items():
-                if v:
-                    lines.append((f"citizen:{c.name} (tile)", y, v))
+                halves[y] += v
         elif c.seats:
             for y, v in council_bonus(cfg, c).items():
                 if v:
                     lines.append((f"citizen:{c.name} (council)", y, v))
     for y in YIELDS:
+        if halves[y] >= 100:
+            lines.insert(0, ("citizens_on_tiles", y, halves[y] // 100))
         if tiles_sum[y]:
             lines.insert(0, ("worked_tiles", y, tiles_sum[y]))
-    return sorted(worked), lines
+    return sorted(worked), lines, {y: halves[y] % 100 for y in YIELDS}

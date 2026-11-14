@@ -301,6 +301,7 @@ class AIPlayer(Bot):
 
     def play(self) -> None:
         self.respond()
+        self.promote()
         self.research()
         self.ensure_port()
         self.production()

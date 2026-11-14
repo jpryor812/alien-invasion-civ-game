@@ -49,6 +49,7 @@ def test_strikes_damage_and_favour_the_barrage_host():
         }
     )
     s = arena(cfg)
+    s.turn = cfg.alien("director.city_grace_turns")  # no strikes on player cities before turn 25
     host = add_city(s, cfg, at(3, 3), ACTIVE, EU, pop=8)
     host.connected = True
     add_city(s, cfg, at(10, 6), ACTIVE, EU, pop=8)

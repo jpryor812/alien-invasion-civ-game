@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from beacon import hexgrid, rng
+from beacon import hexgrid, promotions, rng
 from beacon.cities import alien_effect
 from beacon.config import Config
 from beacon.liberation import credit, liberate, overrun
@@ -61,6 +61,9 @@ def unit_strength(
             mods.append(("fortified", cfg.t("combat.fortify_pct")))
     if unit.owner in state.players:
         mods.extend(council_lines(state, unit.owner, "military"))
+    promo = promotions.strength_pct(cfg, unit, defending)
+    if promo:
+        mods.append(("promotions", promo))
     if not defending and not ranged and target is not None:
         flankers = 0
         for n in hexgrid.neighbours(target, state.width, state.height):
@@ -392,6 +395,9 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     unit.acted = True
     if unit.order == "fortify":
         unit.order = "none"
+    promotions.gain(state, unit)
+    if isinstance(defender, Unit):
+        promotions.gain(state, defender)
 
     events = [
         {
@@ -473,6 +479,7 @@ def city_attack(state: GameState, cfg: Config, city: City, target: int) -> Event
             "damage_to_defender": dmg,
         }
     ]
+    promotions.gain(state, defender)
     events.extend(damage_unit(state, cfg, defender, dmg, owner))
     return events
 

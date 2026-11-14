@@ -65,11 +65,11 @@ def test_tile_gives_half_and_council_gives_full(cfg):
     c.job = f"tile:{mine}"
     citizens.assign(s, cfg, EU)
     assert c.tile == mine
-    assert citizens.tile_bonus(cfg, c) == {
+    assert citizens.tile_bonus(cfg, c) == {  # hundredths: +2 gives +1, +3 would give +1.5
         "food": 0,
-        "production": 1,
-        "science": 1,
-        "gold": 1,
+        "production": 100,
+        "science": 100,
+        "gold": 100,
         "beacon": 0,
     }
     on_tile = economy.city_yields(s, cfg, city)
@@ -177,3 +177,77 @@ def test_whole_game_turns_with_citizens(cfg):
     for city in state.cities:
         if city.owner in state.players:
             assert len(citizens.of_city(state, city.id)) == city.pop
+
+
+def test_half_stats_are_not_rounded(cfg):
+    # +3 production on a tile is +1.5: the city gets +1 one turn and +2 the next
+    s = arena(cfg)
+    city = city_with_tiles(cfg, s, pop=1)
+    c = person(s, city, {"production": 3, "gold": 3})
+    c.job = f"tile:{east(city.tile)}"
+    citizens.assign(s, cfg, EU)
+    cy = economy.city_yields(s, cfg, city)
+    assert cy.fraction["production"] == 50
+    player = s.players[EU]
+    gold = []
+    for _ in range(2):
+        before = player.gold
+        economy.process_city(s, cfg, city, player)
+        gold.append(player.gold - before)
+    assert gold[1] - gold[0] == 1  # the two halves made a whole
+
+
+# -- promotions and alien raids (designer, 2026-11-14) -------------------------------------------
+
+
+def test_promotion_thresholds_double_then_grow_by_half(cfg):
+    from beacon import promotions
+
+    assert promotions.thresholds(cfg, 100) == [2, 4, 8, 16, 24, 36, 54, 81]
+    assert promotions.next_threshold(cfg, 16) == 24
+
+
+def test_combat_earns_experience_and_promotions_add_strength(cfg):
+    from beacon import combat, promotions
+    from beacon.commands import Attack, PromoteUnit
+
+    s = arena(cfg)
+    a = at(4, 4)
+    inf = create_unit(s, cfg, "infantry", EU, a)
+    alien = create_unit(s, cfg, "alien_hatchling", ALIENS, east(a))
+    alien.hp = 100
+    apply_command(s, cfg, Attack(player=EU, unit=inf.id, target=east(a)))
+    assert inf.xp == 1 and promotions.due(cfg, inf) == 0
+    inf.xp = 2  # a second combat, attacking or attacked
+    assert promotions.due(cfg, inf) == 1
+    assert {"kind": "unit_promotion", "unit": inf.id} in pending_decisions(s, cfg, EU)
+    before = combat.unit_strength(s, cfg, inf, ranged=False, defending=False).total
+    apply_command(s, cfg, PromoteUnit(player=EU, unit=inf.id, promotion="attack_10"))
+    after = combat.unit_strength(s, cfg, inf, ranged=False, defending=False).total
+    assert after == before * 110 // 100
+    with pytest.raises(CommandError, match="no promotion due"):
+        apply_command(s, cfg, PromoteUnit(player=EU, unit=inf.id, promotion="defence_10"))
+
+
+def test_aliens_leave_player_cities_alone_for_25_turns(cfg):
+    from beacon.runner import play
+
+    _, events, _ = play(cfg, seed=2, turns=40)
+    alien_types = {t for t, u in cfg.units.items() if u["faction"] == "alien"}
+    hits = [
+        e["turn"]
+        for e in events
+        if e["kind"] == "attack"
+        and e["attacker_type"] in alien_types
+        and e["defender_kind"] == "city"
+    ]
+    strikes = [e["turn"] for e in events if e["kind"] == "mothership_strike"]
+    grace = cfg.alien("director")["city_grace_turns"]
+    assert grace == 25
+    assert all(t >= grace for t in hits + strikes)
+    early_hunts = [
+        e
+        for e in events
+        if e["kind"] == "attack" and e["attacker_type"] in alien_types and e["turn"] < grace
+    ]
+    assert early_hunts  # but hunters pick off units in the field from early on

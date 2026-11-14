@@ -125,7 +125,7 @@ def test_capture_moves_the_capital_and_counts_the_loss(cfg):
 
 def test_director_besieges_a_weak_player_city(cfg):
     s = arena(cfg)
-    s.turn = cfg.alien("director.grace_turns")
+    s.turn = cfg.alien("director.city_grace_turns")  # no sieges before turn 25
     city = add_city(s, cfg, at(7, 5), ACTIVE, EU, pop=1)
     city.is_capital = True
     for tile in (at(4, 3), at(4, 5), at(4, 7)):

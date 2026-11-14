@@ -617,6 +617,10 @@ function drawBadge(u, x, y, r, R) {
     ctx.fillStyle = "#f2d38a"; ctx.beginPath(); ctx.arc(x + r * 0.82, y - r * 0.82, r * 0.38, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#1a1408"; ctx.font = `700 ${Math.max(7, Math.round(r * 0.45))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("2", x + r * 0.82, y - r * 0.8);
   }
+  if (u.promotions && u.promotions.length) {
+    ctx.fillStyle = "#f2d38a"; ctx.font = `700 ${Math.max(7, Math.round(r * 0.5))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("★".repeat(Math.min(3, u.promotions.length)), x, y + r + Math.max(6, r * 0.45));
+  }
   if (u.fortified) { ctx.strokeStyle = "#e6e2d6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3.5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); }
   const f = Math.max(0, Math.min(1, u.hp / (u.max_hp || 100)));
   if (f < 1) {
@@ -741,6 +745,7 @@ function describePending(p) {
     deal_received: "A deal is proposed to you",
     choose_espionage_tech: "Choose your alien technology",
     city_can_attack: `${cityName(p.city)} can attack an enemy`,
+    unit_promotion: `${unitLabel(p.unit)} can be promoted`,
   }[p.kind] || pretty(p.kind);
 }
 async function resolvePending(p) {
@@ -750,6 +755,11 @@ async function resolvePending(p) {
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
   if (p.kind === "deal_received") return openScreen("diplomacy");
   if (p.kind === "choose_espionage_tech") return openScreen("projects");
+  if (p.kind === "unit_promotion") {
+    const u = S.view.units.find((x) => x.id === p.unit);
+    if (u && S.view.unit_types[u.type]?.fixed) { const c = S.citiesByTile.get(u.tile); if (c) { centerOnTile(u.tile); return selectCity(c.id); } }
+    if (u) centerOnTile(u.tile); return selectUnit(p.unit);
+  }
   if (p.kind === "city_can_attack") {
     centerOnTile(S.view.cities[p.city].tile); await selectCity(p.city);
     S.targetMode = "bombard"; S.dirty = true; toast("Enemy near the city: click a red hex to fire, or Hold fire.");
@@ -762,6 +772,7 @@ function describeEvent(e) {
     citizen_born: () => `${e.name} was born in ${cityName(e.city)} (${statText(e.stats)}${e.traits.length ? `, ${e.traits.map(pretty).join(", ")}` : ""}).`,
     citizen_grew_up: () => `${e.name} of ${cityName(e.city)} has grown up and can work.`,
     citizen_job: () => "Citizen job changed.",
+    unit_promoted: () => `${unitLabel(e.unit)} promoted: ${promoName(e.promotion)}.`,
     building_completed: () => `${cityName(e.city)} built ${pretty(e.building)}.`,
     unit_completed: () => `${cityName(e.city)} trained ${pretty(e.type)}.`,
     tech_learned: () => `Learned ${pretty(e.tech)}.`,
@@ -821,7 +832,15 @@ function renderUnitPanel() {
     <div class="muted" style="font-size:12px">${spec.fixed ? (spec.no_attack ? "" : "Red hexes can be fired on (hover for the odds).") : "Click a highlighted hex to move; red hexes can be attacked (hover for the odds)."}</div>`;
   const a = $("uactions");
   const add = (label, fn, title = "") => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.onclick = fn; a.appendChild(b); };
-  if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }));
+  const pr = o.promotion;
+  if (spec.role !== "civilian") {
+    a.insertAdjacentHTML("beforebegin", `<div class="row muted">Experience ${pr.xp} · next promotion at ${pr.next}${pr.taken.length ? ` · ${pr.taken.map(promoName).join(", ")}` : ""}</div>`);
+    for (let k = 0; k < Math.min(1, pr.due); k++) for (const opt of pr.options) {
+      add(`Promote: ${promoName(opt.id)}`, () => send({ kind: "promote_unit", unit: u.id, promotion: opt.id }), opt.note);
+      a.lastChild.classList.add("primary");
+    }
+  }
+  if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defence; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
   add("Skip (S)", () => send({ kind: "skip_unit", unit: u.id }));
   for (const imp of o.builds) {
     const bi = o.build_info[imp];
@@ -877,12 +896,13 @@ function renderCityPanel() {
     <h3>Citizens</h3>
     <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
     <h3>Defences</h3>
-    <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP)`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
+    <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, experience ${u.promotion.xp}/${u.promotion.next}${u.promotion.taken.length ? `, ${u.promotion.taken.map(promoName).join(", ")}` : ""}` : ""})${u.promotion && u.promotion.due ? u.promotion.options.map((o) => ` <button class="small primary" data-promote="${u.id}" data-opt="${o.id}" title="${esc(o.note)}">Promote: ${promoName(o.id)}</button>`).join("") : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
     ${d.bombard.length ? `<div class="actions"><button id="bombard" class="primary">Attack with city…</button>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
   side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
+  side.querySelectorAll("[data-promote]").forEach((el) => el.onclick = () => send({ kind: "promote_unit", unit: Number(el.dataset.promote), promotion: el.dataset.opt }));
   side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = async () => {
     if (el.dataset.item === head) return;
     S.cityListOpen = false;
@@ -909,12 +929,12 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["city_can_attack", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
   choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
-  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack",
+  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack", unit_promotion: "Promote a unit",
 };
 function nextAction() {
   if (!S.view) return null;
@@ -1016,7 +1036,7 @@ function showTooltip(i, x, y) {
       }
       const w = S.view.worked && S.view.worked[i];
       if (w) {
-        const bs = Object.entries(w.bonus).filter(([, v]) => v).map(([k, v]) => `+${v} ${k}`).join(", ");
+        const bs = hundredthsText(w.bonus);
         html += `<br>Worked by <b>${esc(w.citizen)}</b> for ${esc(w.city)}${bs ? ` (adds ${bs})` : ""}`;
       } else if (t.improvement) html += '<br><span class="muted">Not worked: no grown citizen on it</span>';
       if (!t.visible) html += '<br><span class="muted">not currently seen</span>';
@@ -1436,6 +1456,10 @@ requestAnimationFrame(frame);
 showTitle();
 
 function statText(stats) { return Object.entries(stats).map(([k, v]) => `+${v} ${k}`).join(", "); }
+// bonuses in hundredths (citizens' half stats): 150 -> "+1.5 production"
+function hundredthsText(b) {
+  return Object.entries(b).filter(([, v]) => v).map(([k, v]) => `+${(v / 100).toFixed(2).replace(/\.?0+$/, "")} ${k}`).join(", ");
+}
 
 // One citizen in the city panel: stats, trait, growing up, and a job picker (Auto, Council, or one
 // of the city's improved tiles).
@@ -1444,10 +1468,12 @@ function citizenRow(p, d) {
   const traits = p.traits.map((t) => `<span class="trait" title="${esc(t.note)}">${esc(pretty(t.id))}</span>`).join("");
   let where;
   if (!p.adult) where = `<span class="muted">child · grows up in ${p.turns_to_grow} turns (${p.growth}/${p.growth_needed})</span>`;
-  else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}: ${statText(Object.fromEntries(Object.entries(p.bonus).filter(([, v]) => v))) || "no extra"} (half its stats)`;
-  else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${statText(Object.fromEntries(Object.entries(p.bonus).filter(([, v]) => v)))}${p.military ? `, +${p.military} city strength` : ""}`;
+  else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}: ${hundredthsText(p.bonus) || "no extra"} (half its stats)`;
+  else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${hundredthsText(p.bonus)}${p.military ? `, +${p.military} city strength` : ""}`;
   else where = '<span class="bad">idle: no improved tile or council seat free</span>';
   const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
   const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="council" ${p.job === "council" ? "selected" : ""}>Council</option>${tiles}</select>` : "";
   return `<div class="citizen"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div>`;
 }
+
+function promoName(id) { return { attack_10: "+10% attack", defence_10: "+10% defence" }[id] || pretty(id); }

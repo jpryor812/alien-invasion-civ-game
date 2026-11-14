@@ -250,5 +250,6 @@ def test_turns_advance_and_state_round_trips(cfg, game):
         advance_turn(game, cfg)
     assert game.turn == turns
     assert state_to_json(state_from_json(state_to_json(game))) == state_to_json(game)
-    built = sum("workshop" in c.buildings for c in game.cities if c.status == ACTIVE)
-    assert built == sum(1 for c in game.cities if c.status == ACTIVE)
+    # every connected city finished it (alien raiders may cut a road after turn 25)
+    linked = [c for c in game.cities if c.status == ACTIVE and c.connected]
+    assert linked and all("workshop" in c.buildings for c in linked)

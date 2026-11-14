@@ -102,6 +102,16 @@ class SetCitizenJob(Command):
 
 @register
 @dataclass(frozen=True)
+class PromoteUnit(Command):
+    """Spend a due promotion on one option (e.g. attack_10 or defence_10)."""
+
+    kind: ClassVar[str] = "promote_unit"
+    unit: int
+    promotion: str
+
+
+@register
+@dataclass(frozen=True)
 class HoldFire(Command):
     """The city will not fire this turn (answers the 'city can attack' alert)."""
 

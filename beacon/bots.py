@@ -11,7 +11,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from beacon import cities, combat, economy, hexgrid, improvements, movement, recruits, tech
+from beacon import (
+    cities,
+    combat,
+    economy,
+    hexgrid,
+    improvements,
+    movement,
+    promotions,
+    recruits,
+    tech,
+)
 from beacon.commands import (
     AcceptOffer,
     Attack,
@@ -24,6 +34,7 @@ from beacon.commands import (
     MergeUnits,
     MoveUnit,
     OfferRecruit,
+    PromoteUnit,
     RefoundCity,
     SeatRecruit,
     SetProduction,
@@ -577,7 +588,25 @@ class Bot:
         if target is not None and target != unit.tile:
             self.submit(MoveUnit(player=self.pid, unit=unit.id, target=target))
 
+    def promote(self) -> None:
+        """Ranged units and units sent to attack take attack; the rest alternate, defence first
+        for city guns."""
+        for unit in self.view.my_units():
+            while promotions.due(self.cfg, unit) > 0:
+                spec = self.cfg.units[unit.type]
+                n_att = unit.promotions.count("attack_10")
+                n_def = unit.promotions.count("defence_10")
+                if spec["role"] == "ranged" and not spec.get("fixed"):
+                    pick = "attack_10"
+                elif spec.get("fixed"):
+                    pick = "defence_10"
+                else:
+                    pick = "attack_10" if n_att <= n_def else "defence_10"
+                if not self.submit(PromoteUnit(player=self.pid, unit=unit.id, promotion=pick)):
+                    break
+
     def play(self) -> None:
+        self.promote()
         self.research()
         self.production()
         self.council()

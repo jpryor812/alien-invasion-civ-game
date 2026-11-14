@@ -20,6 +20,7 @@ from beacon import (
     improvements,
     liberation,
     movement,
+    promotions,
     recruits,
     tech,
 )
@@ -40,6 +41,7 @@ from beacon.commands import (
     MergeUnits,
     MoveUnit,
     OfferRecruit,
+    PromoteUnit,
     ProposeDeal,
     Purchase,
     RefoundCity,
@@ -237,6 +239,16 @@ def _citizen_job(state: GameState, cfg: Config, cmd: SetCitizenJob) -> Events:
         raise CommandError(problem)
     c.job = cmd.job
     return [{"kind": "citizen_job", "citizen": c.id, "job": cmd.job}]
+
+
+@handles(PromoteUnit)
+def _promote(state: GameState, cfg: Config, cmd: PromoteUnit) -> Events:
+    unit = own_unit(state, cmd.player, cmd.unit)
+    problem = promotions.promote_problem(state, cfg, unit, cmd.promotion)
+    if problem:
+        raise CommandError(problem)
+    unit.promotions.append(cmd.promotion)
+    return [{"kind": "unit_promoted", "unit": unit.id, "promotion": cmd.promotion}]
 
 
 @handles(HoldFire)
@@ -613,6 +625,9 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
             )
         ):
             out.append({"kind": "city_can_attack", "city": city.id})
+    for unit in state.sorted_units():
+        if unit.owner == pid and promotions.due(cfg, unit) > 0:
+            out.append({"kind": "unit_promotion", "unit": unit.id})
     for unit in state.sorted_units():
         if unit.owner == pid and unit.moves_left > 0 and unit.order == "none" and unit.job is None:
             out.append({"kind": "unit_needs_orders", "unit": unit.id})

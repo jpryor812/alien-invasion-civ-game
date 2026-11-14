@@ -373,3 +373,18 @@ citizens:
            Rae, Sol, Tam, Uma, Vic, Wes, Xan, Yui, Zed, Ama, Bo, Cyd, Dex, Eno, Fin, Gia, Hux,
            Ilo, Jem, Kai, Lux, Mo, Noe]
 
+promotions:
+  steps:
+    status: calibrated
+    note: Designer 2026-11-14 - every combat (attacking or attacked) is 1 experience. Promotions at
+      2, then doubling (4, 8, 16), then x1.5 each time (24, 36, 54, 81...).
+    first: 2
+    double_until: 16
+    then_pct: 150
+  options:
+    status: placeholder
+    note: Choices at each promotion. For now every unit has the same two (designer); add `units`
+      to an option to limit it to some unit types (unique benefits later). Percent bonuses add up.
+    attack_10: {note: +10% attack strength., attack_pct: 10}
+    defence_10: {note: +10% defence strength., defence_pct: 10}
+

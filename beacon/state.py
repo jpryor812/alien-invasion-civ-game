@@ -61,6 +61,7 @@ class City:
     damage_by: dict[str, int] = field(default_factory=dict)  # damage dealt to it, by player
     liberated_turn: int | None = None  # last turn players freed it (alien retake target)
     besieged: bool = False  # took damage this turn, so it does not heal at turn end
+    yield_carry: dict[str, int] = field(default_factory=dict)  # hundredths carried (citizens)
 
 
 @dataclass
@@ -83,6 +84,8 @@ class Unit:
     acted: bool = False  # moved, attacked or worked this turn (no healing)
     order: str = "none"  # none | fortify | skip | work
     job: Job | None = None
+    xp: int = 0  # combats fought (attacking or attacked); see beacon/promotions.py
+    promotions: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -202,8 +205,8 @@ class Offer:
 
 @dataclass
 class AlienOrder:
-    kind: str  # siege | raid | patrol
-    target: int  # tile
+    kind: str  # siege | raid | patrol | hunt
+    target: int  # tile (hunt: the hunted unit's id)
 
 
 @dataclass

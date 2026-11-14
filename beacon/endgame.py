@@ -150,6 +150,8 @@ def _fire_if_ready(state: GameState, cfg: Config) -> Events:
 def strikes(state: GameState, cfg: Config) -> Events:
     if not state.aliens.mothership_alive:
         return []
+    if state.turn < cfg.alien("director")["city_grace_turns"]:
+        return []  # no attacks on player cities while the world warms up (designer 2026-11-14)
     m = cfg.t("endgame.mothership")
     r = rng.stream(state.seed, "events", state.turn, "strike")
     if r.randrange(1000) >= m["strike_permille"]:

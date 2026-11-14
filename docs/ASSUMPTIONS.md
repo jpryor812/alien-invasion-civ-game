@@ -405,8 +405,10 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   grows up at 100 (about 5 turns well fed, 13 with no surplus; quick doubles it). Children eat but
   do not work.
 - **Working**: only improved tiles (farm, mine, extractor and the like; roads do not count) can
-  be worked, one citizen each; the tile gives its yield plus half the citizen's stats, rounded
-  down (so a +1 stat adds nothing on a tile). Military stats count only on the council.
+  be worked, one citizen each; the tile gives its yield plus half the citizen's stats, not
+  rounded (designer: +3 is +1.5). Yields are integers, so the city sums citizens' halves in
+  hundredths and carries the remainder to the next turn (+1.5 is +1, then +2). Military stats
+  count only on the council.
 - **Council**: the continent council (shared with alien recruits; 3 general and 2 per domain).
   A citizen there gives its full stats to its home city as flat yields, and military as city
   strength (2 per point). Recruits come first: auto citizens give up seats to them; only citizens
@@ -435,4 +437,28 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   longer. Softer hardening (3% per 20 turns, cap 60%) did not help (3/20), so it was reverted.
   Slowest game 128 s (citizens and the bigger war). Open for the designer: accept longer games or
   retune (fewer alien garrison units, stronger early artillery...).
+
+## Alien raids and unit promotions (designer, 2026-11-14)
+
+- **Warm-up**: no alien attack on a player city (siege or mothership strike) before turn 25
+  (`director.city_grace_turns`). Before turn 8 aliens only patrol; from turn 8 they also raid
+  improvements and hunt.
+- **Hunters**: a new order. A hunter picks the weakest player unit outside cities within 8 hexes
+  on its continent (scouts, engineers, stragglers) and stalks it, attacking when the odds favour
+  it.
+- **Cohorts**: a unit that starts a siege pulls 1-4 nearby aliens (a seeded cohort of 2-5) onto the
+  same city. Sieges weigh the city's defence (its strength plus nearby player units) twice as
+  heavily as before, so weakly defended, lightly garrisoned cities draw them; they still attack
+  only once the cohort's strength matches the defence.
+- **Experience**: each combat a player unit takes part in, attacking or attacked (city fire
+  included), gives 1 experience. Promotions fall due at 2, 4, 8, 16, then x1.5 (24, 36, 54, 81...).
+  Each promotion is a choice of +10% attack or +10% defence for now (data `promotions.options`,
+  ready for unit-specific options); bonuses add up. A due promotion shows in Needs attention and
+  on the action button. Aliens gain no experience.
+- **Stacks**: merging keeps the more experienced member's record; splitting copies it to both.
+- **AI choices**: ranged units take attack, city guns defence, others alternate (attack first).
+- **Balance after raids and promotions** (20 AI seeds to turn 200): 1/20 victories, 0 defeats,
+  no continent fell; players lost 0-6 cities each game to sieges after turn 25; 0-31 alien cities
+  left at turn 200 (median about 6). Still open for the designer (see the balance note above).
+  Slowest game 153 s.
 

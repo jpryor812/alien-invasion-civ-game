@@ -28,6 +28,7 @@ class CityYields:
     totals: dict[str, int]
     worked: list[int]
     food_eaten: int
+    fraction: dict[str, int]  # hundredths left over from citizens' half stats (see citizens.py)
 
     @property
     def surplus_food(self) -> int:
@@ -47,7 +48,7 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
 
     add("city_tile", tile_yields(cfg, state.tiles[city.tile]))
     add("city_centre", cfg.t("economy.city_center_yields"))
-    worked, people = citizens.city_lines(state, cfg, city)
+    worked, people, fraction = citizens.city_lines(state, cfg, city)
     lines.extend(people)
     add("population", {"science": city.pop * cfg.t("economy.science_per_pop_pct") // 100})
     for b in city.buildings:
@@ -69,6 +70,7 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
         totals=totals(lines),
         worked=worked,
         food_eaten=citizens.food_eaten(state, cfg, city),
+        fraction=fraction,
     )
 
 
@@ -238,6 +240,12 @@ def process_city(
     points to `player` and returns (events, science) for the caller to settle research."""
     events: list[dict[str, Any]] = []
     cy = city_yields(state, cfg, city)
+    # carry fractions of citizens' half stats (+1.5 is +1 one turn and +2 the next)
+    for y, v in cy.fraction.items():
+        carry = city.yield_carry.get(y, 0) + v
+        if carry >= 100:
+            cy.totals[y] += carry // 100
+        city.yield_carry[y] = carry % 100
 
     # growth: food brings births, and children grow up faster in a well-fed city
     events.extend(citizens.grow(state, cfg, city, cy.surplus_food))
