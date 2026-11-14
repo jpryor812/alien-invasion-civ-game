@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: every lost city alien-held; starting cities get improved tiles (designer).
-GOLDEN_MAP_SEED_1 = "f9b2f92084a812e9d895699cd3aadcad0fe2e3d66bf13413bb0dbe6b564ea6b5"
+# Last change: no starting improvements; tiles gain turret fields (designer).
+GOLDEN_MAP_SEED_1 = "519adfadc27ced4a1f6cf8dd2efacf1aee7858bb047573fa1d575e5624aaa5f2"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
@@ -120,8 +120,15 @@ def test_starting_units_near_capital(cfg, world):
         mine = [u for u in world.units.values() if u.owner == pid]
         field = [u for u in mine if not cfg.units[u.type].get("fixed")]
         fixed = [u for u in mine if cfg.units[u.type].get("fixed")]
-        assert len(field) == expected
-        assert all(hexgrid.distance(u.tile, capital.tile, world.width) <= radius for u in field)
+        others = [c for c in world.cities if c.owner == pid and not c.is_capital]
+        per_city = sum(e["count"] for e in cfg.t("start.other_cities.list"))
+        assert len(field) == expected + per_city * len(others)
+        # the capital's army is at the capital; each other city has its own infantry and engineer
+        for c in [capital, *others]:
+            near = [u for u in field if hexgrid.distance(u.tile, c.tile, world.width) <= radius]
+            assert {"infantry", "engineers"} <= {u.type for u in near}, c.name
+        # no farms or mines at the start: engineers build them (designer 2026-11-14)
+        assert not any(t.improvement for t in world.tiles)
         # every starting city holds its city defence units, on the city tile (they never move)
         owned = [c for c in world.cities if c.owner == pid]
         assert len(fixed) == len(owned) * len(cfg.t("start.city_units.list"))

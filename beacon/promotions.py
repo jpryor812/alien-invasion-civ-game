@@ -55,13 +55,42 @@ def promote_problem(state: GameState, cfg: Config, unit: Unit, choice: str) -> s
     return None
 
 
+GOLD_UPGRADE = "gold_upgrade"
+
+
 def strength_pct(cfg: Config, unit: Unit, defending: bool) -> int:
     key = "defence_pct" if defending else "attack_pct"
     opts = cfg.t("promotions.options")
-    return sum(opts[p].get(key, 0) for p in unit.promotions if p in opts)
+    pct = sum(opts[p].get(key, 0) for p in unit.promotions if p in opts)
+    return pct + unit.promotions.count(GOLD_UPGRADE) * cfg.t("defences.upgrade.strength_pct")
 
 
-def gain(state: GameState, unit: Unit) -> None:
-    """One combat's experience, for player units only (aliens do not promote)."""
-    if unit.owner in state.players and str(unit.id) in state.units:
+def gain(state: GameState, cfg: Config, unit: Unit) -> None:
+    """One combat's experience, for player field units only (aliens do not promote; city guns
+    are upgraded with gold instead)."""
+    if (
+        unit.owner in state.players
+        and str(unit.id) in state.units
+        and not cfg.units[unit.type].get("fixed")
+    ):
         unit.xp += 1
+
+
+def upgrade_cost(cfg: Config, unit: Unit) -> int | None:
+    """Gold for a city gun's next upgrade level, or None at the top level."""
+    u = cfg.t("defences.upgrade")
+    level = unit.promotions.count(GOLD_UPGRADE)
+    if level >= u["max_level"]:
+        return None
+    return u["cost_base"] + u["cost_step"] * level
+
+
+def upgrade_problem(state: GameState, cfg: Config, unit: Unit) -> str | None:
+    if not cfg.units[unit.type].get("fixed"):
+        return "only city defences are upgraded with gold; field units earn promotions"
+    cost = upgrade_cost(cfg, unit)
+    if cost is None:
+        return "already at the top level"
+    if state.players[unit.owner].gold < cost:
+        return f"needs {cost} gold"
+    return None

@@ -395,9 +395,9 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     unit.acted = True
     if unit.order == "fortify":
         unit.order = "none"
-    promotions.gain(state, unit)
+    promotions.gain(state, cfg, unit)
     if isinstance(defender, Unit):
-        promotions.gain(state, defender)
+        promotions.gain(state, cfg, defender)
 
     events = [
         {
@@ -479,12 +479,19 @@ def city_attack(state: GameState, cfg: Config, city: City, target: int) -> Event
             "damage_to_defender": dmg,
         }
     ]
-    promotions.gain(state, defender)
+    promotions.gain(state, cfg, defender)
     events.extend(damage_unit(state, cfg, defender, dmg, owner))
     return events
 
 
 def defences_fire(state: GameState, cfg: Config) -> Events:
+    """City guns, then turrets (see `_guns_fire` and beacon/turrets.py)."""
+    from beacon.turrets import fire  # turrets imports this module
+
+    return _guns_fire(state, cfg) + fire(state, cfg)
+
+
+def _guns_fire(state: GameState, cfg: Config) -> Events:
     """City defence guns are part of their city: at the end of each turn every one that has not
     fired shoots the weakest visible enemy in range (ties by hex). Nobody gives them orders."""
     from beacon import fog

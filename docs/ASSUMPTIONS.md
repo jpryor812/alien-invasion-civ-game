@@ -462,3 +462,40 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   left at turn 200 (median about 6). Still open for the designer (see the balance note above).
   Slowest game 153 s.
 
+## Starting land, merging, turrets, council board, breakdowns (designer, 2026-11-14)
+
+- **Slower war accepted**: the designer is fine with fewer victories by turn 200 now that every
+  lost city is alien-held; the 30-70% band no longer applies.
+- **Starting forces**: the capital has 2 infantry, 1 engineer and the scout; every other starting
+  city has 1 infantry and 1 engineer; each starting city still has its city artillery.
+- **No starting improvements**: farms and mines must be built (start_improved 0; liberated cities
+  get none either). So new cities are not hungry: the capital starts at 3 population and the
+  others at 2 (from 5 and 3), and the city centre gives 2 food (from 1). Until farms are built
+  the citizens sit on the council.
+- **Merging**: moving a unit onto a unit of the same type merges them; the merge button is gone.
+- **Cancel job**: engineers can stop building (the work is lost). If the job began on an earlier
+  turn they get their full moves back at once; if it began this turn they move next turn.
+- **City guns**: no experience. Gold upgrades instead, up to 5 levels, each +15% attack and
+  defence; level k costs 60 + 40 x (k - 1) gold. Bots upgrade the most threatened gun when they
+  hold three times the price.
+- **Turrets**: engineers build one (2 turns) on any of their improved tiles. Level 1 has strength
+  18 and 60 HP; each gold upgrade (50, 80, 110 gold; up to level 4) adds 8 strength and 30 HP and
+  repairs it. At the end of each turn a turret fires at the weakest visible enemy next to it. A
+  raider must destroy it before the tile can be pillaged. Bots do not build turrets yet.
+- **Raids**: raid weight 2 to 4; aliens no longer raid within 2 hexes of a player city (city guns
+  cover that), and each turret level makes a tile count as 3 hexes further away.
+- **Melee capture**: a land melee unit that takes a city to 0 HP moves in and frees it (already
+  the rule; checked).
+- **Council board**: three general seats on top, two seats per domain below; every recruit and
+  grown citizen is listed and can be moved seat to seat. A citizen can be given a specific seat
+  (job "council:<seat>"). On a domain seat a citizen now adds only that domain's stat (as a
+  recruit does); on a general seat, all of them.
+- **Population screen**: every city's citizens, what each does, children growing up and idle
+  citizens; each city panel links to its own page.
+- **Top bar**: hovering gold, science or beacon shows where it comes from (by kind of source and
+  by city, with upkeep for gold and any unconnected cities); clicking still opens the screen.
+- **Prices**: production items show their gold purchase price next to cost and turns.
+- **Balance after these changes** (20 AI seeds to turn 200): 2/20 victories (turns 174 and 198),
+  0 defeats, no continent fell; players lost 1-10 cities each game to sieges; 0-41 alien cities
+  left at turn 200. Slowest game 99 s.
+

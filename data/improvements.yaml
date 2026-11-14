@@ -20,3 +20,8 @@ improvements:
   hydroponic_plot: {status: placeholder, note: Desert and tundra growing beds., kind: tile, turns: 3, tech: vertical_farming, yields: {food: 2}, terrains: [desert, tundra], elevations: [flat]}
   geothermal_vent: {status: placeholder, note: Heat from the ground on hills., kind: tile, turns: 3, tech: fusion_power, yields: {production: 2}, terrains: [grassland, plains, desert, tundra], elevations: [hills]}
   hyperloop: {status: placeholder, note: Fast rail on top of a railway., kind: route, turns: 4, tech: nanofabrication, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 1, requires_route: railway}
+
+  # Designer 2026-11-14: a turret on an improved tile fires at enemies next to it; aliens must
+  # destroy it before pillaging. Strength, HP and gold upgrades are in data/tuning.yaml (turrets).
+  turret: {status: placeholder, note: Guards an improved tile; fires at adjacent enemies and must be destroyed before the tile can be pillaged., kind: turret, turns: 2, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills]}
+

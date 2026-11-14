@@ -251,3 +251,63 @@ def test_aliens_leave_player_cities_alone_for_25_turns(cfg):
         if e["kind"] == "attack" and e["attacker_type"] in alien_types and e["turn"] < grace
     ]
     assert early_hunts  # but hunters pick off units in the field from early on
+
+
+# -- turrets, gold upgrades, merging by moving, cancelling jobs (designer, 2026-11-14) -----------
+
+
+def test_turret_fires_and_must_fall_before_pillage(cfg):
+    from beacon import aliens, turrets
+    from beacon.commands import BuildImprovement, UpgradeTurret
+
+    s = arena(cfg)
+    farm = at(6, 6)
+    s.tiles[farm].improvement, s.tiles[farm].built_by = "farm", EU
+    eng = create_unit(s, cfg, "engineers", EU, farm)
+    apply_command(s, cfg, BuildImprovement(player=EU, unit=eng.id, improvement="turret"))
+    for _ in range(cfg.improvements["turret"]["turns"]):
+        from beacon.improvements import progress_jobs
+
+        progress_jobs(s, cfg, EU)
+    assert s.tiles[farm].turret == 1 and s.tiles[farm].turret_hp == turrets.max_hp(cfg, 1)
+    raider = create_unit(s, cfg, "alien_pillager", ALIENS, east(farm))
+    events = turrets.fire(s, cfg)
+    assert events and events[0]["defender"] == raider.id and raider.hp < 100
+    raider.tile = farm
+    assert aliens.pillage(s, cfg, raider) == []  # the turret still stands
+    s.players[EU].gold = 1000
+    apply_command(s, cfg, UpgradeTurret(player=EU, tile=farm))
+    assert s.tiles[farm].turret == 2 and s.players[EU].gold == 1000 - 50
+    s.tiles[farm].turret, s.tiles[farm].turret_hp = 0, 0
+    assert aliens.pillage(s, cfg, raider)[0]["lost"] == "farm"
+
+
+def test_city_guns_upgrade_with_gold_not_experience(cfg):
+    from beacon import combat, promotions
+    from beacon.commands import UpgradeDefence
+
+    s = arena(cfg)
+    city = city_with_tiles(cfg, s, pop=1)
+    gun = create_unit(s, cfg, "city_artillery", EU, city.tile)
+    promotions.gain(s, cfg, gun)
+    assert gun.xp == 0
+    s.players[EU].gold = 100
+    before = combat.unit_strength(s, cfg, gun, ranged=True, defending=False).total
+    apply_command(s, cfg, UpgradeDefence(player=EU, unit=gun.id))
+    assert s.players[EU].gold == 40
+    assert combat.unit_strength(s, cfg, gun, ranged=True, defending=False).total > before
+
+
+def test_moving_onto_a_twin_merges_and_jobs_can_be_cancelled(cfg):
+    from beacon.commands import BuildImprovement, CancelJob, MoveUnit
+
+    s = arena(cfg)
+    a = at(4, 4)
+    one = create_unit(s, cfg, "infantry", EU, a)
+    two = create_unit(s, cfg, "infantry", EU, east(a))
+    apply_command(s, cfg, MoveUnit(player=EU, unit=one.id, target=east(a)))
+    assert two.count == 2 and str(one.id) not in s.units
+    eng = create_unit(s, cfg, "engineers", EU, at(8, 8))
+    apply_command(s, cfg, BuildImprovement(player=EU, unit=eng.id, improvement="farm"))
+    apply_command(s, cfg, CancelJob(player=EU, unit=eng.id))
+    assert eng.job is None and eng.order == "none"

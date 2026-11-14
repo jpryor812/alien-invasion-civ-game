@@ -49,3 +49,10 @@ research:
   status: placeholder
   note: Techs researched as soon as available; otherwise the cheapest first.
   priority: [beacon_theory, signal_amplification]
+
+defences:
+  status: placeholder
+  note: The bot upgrades its most threatened city gun with gold when it holds at least
+    gold_reserve_pct percent of the price (designer 2026-11-14 - city guns upgrade with gold).
+  gold_reserve_pct: 300
+

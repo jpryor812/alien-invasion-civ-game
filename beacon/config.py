@@ -353,8 +353,8 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
         if entry["category"] not in ("bonus", "strategic"):
             raise ConfigError(f"resources.{entry_id}: category must be bonus or strategic")
     for entry_id, entry in tables["improvements"].items():
-        if entry["kind"] not in ("tile", "route"):
-            raise ConfigError(f"improvements.{entry_id}: kind must be tile or route")
+        if entry["kind"] not in ("tile", "route", "turret"):
+            raise ConfigError(f"improvements.{entry_id}: kind must be tile, route or turret")
     effect_keys = {"city_strength", "city_hp", "production", "growth", "max_pop", "heal"}
     for entry_id, entry in tables["alien_techs"].items():
         unknown = set(entry["effects"]) - effect_keys

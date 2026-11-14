@@ -281,6 +281,8 @@ def pillage(state: GameState, cfg: Config, unit: Unit) -> Events:
     tile = state.tiles[unit.tile]
     if tile.built_by not in state.players or state.city_at(unit.tile) is not None:
         return []
+    if tile.turret > 0:
+        return []  # the turret must be destroyed first
     if tile.improvement:
         lost, tile.improvement = tile.improvement, None
     elif tile.route:
@@ -376,7 +378,16 @@ class Director:
         return None if best is None else best[1]
 
     def raid_target(self, unit: Unit) -> int | None:
+        """Improved tiles and roads of players, away from their cities' guns (designer: aliens
+        rarely raid within two hexes of a city but are aggressive with unprotected land).
+        Turreted tiles are less tempting."""
         cont = self.continent(unit.tile)
+        safe = self.d["raid_safe_radius"]
+        player_cities = [
+            c.tile
+            for c in self.state.cities
+            if c.status == ACTIVE and c.owner in self.state.players
+        ]
         options = [
             i
             for i in hexgrid.within(unit.tile, self.d["raid_radius"], self.w, self.h)
@@ -384,8 +395,16 @@ class Director:
             and self.continent(i) == cont
             and self.state.city_at(i) is None
             and (self.state.tiles[i].route or self.state.tiles[i].improvement)
+            and all(self.dist(i, c) > safe for c in player_cities)
         ]
-        return min(options, key=lambda i: (self.dist(unit.tile, i), i), default=None)
+        return min(
+            options,
+            key=lambda i: (
+                self.dist(unit.tile, i) + self.state.tiles[i].turret * self.d["turret_penalty"],
+                i,
+            ),
+            default=None,
+        )
 
     def patrol_target(self, unit: Unit) -> int | None:
         cont = self.continent(unit.tile)
@@ -600,6 +619,17 @@ class Director:
                     self.attack(unit, prey.tile)
                 return
             if not self.move_toward(unit, prey.tile, stop_at=1):
+                self.state.aliens.orders.pop(str(unit.id), None)
+            return
+        if order.kind == "raid" and self.state.tiles[order.target].turret > 0:
+            from beacon.turrets import assault  # turrets imports combat
+
+            if self.dist(unit.tile, order.target) == 1:
+                self.events.extend(
+                    dict(e, turn=self.state.turn, player=ALIENS)
+                    for e in assault(self.state, self.cfg, unit, order.target)
+                )
+            elif not self.move_toward(unit, order.target, stop_at=1):
                 self.state.aliens.orders.pop(str(unit.id), None)
             return
         if order.kind == "raid":

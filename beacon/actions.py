@@ -29,6 +29,7 @@ from beacon.commands import (
     AcceptOffer,
     Attack,
     BuildImprovement,
+    CancelJob,
     ChooseEspionageTech,
     CityAttack,
     Command,
@@ -56,10 +57,12 @@ from beacon.commands import (
     StartBarrage,
     StartEspionage,
     UnseatRecruit,
+    UpgradeDefence,
+    UpgradeTurret,
 )
 from beacon.config import Config
 from beacon.state import ACTIVE, EMPTY, City, GameState, Unit
-from beacon.units import is_civilian
+from beacon.units import full_moves, is_civilian
 
 Events = list[dict[str, Any]]
 Handler = Callable[[GameState, Config, Any], Events]
@@ -194,6 +197,17 @@ def _move(state: GameState, cfg: Config, cmd: MoveUnit) -> Events:
         raise CommandError(f"no tile {cmd.target}")
     if unit.moves_left <= 0:
         raise CommandError("no moves left")
+    # Moving onto a unit of the same type merges the two (designer 2026-11-14: no merge button).
+    twin = next(
+        (
+            u
+            for u in state.units_at(cmd.target)
+            if u.owner == cmd.player and u.id != unit.id and u.type == unit.type
+        ),
+        None,
+    )
+    if twin is not None and movement.merge_problem(state, cfg, unit, twin) is None:
+        return _merge(state, cfg, MergeUnits(player=cmd.player, unit=unit.id, into=twin.id))
     seen = _seen(state, cfg, cmd.player)
     found = movement.find_path(state, cfg, unit, cmd.target, seen=seen)
     if found is None or len(found[0]) < 2:
@@ -239,6 +253,43 @@ def _citizen_job(state: GameState, cfg: Config, cmd: SetCitizenJob) -> Events:
         raise CommandError(problem)
     c.job = cmd.job
     return [{"kind": "citizen_job", "citizen": c.id, "job": cmd.job}]
+
+
+@handles(UpgradeDefence)
+def _upgrade_defence(state: GameState, cfg: Config, cmd: UpgradeDefence) -> Events:
+    unit = own_unit(state, cmd.player, cmd.unit)
+    problem = promotions.upgrade_problem(state, cfg, unit)
+    if problem:
+        raise CommandError(problem)
+    cost = promotions.upgrade_cost(cfg, unit)
+    assert cost is not None
+    state.players[cmd.player].gold -= cost
+    unit.promotions.append(promotions.GOLD_UPGRADE)
+    return [{"kind": "defence_upgraded", "unit": unit.id, "gold": cost}]
+
+
+@handles(UpgradeTurret)
+def _upgrade_turret(state: GameState, cfg: Config, cmd: UpgradeTurret) -> Events:
+    from beacon import turrets  # turrets imports combat
+
+    problem = turrets.upgrade_problem(state, cfg, cmd.player, cmd.tile)
+    if problem:
+        raise CommandError(problem)
+    return turrets.upgrade(state, cfg, cmd.player, cmd.tile)
+
+
+@handles(CancelJob)
+def _cancel_job(state: GameState, cfg: Config, cmd: CancelJob) -> Events:
+    unit = own_unit(state, cmd.player, cmd.unit)
+    if unit.job is None:
+        raise CommandError("this unit is not working on anything")
+    started_earlier = unit.job.turns_left < cfg.improvements[unit.job.improvement]["turns"]
+    imp = unit.job.improvement
+    unit.job = None
+    unit.order = "none"
+    if started_earlier:  # it has not spent this turn yet: it may move away at once
+        unit.moves_left = full_moves(cfg, unit.type)
+    return [{"kind": "job_cancelled", "unit": unit.id, "improvement": imp}]
 
 
 @handles(PromoteUnit)

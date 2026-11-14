@@ -379,7 +379,7 @@ function draw(t = performance.now()) {
   const W = canvas.clientWidth, H = canvas.clientHeight;
   ctx.fillStyle = FOG_THICK; ctx.fillRect(0, 0, W, H);
   const z = S.cam.zoom, R = R0 * z, Ri = Math.max(4, Math.round(R));
-  const reach = new Set(S.options ? S.options.reachable : []);
+  const reach = new Set(S.options ? [...S.options.reachable, ...mergeTiles()] : []);
   const attackable = new Set((S.options ? S.options.attacks : []).map((a) => a.tile));
   const bombard = new Set(S.targetMode === "bombard" && S.city ? S.city.bombard : []);
   const visible = [];
@@ -440,6 +440,7 @@ function draw(t = performance.now()) {
     if (!shown) continue;
     const t1 = S.tilesByIndex.get(i);
     if (t1.improvement && z > 0.3) { drawImprovedHex(i, t1.improvement, sx, sy, R); drawImprovement(t1.improvement, sx, sy, R); }
+    if (t1.turret && z > 0.3) drawTurret(t1, sx, sy, R);
     if (t1.resource && t1.visible && z > 0.6) drawResource(t1.resource, sx, sy, R);
   }
   // 5. fog, and a light veil over remembered city hexes not seen right now
@@ -709,6 +710,7 @@ function renderChrome() {
   const rs = v.research;
   $("science").innerHTML = `${ICON.science}<b style="color:var(--science)">+${e.science_per_turn}</b> · ${rs ? `${esc(pretty(rs.tech))} <span class="muted">(${rs.turns ?? "–"})</span>` : '<span class="bad">choose research</span>'}`;
   $("beacon").innerHTML = `${ICON.beacon}<b style="color:var(--beacon)">${e.beacon_points}</b>${e.arrival_cost ? `/${e.arrival_cost}` : ""} <span class="muted">rarity ${e.rarity}</span>`;
+  for (const [id, y] of [["gold", "gold"], ["science", "science"], ["beacon", "beacon"]]) { $(id).dataset.tip = breakdownHtml(y, e); $(id).removeAttribute("title"); }
   const knownAlien = Object.values(v.cities).filter((c) => c.status === "overrun").length;
   $("threat").innerHTML = `${ICON.ship}${v.mothership_alive ? "Mothership <b class='bad'>active</b>" : "Mothership <b class='good'>destroyed</b>"} · alien cities <b>${knownAlien}</b>`;
   const ul = $("pending");
@@ -840,6 +842,7 @@ function renderUnitPanel() {
       a.lastChild.classList.add("primary");
     }
   }
+  if (u.job) add(`Cancel ${pretty(u.job.improvement)}`, () => send({ kind: "cancel_job", unit: u.id }), "Stop building (the work is lost) so the engineers can move away");
   if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defence; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
   add("Skip (S)", () => send({ kind: "skip_unit", unit: u.id }));
   for (const imp of o.builds) {
@@ -851,7 +854,7 @@ function renderUnitPanel() {
     a.lastChild.dataset.tip = infoHtml(pretty(imp), bi, extra); a.lastChild.title = "";
   }
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
-  for (const other of o.merges) add(`Merge with #${other}`, () => send({ kind: "merge_units", unit: u.id, into: other }), "Two units of one type become one stack");
+  if (o.merges.length) a.insertAdjacentHTML("afterend", '<div class="muted small">Move onto the highlighted unit of the same type to merge into a stack of two.</div>');
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));
   if (o.ships.length) {
     const sel = document.createElement("select");
@@ -881,7 +884,7 @@ function renderCityPanel() {
   const groups = { building: [], unit: [], project: [] };
   for (const o of d.options) groups[o.kind].push(o);
   const list = Object.entries(groups).filter(([, v]) => v.length).map(([k, v]) =>
-    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}</span></div>`).join("")).join("");
+    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-price="${o.price ?? ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}${o.price ? ` · or buy now for ${o.price} gold` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}${o.price ? ` · ${o.price}g` : ""}</span></div>`).join("")).join("");
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
     <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.connected ? "connected" : '<span class="bad">not connected: produces nothing</span>'}</div>
@@ -893,16 +896,17 @@ function renderCityPanel() {
       ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
     ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
     <div class="list" id="prodlist">${list}</div>`}
-    <h3>Citizens</h3>
+    <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>
     <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
     <h3>Defences</h3>
-    <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, experience ${u.promotion.xp}/${u.promotion.next}${u.promotion.taken.length ? `, ${u.promotion.taken.map(promoName).join(", ")}` : ""}` : ""})${u.promotion && u.promotion.due ? u.promotion.options.map((o) => ` <button class="small primary" data-promote="${u.id}" data-opt="${o.id}" title="${esc(o.note)}">Promote: ${promoName(o.id)}</button>`).join("") : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
+    <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, level ${u.promotion.level + 1}` : ""})${u.promotion && u.promotion.upgrade_cost != null ? ` <button class="small" data-upgrade-gun="${u.id}" ${S.view.economy.gold < u.promotion.upgrade_cost ? "disabled" : ""} title="+${u.promotion.strength_pct}% attack and defence">Upgrade (${u.promotion.upgrade_cost}g)</button>` : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
     ${d.bombard.length ? `<div class="actions"><button id="bombard" class="primary">Attack with city…</button>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
   side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
-  side.querySelectorAll("[data-promote]").forEach((el) => el.onclick = () => send({ kind: "promote_unit", unit: Number(el.dataset.promote), promotion: el.dataset.opt }));
+  side.querySelectorAll("[data-upgrade-gun]").forEach((el) => el.onclick = () => send({ kind: "upgrade_defence", unit: Number(el.dataset.upgradeGun) }));
+  if ($("citpage")) $("citpage").onclick = () => openScreen("population", c.id);
   side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = async () => {
     if (el.dataset.item === head) return;
     S.cityListOpen = false;
@@ -1001,7 +1005,7 @@ async function onClick(e) {
   if (S.options) {
     const u = S.options.unit;
     if (S.options.attacks.some((a) => a.tile === i)) return send({ kind: "attack", unit: u.id, target: i });
-    if (S.options.reachable.includes(i)) return send({ kind: "move_unit", unit: u.id, target: i });
+    if (S.options.reachable.includes(i) || mergeTiles().includes(i)) return send({ kind: "move_unit", unit: u.id, target: i });
   }
   const mine = (S.unitsByTile.get(i) || []).filter((u) => u.owner === S.view.me);
   const city = S.citiesByTile.get(i);
@@ -1015,6 +1019,8 @@ async function onClick(e) {
     return selectUnit(next.id);
   }
   if (city && city.owner === S.view.me) return selectCity(city.id);
+  const tt = S.tilesByIndex.get(i);
+  if (tt && tt.turret && tt.built_by === S.view.me) return showTurretPanel(i);
   clearSelection();
 }
 
@@ -1030,6 +1036,7 @@ function showTooltip(i, x, y) {
       html += `<b>${pretty(t.terrain)}</b>${t.elevation !== "flat" ? ` · ${t.elevation}` : ""}${t.feature ? ` · ${t.feature}` : ""}`;
       if (t.resource && t.visible) html += `<br>Resource: ${pretty(t.resource)}`;
       if (t.improvement || t.route) html += `<br>${[t.improvement, t.route].filter(Boolean).map(pretty).join(", ")}`;
+      if (t.turret) html += `<br><b>Turret</b> level ${t.turret} · ${t.turret_hp} HP${t.built_by === S.view.me ? " · click to upgrade" : ""}`;
       if (t.yields) {
         const ys = Object.entries(t.yields).filter(([, v]) => v).map(([k, v]) => `<span class="y-${k}">+${v} ${k}</span>`).join(" ");
         if (ys) html += `<br>Tile gives ${ys}`;
@@ -1114,18 +1121,20 @@ document.addEventListener("mouseover", (e) => {
   itemTip.innerHTML = el.dataset.tip; itemTip.classList.remove("hidden");
   const r = el.getBoundingClientRect(), w = itemTip.offsetWidth, h = itemTip.offsetHeight;
   let x = r.right + 8, y = r.top;
+  if (el.closest("#topbar")) { x = r.left; y = r.bottom + 6; }  // under the top bar numbers
   if (x + w > innerWidth - 8) x = Math.max(8, r.left - w - 8);
   if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
   itemTip.style.left = `${x}px`; itemTip.style.top = `${y}px`;
 });
 function closeModal() { $("modal").classList.add("hidden"); document.querySelector(".modal-box").classList.remove("narrow"); S.screen = null; }
 
-async function openScreen(name) {
-  S.screen = name;
+async function openScreen(name, arg = null) {
+  S.screen = name; S.screenArg = arg;
   const body = $("modal-body");
   try {
     if (name === "techs") body.innerHTML = techScreen(await api("/api/techs"));
-    else if (name === "council") body.innerHTML = councilScreen(await api("/api/council"));
+    else if (name === "council") { S.councilData = await api("/api/council"); body.innerHTML = councilScreen(S.councilData); }
+    else if (name === "population") body.innerHTML = populationScreen(await api("/api/population"), arg);
     else if (name === "diplomacy") body.innerHTML = diplomacyScreen(await api("/api/diplomacy"));
     else if (name === "projects") body.innerHTML = projectsScreen(await api("/api/projects"));
     else if (name === "scores") body.innerHTML = scoresScreen(await api("/api/scores"));
@@ -1197,28 +1206,64 @@ function techScreen(d) {
       ${heads}<svg class="links" width="${W}" height="${H + 30}">${lines}</svg>${cards}</div></div>`;
 }
 function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<span class="chip ${d}">${pretty(d)} +${v}%</span>`).join(""); }
+// The council (designer 2026-11-14, after a reference layout): three general seats on top, the
+// two seats of each domain in a row below, and every possible member (alien recruits and grown
+// citizens) underneath. Click a member, then a seat; click x to free a seat.
+function memberCard(m, picked) {
+  const chips = Object.entries(m.scores).map(([k, v]) => `<span class="tag ${k}">${v} ${k}</span>`).join("");
+  return `<div class="member ${m.kind}${picked ? " picked" : ""}" data-member="${m.kind}:${m.id}">
+    <div class="avatar">${m.kind === "recruit" ? "◈" : "●"}</div><div class="mname">${esc(m.name)}</div>
+    <div class="muted small">${esc(m.where)}</div><div>${chips}</div>
+    ${m.traits.length ? `<div class="small">${m.traits.map((t) => `<span class="trait">${esc(pretty(t))}</span>`).join(" ")}</div>` : ""}</div>`;
+}
 function councilScreen(d) {
-  const seatInfo = d.domains.map((x) => `<span class="chip ${x}">${pretty(x)} ${d.seats_used[x]}/${d.seats_per_domain} (+${d.bonus[x]}%)</span>`).join("") +
-    `<span class="chip">General ${d.seats_used.general}/${d.general_seats}</span>`;
+  const pick = S.councilPick || "";
+  const slot = (seat, k) => {
+    const m = d.board[seat][k];
+    if (m) return `<div class="seat filled" data-seat-slot="${seat}">${memberCard(m, pick === `${m.kind}:${m.id}`)}
+      <button class="small unseat" data-free="${m.kind}:${m.id}:${seat}" title="Free this seat">×</button></div>`;
+    return `<div class="seat empty" data-seat-slot="${seat}"><div class="muted">${pick ? "Seat here" : "Empty"}</div></div>`;
+  };
+  const general = Array.from({ length: d.general_seats }, (_, k) => slot("general", k)).join("");
+  const domains = d.domains.map((x) => `<div class="domaincol"><div class="seathead tag ${x}">${pretty(x)}${d.bonus[x] ? ` +${d.bonus[x]}%` : ""}</div>
+      ${Array.from({ length: d.seats_per_domain }, (_, k) => slot(x, k)).join("")}</div>`).join("");
+  const pool = d.members.map((m) => memberCard(m, pick === `${m.kind}:${m.id}`)).join("");
   const others = S.view.players.filter((p) => p.id !== S.view.me);
-  const cards = d.recruits.map((r) => `<div class="card ${r.legendary ? "legendary" : ""}">
-      <div class="title">${esc(r.name)}${r.legendary ? " ★" : ""}</div>
-      <div class="muted">${pretty(r.kind)} · ${r.traits.map(pretty).join(", ")} · ${r.lifespan ? `age ${r.age}/${r.lifespan}` : "immortal"}${r.betrayal ? ` · <span class="bad">betrayal ${r.betrayal / 10}%/turn</span>` : ""}</div>
-      <div>${scoreChips(r.scores)}</div>
-      <div class="muted">Seats: ${r.seats.length ? r.seats.map(pretty).join(", ") : "none"}</div>
-      <div class="actions">
-        <button class="small" data-seat="${r.id}" data-seats="general">General seat</button>
-        <button class="small" data-seat="${r.id}" data-seats="${Object.keys(r.scores).join(",")}">Domain seats</button>
-        ${r.seats.length ? `<button class="small" data-unseat="${r.id}">Unseat</button>` : ""}
-        <select data-giftto="${r.id}">${others.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>
-        <button class="small" data-gift="${r.id}">Gift</button>
-      </div></div>`).join("");
+  const gifts = d.recruits.map((r) => `<div class="row small">${esc(r.name)} · ${r.lifespan ? `age ${r.age}/${r.lifespan}` : "immortal"}${r.betrayal ? ` · <span class="bad">betrayal ${r.betrayal / 10}%/turn</span>` : ""}
+      <select data-giftto="${r.id}">${others.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><button class="small" data-gift="${r.id}">Gift</button></div>`).join("");
   const offers = d.offers.map((o) => `<div class="row">${pretty(o.from_player)} offers recruit #${o.recruit} for ${o.price} gold
       <button class="small" data-accept-offer="${o.id}">Accept</button><button class="small" data-decline-offer="${o.id}">Decline</button></div>`).join("");
-  return `<h2>Council</h2><div class="row">${seatInfo}</div>
-    <p class="muted">A recruit on a domain seat adds its score there; one recruit may hold one seat in several domains. On a general seat it adds every score. Recruits arrive when beacon points reach the arrival cost.</p>
+  return `<h2>The Council</h2>
+    <p class="muted">General seats add all of a member's stats; a domain seat adds only that domain. Alien recruits give percentages to every city; a citizen gives its stats to its own city. ${pick ? "<b>Now click a seat.</b>" : "Click a member, then a seat."}</p>
+    <div class="seatrow general">${general}</div>
+    <div class="seatrow domains">${domains}</div>
     ${offers ? `<h3>Offers</h3>${offers}` : ""}
-    <div class="cards">${cards || '<p class="muted">No recruits yet. Research Beacon Theory and build a Beacon.</p>'}</div>`;
+    <h3>Members</h3><div class="pool">${pool || '<p class="muted">No grown citizens or recruits yet.</p>'}</div>
+    ${gifts ? `<h3>Recruits: gifts</h3>${gifts}` : ""}`;
+}
+async function seatMember(key, seat, d) {
+  const [kind, id] = key.split(":"); const n = Number(id);
+  if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: `council:${seat}` }, "council");
+  const m = d.members.find((x) => x.kind === "recruit" && x.id === n);
+  const seats = seat === "general" ? ["general"] : [...new Set([...m.seats.filter((s) => s !== "general"), seat])];
+  return act({ kind: "seat_recruit", recruit: n, seats }, "council");
+}
+async function freeSeat(key, d) {
+  const [kind, id, seat] = key.split(":"); const n = Number(id);
+  if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: "auto" }, "council");
+  const m = d.members.find((x) => x.kind === "recruit" && x.id === n);
+  const rest = m.seats.filter((s) => s !== seat);
+  return act(rest.length ? { kind: "seat_recruit", recruit: n, seats: rest } : { kind: "unseat_recruit", recruit: n }, "council");
+}
+// Population: every city's citizens and what they do (or one city's, from its panel).
+function populationScreen(d, only) {
+  const cities = d.cities.filter((c) => only == null || c.id === only);
+  return `<h2>Population</h2>
+    <p class="muted">Children grow up faster with more spare food. Grown citizens work one improved tile (half their stats there) or sit on the council (full stats to their city). Pick a job for each, or leave it on Auto.</p>
+    ${only != null ? '<p><button class="small" id="pop-all">Show all cities</button></p>' : ""}
+    ${cities.map((c) => `<div class="popcity"><h3>${esc(c.name)} · population ${c.pop}</h3>
+      <div class="muted small">${c.on_tiles} on tiles · ${c.on_council} on the council · ${c.children} growing up · ${c.idle ? `<span class="bad">${c.idle} idle</span>` : "0 idle"} · food ${c.surplus_food >= 0 ? "+" : ""}${c.surplus_food}/turn, next citizen at ${c.growth[0]}/${c.growth[1]}</div>
+      <div class="citizens wide">${c.citizens.map((p) => citizenRow(p, c)).join("")}</div></div>`).join("")}`;
 }
 function termsText(t) {
   const parts = [];
@@ -1314,9 +1359,23 @@ function wireScreen(name) {
   const body = $("modal-body");
   const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => el.onclick = () => fn(el));
   if (name === "techs") on(".tech.available", (el) => act({ kind: "set_research", tech: el.dataset.tech }, null).then(closeModal));
+  if (name === "population") {
+    body.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => act({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }, null).then(() => openScreen("population", S.screenArg)));
+    if ($("pop-all")) $("pop-all").onclick = () => openScreen("population");
+  }
   if (name === "council") {
-    on("[data-seat]", (el) => act({ kind: "seat_recruit", recruit: Number(el.dataset.seat), seats: el.dataset.seats.split(",") }, "council"));
-    on("[data-unseat]", (el) => act({ kind: "unseat_recruit", recruit: Number(el.dataset.unseat) }, "council"));
+    const d = S.councilData;
+    body.querySelectorAll("[data-member]").forEach((el) => el.onclick = (ev) => {
+      ev.stopPropagation();
+      S.councilPick = S.councilPick === el.dataset.member ? null : el.dataset.member;
+      body.innerHTML = councilScreen(d); wireScreen("council");
+    });
+    body.querySelectorAll("[data-seat-slot]").forEach((el) => el.onclick = () => {
+      if (!S.councilPick) return;
+      const key = S.councilPick; S.councilPick = null;
+      seatMember(key, el.dataset.seatSlot, d);
+    });
+    on("[data-free]", (el) => { S.councilPick = null; freeSeat(el.dataset.free, d); });
     on("[data-gift]", (el) => act({ kind: "offer_recruit", recruit: Number(el.dataset.gift), to_player: body.querySelector(`[data-giftto="${el.dataset.gift}"]`).value, price: 0 }, "council"));
     on("[data-accept-offer]", (el) => act({ kind: "accept_offer", offer: Number(el.dataset.acceptOffer) }, "council"));
     on("[data-decline-offer]", (el) => act({ kind: "decline_offer", offer: Number(el.dataset.declineOffer) }, "council"));
@@ -1472,8 +1531,51 @@ function citizenRow(p, d) {
   else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${hundredthsText(p.bonus)}${p.military ? `, +${p.military} city strength` : ""}`;
   else where = '<span class="bad">idle: no improved tile or council seat free</span>';
   const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
-  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="council" ${p.job === "council" ? "selected" : ""}>Council</option>${tiles}</select>` : "";
+  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}</select>` : "";
   return `<div class="citizen"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div>`;
 }
 
 function promoName(id) { return { attack_10: "+10% attack", defence_10: "+10% defence" }[id] || pretty(id); }
+
+// Hexes of units the selected unit can merge with: moving there merges them (no button).
+function mergeTiles() {
+  if (!S.options) return [];
+  return S.options.merges.map((id) => (S.view.units.find((x) => x.id === id) || {}).tile).filter((t) => t != null);
+}
+
+// Hover card for a top-bar number: what produces it, by kind of source and by city.
+function breakdownHtml(y, e) {
+  const b = e.breakdown && e.breakdown[y];
+  if (!b) return "";
+  const total = y === "gold" ? e.gold_per_turn : y === "science" ? e.science_per_turn : null;
+  const rows = b.sources.map(([k, v]) => `<li>${esc(k)}: <b>${v >= 0 ? "+" : ""}${v}</b></li>`).join("");
+  const costs = (b.costs || []).filter(([, v]) => v).map(([k, v]) => `<li>${esc(k)}: <b class="bad">${v}</b></li>`).join("");
+  const cities = b.cities.map(([k, v]) => `${esc(k)} +${v}`).join(", ");
+  return `<div class="tip-title">${pretty(y)}${total != null ? ` ${total >= 0 ? "+" : ""}${total} per turn` : " per turn"}</div>
+    <ul>${rows}${costs}</ul>${cities ? `<div class="tip-kind">By city: ${cities}</div>` : ""}
+    ${b.unlinked.length ? `<div class="tip-kind bad">Not connected (produce nothing): ${b.unlinked.map(esc).join(", ")}</div>` : ""}
+    <div class="tip-kind">Click to open its screen.</div>`;
+}
+
+// A turret's panel: its level, HP and the gold upgrade.
+function showTurretPanel(i) {
+  clearSelection();
+  const t = S.tilesByIndex.get(i), r = S.view.turret_rules, cost = r.costs[i];
+  const str = r.strength_base + r.strength_per_level * (t.turret - 1);
+  const side = $("side");
+  side.innerHTML = `<div class="title">Turret</div>
+    <div class="muted">Guards this ${esc(pretty(t.improvement || "tile"))}. Fires at enemies next to it at the end of every turn; aliens must destroy it before they can pillage the tile.</div>
+    <div class="row">Level ${t.turret}/${r.max_level} · strength ${str} · ${t.turret_hp} HP</div>
+    <div class="actions">${cost != null ? `<button class="primary" id="upturret" ${S.view.economy.gold < cost ? "disabled" : ""}>Upgrade for ${cost} gold</button>` : '<span class="muted">Top level</span>'}</div>`;
+  if ($("upturret")) $("upturret").onclick = () => send({ kind: "upgrade_turret", tile: i }).then(() => showTurretPanel(i));
+  side.classList.remove("hidden");
+}
+
+function drawTurret(t, sx, sy, R) {
+  const x = sx + R * 0.38, y = sy + R * 0.3, s = R * 0.16;
+  ctx.fillStyle = "#38424c"; ctx.fillRect(x - s, y - s * 0.4, s * 2, s * 1.2);
+  ctx.fillStyle = "#5c6b78"; ctx.beginPath(); ctx.arc(x, y - s * 0.4, s * 0.7, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = "#c9d4dc"; ctx.lineWidth = Math.max(1, s * 0.3); ctx.beginPath(); ctx.moveTo(x, y - s * 0.6); ctx.lineTo(x + s * 1.3, y - s * 1.2); ctx.stroke();
+  ctx.fillStyle = "#f2d38a"; ctx.font = `700 ${Math.max(7, Math.round(s * 0.9))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(t.turret), x, y + s * 0.25);
+}

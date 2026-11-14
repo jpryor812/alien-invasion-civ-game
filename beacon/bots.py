@@ -40,6 +40,7 @@ from beacon.commands import (
     SetProduction,
     SetResearch,
     SkipUnit,
+    UpgradeDefence,
 )
 from beacon.config import Config
 from beacon.paths import reachable, shortest_path
@@ -596,14 +597,23 @@ class Bot:
                 spec = self.cfg.units[unit.type]
                 n_att = unit.promotions.count("attack_10")
                 n_def = unit.promotions.count("defence_10")
-                if spec["role"] == "ranged" and not spec.get("fixed"):
+                if spec["role"] == "ranged":
                     pick = "attack_10"
-                elif spec.get("fixed"):
-                    pick = "defence_10"
                 else:
                     pick = "attack_10" if n_att <= n_def else "defence_10"
                 if not self.submit(PromoteUnit(player=self.pid, unit=unit.id, promotion=pick)):
                     break
+        # City guns are upgraded with gold, the most threatened city first, keeping a reserve.
+        threats = self.threats()
+        guns = sorted(
+            (u for u in self.view.my_units() if self.cfg.units[u.type].get("fixed")),
+            key=lambda u: (min((self.dist(u.tile, t) for t in threats), default=999), u.id),
+        )
+        for gun in guns[:1]:
+            cost = promotions.upgrade_cost(self.cfg, gun)
+            reserve = self.param("defences.gold_reserve_pct")
+            if cost is not None and self.view.player.gold * 100 >= cost * reserve:
+                self.submit(UpgradeDefence(player=self.pid, unit=gun.id))
 
     def play(self) -> None:
         self.promote()

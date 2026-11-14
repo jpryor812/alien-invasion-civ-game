@@ -28,6 +28,7 @@ from beacon import (
     mvp,
     recruits,
     tech,
+    turrets,
 )
 from beacon.actions import apply_command, pending_decisions
 from beacon.commands import CommandError, command_from_dict
@@ -180,18 +181,42 @@ class Session:
         mine = [c for c in s.cities if c.owner == me and c.status == ACTIVE]
         science = gold_in = 0
         city_rows = []
+        # Where gold, science and beacon points come from (hover the top bar): by source kind
+        # across all cities, and by city.
+        sources: dict[str, dict[str, int]] = {y: {} for y in ("gold", "science", "beacon")}
+        by_city: dict[str, list[list[Any]]] = {y: [] for y in ("gold", "science", "beacon")}
         for c in mine:
             cy = economy.city_yields(s, cfg, c) if c.connected else None
             prod = cy.totals["production"] if cy else 0
             if cy:
                 science += cy.totals["science"]
                 gold_in += cy.totals["gold"]
+                for src, y, amount in cy.lines:
+                    if y in sources:
+                        label = _source_label(src)
+                        sources[y][label] = sources[y].get(label, 0) + amount
+                for y in sources:
+                    if cy.totals[y]:
+                        by_city[y].append([c.name, cy.totals[y]])
             head = c.queue[0] if c.queue else None
             turns = None
             if head and not head.startswith("project:") and prod > 0:
                 turns = max(0, -(-(economy.item_cost(cfg, head) - c.production_store) // prod))
             city_rows.append({"id": c.id, "production": prod, "head": head, "turns": turns})
         upkeep = economy.maintenance(s, cfg, me) + economy.unit_upkeep(s, cfg, me)
+        unlinked = [c.name for c in mine if not c.connected]
+        breakdown = {
+            y: {
+                "sources": sorted(sources[y].items(), key=lambda kv: -kv[1]),
+                "cities": by_city[y],
+                "unlinked": unlinked,
+            }
+            for y in sources
+        }
+        breakdown["gold"]["costs"] = [
+            ["Building upkeep", -economy.maintenance(s, cfg, me)],
+            ["Unit upkeep", -economy.unit_upkeep(s, cfg, me)],
+        ]
         research = None
         if player.research:
             cost = cfg.techs[player.research]["cost"]
@@ -213,6 +238,7 @@ class Session:
                 "economy": {
                     "gold": player.gold,
                     "gold_per_turn": gold_in - upkeep,
+                    "breakdown": breakdown,
                     "science_per_turn": science,
                     "beacon_points": player.beacon_points,
                     "rarity": recruits.rarity_level(cfg, player.techs),
@@ -229,6 +255,14 @@ class Session:
                 "outcome_turn": s.outcome_turn,
                 "mothership_alive": s.aliens.mothership_alive,
                 "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
+                "turret_rules": {
+                    **cfg.t("turrets"),
+                    "costs": {
+                        str(i): turrets.upgrade_cost(cfg, s.tiles[i])
+                        for i, t in enumerate(s.tiles)
+                        if t.turret and t.built_by == me
+                    },
+                },
                 "worked": {
                     str(c.tile): {
                         "citizen": c.name,
@@ -351,6 +385,13 @@ class Session:
         from beacon import promotions
 
         cfg = self.cfg
+        if cfg.units[unit.type].get("fixed"):  # city guns: gold upgrades, no experience
+            return {
+                "fixed": True,
+                "level": unit.promotions.count(promotions.GOLD_UPGRADE),
+                "upgrade_cost": promotions.upgrade_cost(cfg, unit),
+                "strength_pct": cfg.t("defences.upgrade.strength_pct"),
+            }
         raw = cfg.raw["tuning"]["promotions"]["options"]
         return {
             "xp": unit.xp,
@@ -551,7 +592,83 @@ class Session:
                 )
                 for c in people
             ],
+            # The seat board (designer 2026-11-14): every seat with who sits there, and every
+            # member who could sit - alien recruits and grown citizens of every city.
+            "board": {
+                seat: [m for m in self._members() if seat in m["seats"]]
+                for seat in ["general", *DOMAINS]
+            },
+            "members": self._members(),
         }
+
+    def _members(self) -> list[dict[str, Any]]:
+        s, me = self.state, self.human
+        out = []
+        for r in recruits.recruits_of(s, me):
+            out.append(
+                {
+                    "kind": "recruit",
+                    "id": r.id,
+                    "name": r.name,
+                    "where": "alien recruit" + (" (legendary)" if r.legendary else ""),
+                    "scores": {d: f"+{v}%" for d, v in r.scores.items() if v},
+                    "seats": list(r.seats),
+                    "pinned": True,
+                    "traits": list(r.traits),
+                }
+            )
+        for c in citizens.of_player(s, me):
+            if not c.adult:
+                continue
+            city = s.cities[c.city]
+            out.append(
+                {
+                    "kind": "citizen",
+                    "id": c.id,
+                    "name": c.name,
+                    "where": f"citizen of {city.name}",
+                    "scores": {d: f"+{v}" for d, v in c.stats.items() if v},
+                    "seats": list(c.seats),
+                    "pinned": c.job.startswith("council"),
+                    "job": c.job,
+                    "tile": c.tile,
+                    "traits": list(c.traits),
+                }
+            )
+        return out
+
+    def population(self) -> dict[str, Any]:
+        """Every city's citizens and what they do (the Population screen)."""
+        s, cfg, me = self.state, self.cfg, self.human
+        rows = []
+        for c in s.cities:
+            if c.owner != me or c.status != ACTIVE:
+                continue
+            cy = economy.city_yields(s, cfg, c)
+            people = citizens.of_city(s, c.id)
+            rows.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "pop": c.pop,
+                    "surplus_food": cy.surplus_food,
+                    "growth": [c.food_store, economy.growth_threshold(cfg, c.pop)],
+                    "on_tiles": sum(1 for x in people if x.tile is not None),
+                    "on_council": sum(1 for x in people if x.seats),
+                    "children": sum(1 for x in people if not x.adult),
+                    "idle": sum(1 for x in people if x.adult and x.tile is None and not x.seats),
+                    "citizens": [self._citizen_row(x, cy.surplus_food) for x in people],
+                    "workable": [
+                        {
+                            "tile": t,
+                            "improvement": s.tiles[t].improvement,
+                            "yields": _tile_yields(cfg, s.tiles[t]),
+                        }
+                        for t in citizens.workable(s, cfg, c)
+                    ],
+                }
+            )
+        return {"cities": rows}
 
     def diplomacy(self) -> dict[str, Any]:
         s, cfg, me = self.state, self.cfg, self.human
@@ -731,3 +848,23 @@ def _tile_yields(cfg: Config, tile: Any) -> dict[str, int]:
     from beacon.tiles import tile_yields
 
     return tile_yields(cfg, tile)
+
+
+def _source_label(src: str) -> str:
+    """A readable name for a yield line's source (see economy.city_yields)."""
+    if src in ("city_tile", "city_centre"):
+        return "City centres"
+    if src == "worked_tiles":
+        return "Worked tiles"
+    if src == "citizens_on_tiles":
+        return "Citizens on tiles (half stats)"
+    if src == "population":
+        return "Population"
+    if src.startswith("citizen:") and src.endswith("(council)"):
+        return "Citizens on the council"
+    if src.startswith("council:"):
+        return "Alien council (" + src.split(" ")[-1] + ")" if " " in src else "Alien council"
+    if src.startswith("building:"):
+        name = src[9:].split(" ")[0].replace("_", " ").capitalize()
+        return f"{name} (+%)" if "%" in src else name
+    return src.replace("_", " ").capitalize()

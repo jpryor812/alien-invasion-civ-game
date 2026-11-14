@@ -29,6 +29,12 @@ def build_problem(state: GameState, cfg: Config, unit: Unit, improvement: str) -
         return "city hexes already count as roads"
     if tile.terrain not in spec["terrains"] or tile.elevation not in spec["elevations"]:
         return f"{improvement} cannot go on {tile.elevation} {tile.terrain}"
+    if spec["kind"] == "turret":
+        if not tile.improvement or tile.built_by != unit.owner:
+            return "a turret guards one of your improved tiles (farm, mine...)"
+        if tile.turret:
+            return "this tile already has a turret"
+        return None
     if spec["kind"] == "route":
         if tile.route == improvement:
             return "already built"
@@ -65,6 +71,10 @@ def progress_jobs(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any
         tile = state.tiles[unit.tile]
         if cfg.improvements[imp]["kind"] == "route":
             tile.route = imp
+        elif cfg.improvements[imp]["kind"] == "turret":
+            from beacon.turrets import build  # turrets imports combat, which imports a lot
+
+            build(tile, cfg)
         else:
             tile.improvement = imp
         tile.built_by = pid

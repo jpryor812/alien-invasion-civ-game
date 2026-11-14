@@ -213,3 +213,22 @@ button.link:hover { color: var(--brass-hi); background: none; }
 .levelhead { position: absolute; top: 4px; font: 500 11px var(--heading); color: var(--brass); letter-spacing: 0.08em; }
 .levelhead.static { position: static; margin: 4px 0; }
 .modal-box:has(.techtree) { width: min(1400px, 96vw); }
+
+.seatrow { display: grid; gap: 8px; margin: 8px 0; }
+.seatrow.general { grid-template-columns: repeat(3, minmax(150px, 220px)); justify-content: center; }
+.seatrow.domains { grid-template-columns: repeat(6, 1fr); }
+.domaincol { display: flex; flex-direction: column; gap: 6px; }
+.seathead { text-align: center; font: 500 11px var(--heading); padding: 2px 0; }
+.seat { position: relative; min-height: 92px; border: 1px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #0f171f; cursor: pointer; }
+.seat.filled { border-style: solid; border-color: var(--brass); background: linear-gradient(#1d2a36, #121b24); }
+.seat.empty:hover { border-color: var(--brass); }
+.seat .unseat { position: absolute; top: 2px; right: 2px; padding: 0 6px; }
+.member { padding: 6px 8px; border-radius: 6px; cursor: pointer; text-align: center; width: 100%; }
+.pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pool .member { border: 1px solid var(--line); background: #121b24; }
+.member.picked { outline: 2px solid var(--science); background: #173048; }
+.member .avatar { font-size: 22px; color: var(--brass); line-height: 1; }
+.member.recruit .avatar { color: var(--beacon); }
+.member .mname { font: 700 12px var(--heading); }
+.citizens.wide { max-height: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.popcity { margin-bottom: 14px; }

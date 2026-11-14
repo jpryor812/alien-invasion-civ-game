@@ -73,23 +73,24 @@ cities:
     overrun: 100
   start_pop:
     status: placeholder
-    note: Starting population by starting role.
-    capital: 5
-    known: 3
+    note: Starting population by starting role. Capital 3 and others 2 (2026-11-14, from 5 and
+      3) - cities start with no farms or mines, so they must not start hungry.
+    capital: 3
+    known: 2
     dormant: 2
     overrun: 3
     empty: 0
   start_improved:
     status: placeholder
-    note: Improved tiles (farms, mines...) around each starting city, by role. Only improved tiles
-      can be worked (designer 2026-11-14), so these give the first citizens work.
-    capital: 6
-    known: 4
+    note: Improved tiles around each starting city, by role. Designer 2026-11-14 - none; every farm
+      and mine has to be built by engineers.
+    capital: 0
+    known: 0
   liberated_improved_pct:
-    value: 100
+    value: 0
     status: placeholder
-    note: A liberated city gets improved tiles for this percent of its surviving population (its
-      old farmland and mines), so its citizens have work at once.
+    note: Improved tiles a liberated city gets, as percent of its surviving population. 0 - like
+      starting cities, its land must be improved by engineers (designer 2026-11-14).
   start_buildings:
     status: placeholder
     note: Buildings present at the start, by role.
@@ -165,8 +166,9 @@ economy:
   city_center_yields:
     status: placeholder
     note: Added to the city's own tile, which is always worked. Production 2 so grassland cities
-      are not stuck at 1 production.
-    food: 1
+      are not stuck at 1 production. Food 2 (2026-11-14) so a new city of 2 feeds itself before
+      engineers build any farms (cities start with no improved tiles).
+    food: 2
     production: 2
     science: 1
     gold: 1
@@ -251,12 +253,18 @@ start:
   units:
     status: placeholder
     note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
-      two infantry as the only field army; the scout and engineers are kept so exploration and
-      roads can start on turn 1 (docs/ASSUMPTIONS.md).
+      two infantry and one engineer at the capital (the scout is kept for exploring), and one
+      infantry and one engineer at every other starting city (other_cities).
     list:
       - {type: infantry, count: 2}
       - {type: recon_team, count: 1}
-      - {type: engineers, count: 2}
+      - {type: engineers, count: 1}
+  other_cities:
+    status: placeholder
+    note: Units placed at each starting city other than the capital (designer 2026-11-14).
+    list:
+      - {type: infantry, count: 1}
+      - {type: engineers, count: 1}
   city_units:
     status: placeholder
     note: City defence units placed on the tile of every city a player owns at the start
@@ -387,4 +395,29 @@ promotions:
       to an option to limit it to some unit types (unique benefits later). Percent bonuses add up.
     attack_10: {note: +10% attack strength., attack_pct: 10}
     defence_10: {note: +10% defence strength., defence_pct: 10}
+
+defences:
+  upgrade:
+    status: placeholder
+    note: Designer 2026-11-14 - city guns do not earn experience; they are upgraded with gold.
+      Each level adds strength_pct to attack and defence; level k (from 1) costs cost_base +
+      cost_step x (k - 1) gold, up to max_level.
+    cost_base: 60
+    cost_step: 40
+    strength_pct: 15
+    max_level: 5
+
+turrets:
+  status: placeholder
+  note: Turrets (designer 2026-11-14). Level 1 when built; each gold upgrade adds strength and HP
+    and repairs it. Level k costs upgrade_cost_base + upgrade_cost_step x (k - 1) gold to reach
+    k + 1. Range 1 - it fires at units next to it at the end of each turn.
+  strength_base: 18
+  strength_per_level: 8
+  hp_base: 60
+  hp_per_level: 30
+  range: 1
+  upgrade_cost_base: 50
+  upgrade_cost_step: 30
+  max_level: 4
 

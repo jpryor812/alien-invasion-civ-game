@@ -150,14 +150,21 @@ def tile_bonus(cfg: Config, c: Citizen) -> dict[str, int]:
     return out
 
 
+def _counts_on_council(c: Citizen, domain: str) -> bool:
+    """A general seat applies every stat; a domain seat only its own domain (as for recruits)."""
+    return GENERAL in c.seats or domain in c.seats
+
+
 def council_bonus(cfg: Config, c: Citizen) -> dict[str, int]:
     pct = trait(cfg, c, "council_pct", 100)
-    out = {y: c.stats.get(y, 0) * pct // 100 for y in YIELDS}
+    out = {y: c.stats.get(y, 0) * pct // 100 if _counts_on_council(c, y) else 0 for y in YIELDS}
     out["beacon"] += trait(cfg, c, "beacon_flat", 0)
     return out
 
 
 def council_military(cfg: Config, c: Citizen) -> int:
+    if not _counts_on_council(c, "military"):
+        return 0
     pct = trait(cfg, c, "council_pct", 100)
     return c.stats.get("military", 0) * pct // 100 * cfg.t("citizens.military_strength")
 
@@ -191,13 +198,24 @@ def pinned_seats(state: GameState, pid: str) -> dict[str, int]:
     """Seats held by citizens the player put on the council (recruits cannot take these)."""
     used = {GENERAL: 0, **dict.fromkeys(DOMAINS, 0)}
     for c in of_player(state, pid):
-        if c.job == "council":
+        if c.job.startswith("council"):
             for s in c.seats:
                 used[s] += 1
     return used
 
 
+def _seat_ok(cfg: Config, used: dict[str, int], c: Citizen, seat: str) -> bool:
+    rs = cfg.alien("recruits")
+    if seat == GENERAL:
+        return used[GENERAL] < rs["general_seats"]
+    return seat in DOMAINS and c.stats.get(seat, 0) > 0 and used[seat] < rs["seats_per_domain"]
+
+
 def _free_seat(cfg: Config, used: dict[str, int], c: Citizen) -> str | None:
+    """The seat a citizen takes: the one the player chose ("council:<seat>") if free, else a
+    general seat, else the domain of its best stat."""
+    if c.job.startswith("council:") and _seat_ok(cfg, used, c, c.job[8:]):
+        return c.job[8:]
     rs = cfg.alien("recruits")
     if used[GENERAL] < rs["general_seats"]:
         return GENERAL
@@ -224,7 +242,7 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
         c.tile, c.seats = None, []
     used = _seat_counts(state, pid)
     for c in people:
-        if c.adult and c.job == "council":
+        if c.adult and c.job.startswith("council"):
             seat = _free_seat(cfg, used, c)
             if seat is not None:
                 c.seats = [seat]
@@ -290,17 +308,26 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
     city = state.cities[c.city]
     if city.owner != pid:
         return "not your citizen"
-    if job in ("auto", "council"):
-        if job == "council":
-            if not c.adult:
-                return f"{c.name} has not grown up yet"
-            used = pinned_seats(state, pid)
-            for s, n in _seat_counts(state, pid).items():
-                used[s] += n
-            for s in c.seats if c.job == "council" else []:
-                used[s] -= 1
-            if _free_seat(cfg, used, c) is None:
-                return "no free council seat for this citizen"
+    if job == "auto":
+        return None
+    if job == "council" or job.startswith("council:"):
+        if not c.adult:
+            return f"{c.name} has not grown up yet"
+        used = pinned_seats(state, pid)
+        for s, n in _seat_counts(state, pid).items():
+            used[s] += n
+        for s in c.seats if c.job.startswith("council") else []:
+            used[s] -= 1
+        if job.startswith("council:"):
+            seat = job[8:]
+            if seat != GENERAL and seat not in DOMAINS:
+                return f"unknown seat {seat!r}"
+            if seat != GENERAL and c.stats.get(seat, 0) <= 0:
+                return f"{c.name} has no {seat} stat for that seat"
+            if not _seat_ok(cfg, used, c, seat):
+                return f"the {seat} seats are full"
+        elif _free_seat(cfg, used, c) is None:
+            return "no free council seat for this citizen"
         return None
     if not job.startswith("tile:") or not job[5:].isdigit():
         return f"unknown job {job!r}"

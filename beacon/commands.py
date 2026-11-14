@@ -102,6 +102,33 @@ class SetCitizenJob(Command):
 
 @register
 @dataclass(frozen=True)
+class UpgradeDefence(Command):
+    """Spend gold to raise a city gun one level."""
+
+    kind: ClassVar[str] = "upgrade_defence"
+    unit: int
+
+
+@register
+@dataclass(frozen=True)
+class UpgradeTurret(Command):
+    """Spend gold to raise a turret one level (and repair it)."""
+
+    kind: ClassVar[str] = "upgrade_turret"
+    tile: int
+
+
+@register
+@dataclass(frozen=True)
+class CancelJob(Command):
+    """Engineers stop building (the work done is lost) and can move again."""
+
+    kind: ClassVar[str] = "cancel_job"
+    unit: int
+
+
+@register
+@dataclass(frozen=True)
 class PromoteUnit(Command):
     """Spend a due promotion on one option (e.g. attack_10 or defence_10)."""
 
