@@ -131,8 +131,10 @@ quantum_theory stays as a stepping stone, since it is a real prerequisite.
 
 **Net effect:** about 7 new items and about 8 fewer techs or items, rather than +30.
 
-## Decisions needed
+## Decisions
 
-1. Should techs get effects (for example +defence or +strength), or must every tech unlock an item?
-2. Do we add the beacon tree now, or after M4 is done?
-3. Do we accept the military percent key (`military_pct`) for recruits?
+1. **Beacon tree:** later, not now.
+2. **Military percent key:** accepted. Recruits use `military_pct` for unit strength and unit
+   production. It sits outside the point budget.
+3. **Every tech unlocks at least one item.** No tech exists only to gate another tech. The 17 empty
+   techs need an unlock item each, or they should be merged or cut.
