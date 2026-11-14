@@ -139,6 +139,16 @@ class PromoteUnit(Command):
 
 @register
 @dataclass(frozen=True)
+class AssignBestCitizen(Command):
+    """Put the city's best grown citizen for this improved tile on it."""
+
+    kind: ClassVar[str] = "assign_best_citizen"
+    city: int
+    tile: int
+
+
+@register
+@dataclass(frozen=True)
 class HoldFire(Command):
     """The city will not fire this turn (answers the 'city can attack' alert)."""
 

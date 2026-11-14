@@ -232,3 +232,22 @@ button.link:hover { color: var(--brass-hi); background: none; }
 .member .mname { font: 700 12px var(--heading); }
 .citizens.wide { max-height: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .popcity { margin-bottom: 14px; }
+
+.cbanner { font: 700 13px var(--heading); text-align: center; padding: 3px 0; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.06em; }
+.cbanner.win { background: linear-gradient(#2f7a34, #1d4f22); color: #e9ffe6; }
+.cbanner.even { background: linear-gradient(#7a6a2f, #4f441d); color: #fff6d6; }
+.cbanner.lose { background: linear-gradient(#8a2f2a, #561c19); color: #ffe6e3; }
+.cbanner.capture { background: linear-gradient(#2f5a7a, #1d3a4f); color: #e6f4ff; }
+.cgrid { display: grid; grid-template-columns: 1fr 44px 44px 1fr; gap: 6px; align-items: start; min-width: 330px; }
+.cside .cname { font: 500 11px var(--heading); color: var(--brass); }
+.cside .cstr { font: 700 20px var(--heading); line-height: 1.1; }
+.cside .mod { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; }
+.cbars { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.hpbar { width: 14px; height: 90px; border: 1px solid #556; background: #111; display: flex; flex-direction: column-reverse; }
+.hpbar .keep { background: linear-gradient(90deg, #4fbf55, #2f8a35); }
+.hpbar .lose { background: #e5463b; animation: flashdmg 0.8s ease-in-out infinite alternate; }
+@keyframes flashdmg { from { opacity: 1; } to { opacity: 0.25; } }
+.hptext { font-size: 10px; text-align: center; line-height: 1.2; }
+.cdmg { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; }
+
+.autotag { font: 500 9px var(--body, sans-serif); padding: 0 4px; border-radius: 6px; background: #2a3846; color: var(--muted); vertical-align: middle; }

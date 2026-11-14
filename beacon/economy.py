@@ -307,6 +307,12 @@ def maintenance(state: GameState, cfg: Config, pid: str) -> int:
     )
 
 
+def road_upkeep(state: GameState, cfg: Config, pid: str) -> int:
+    from beacon.network import unlinked_routes  # network imports nothing from here at load
+
+    return unlinked_routes(state, pid) * cfg.t("economy.unlinked_road_upkeep")
+
+
 def unit_upkeep(state: GameState, cfg: Config, pid: str) -> int:
     members = sum(u.count for u in state.units.values() if u.owner == pid)
     cities_n = sum(1 for c in state.cities if c.owner == pid and c.status == ACTIVE)
@@ -332,7 +338,9 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
         city_events, city_science = process_city(state, cfg, city, player)
         events.extend(city_events)
         science += city_science
-    cost = maintenance(state, cfg, pid) + unit_upkeep(state, cfg, pid)
+    cost = (
+        maintenance(state, cfg, pid) + unit_upkeep(state, cfg, pid) + road_upkeep(state, cfg, pid)
+    )
     player.gold -= cost
     if player.gold < 0:
         shortfall = -player.gold

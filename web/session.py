@@ -203,7 +203,11 @@ class Session:
             if head and not head.startswith("project:") and prod > 0:
                 turns = max(0, -(-(economy.item_cost(cfg, head) - c.production_store) // prod))
             city_rows.append({"id": c.id, "production": prod, "head": head, "turns": turns})
-        upkeep = economy.maintenance(s, cfg, me) + economy.unit_upkeep(s, cfg, me)
+        upkeep = (
+            economy.maintenance(s, cfg, me)
+            + economy.unit_upkeep(s, cfg, me)
+            + economy.road_upkeep(s, cfg, me)
+        )
         unlinked = [c.name for c in mine if not c.connected]
         breakdown = {
             y: {
@@ -216,6 +220,7 @@ class Session:
         breakdown["gold"]["costs"] = [
             ["Building upkeep", -economy.maintenance(s, cfg, me)],
             ["Unit upkeep", -economy.unit_upkeep(s, cfg, me)],
+            ["Unconnected roads", -economy.road_upkeep(s, cfg, me)],
         ]
         research = None
         if player.research:

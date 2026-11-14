@@ -31,3 +31,25 @@ def update_connections(state: GameState, cfg: Config, pid: str) -> None:
     for city in state.cities:
         if city.owner == pid:
             city.connected = city.id in linked
+
+
+def unlinked_routes(state: GameState, pid: str) -> int:
+    """A player's road and rail hexes not joined to any of its cities (designer 2026-11-14: they
+    cost upkeep until connected)."""
+    from beacon.fog import built_tiles  # fog imports nothing from here
+
+    mine = [t for t in built_tiles(state).get(pid, []) if state.tiles[t].route]
+    if not mine:
+        return 0
+    starts = [c.tile for c in state.cities if c.owner == pid and c.status == ACTIVE]
+    w, h = state.width, state.height
+    linked: set[int] = set()
+    for s in starts:
+        if s in linked:
+            continue
+        linked |= reachable(
+            s,
+            lambda i: hexgrid.neighbours(i, w, h),
+            lambda i: state.tiles[i].route is not None or i in starts,
+        )
+    return sum(1 for t in mine if t not in linked)

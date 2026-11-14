@@ -339,6 +339,15 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
     return None
 
 
+def best_for_tile(state: GameState, cfg: Config, city: City, t: int) -> Citizen | None:
+    """The grown citizen of this city who would give the most on tile `t` (city focus weights),
+    not counting one already working it."""
+    people = [c for c in of_city(state, city.id) if c.adult and c.tile != t]
+    if not people:
+        return None
+    return max(people, key=lambda c: (tile_score(state, cfg, city, c, t), -c.id))
+
+
 def city_lines(
     state: GameState, cfg: Config, city: City
 ) -> tuple[list[int], list[tuple[str, str, int]], dict[str, int]]:

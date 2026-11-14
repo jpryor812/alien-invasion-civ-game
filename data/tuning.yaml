@@ -143,6 +143,11 @@ economy:
     value: 100
     status: placeholder
     note: Treasury at the start.
+  unlinked_road_upkeep:
+    value: 1
+    status: placeholder
+    note: Gold per turn for each road or rail hex not yet joined to one of the player's cities
+      (designer 2026-11-14).
   food_per_pop:
     value: 2
     status: placeholder

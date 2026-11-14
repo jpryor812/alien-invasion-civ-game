@@ -27,6 +27,7 @@ from beacon import (
 from beacon.commands import (
     AcceptDeal,
     AcceptOffer,
+    AssignBestCitizen,
     Attack,
     BuildImprovement,
     CancelJob,
@@ -302,6 +303,18 @@ def _promote(state: GameState, cfg: Config, cmd: PromoteUnit) -> Events:
     return [{"kind": "unit_promoted", "unit": unit.id, "promotion": cmd.promotion}]
 
 
+@handles(AssignBestCitizen)
+def _assign_best(state: GameState, cfg: Config, cmd: AssignBestCitizen) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    if cmd.tile not in citizens.workable(state, cfg, city):
+        raise CommandError("that tile has no improvement in this city's area")
+    c = citizens.best_for_tile(state, cfg, city, cmd.tile)
+    if c is None:
+        raise CommandError(f"{city.name} has no grown citizen free for that tile")
+    c.job = f"tile:{cmd.tile}"
+    return [{"kind": "citizen_job", "citizen": c.id, "job": c.job, "name": c.name}]
+
+
 @handles(HoldFire)
 def _hold_fire(state: GameState, cfg: Config, cmd: HoldFire) -> Events:
     city = own_city(state, cmd.player, cmd.city)
@@ -346,6 +359,8 @@ def _fortify(state: GameState, cfg: Config, cmd: Fortify) -> Events:
         raise CommandError("civilians cannot fortify")
     if unit.job is not None:
         raise CommandError("unit is working")
+    if unit.attacks_left < 1:
+        raise CommandError("a unit that attacked this turn cannot fortify")
     unit.fortified = True
     unit.order = "fortify"
     return [{"kind": "unit_fortified", "unit": unit.id}]
@@ -697,4 +712,12 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     return out
 
 
-REPLACE_CITIZENS = (Attack, MoveUnit, SeatRecruit, UnseatRecruit, SetCitizenJob, AcceptOffer)
+REPLACE_CITIZENS = (
+    Attack,
+    MoveUnit,
+    SeatRecruit,
+    UnseatRecruit,
+    SetCitizenJob,
+    AssignBestCitizen,
+    AcceptOffer,
+)

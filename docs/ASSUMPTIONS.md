@@ -499,3 +499,20 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   0 defeats, no continent fell; players lost 1-10 cities each game to sieges; 0-41 alien cities
   left at turn 200. Slowest game 99 s.
 
+## Combat preview, city tiles, council clarity, road upkeep (designer, 2026-11-14)
+
+- **Fortify** is refused for a unit that attacked this turn.
+- **City fire**: selecting a city that can fire marks its targets red at once; click one to fire.
+- **Combat preview**: an outcome banner (decisive victory ... likely defeat), both strengths with
+  every modifier, and an HP bar per side whose flashing red part is the expected damage.
+- **City tiles**: a selected city outlines its improved tiles on the map with their yields; a
+  worked tile shows a green check and its worker, a free one a gold +. Clicking a + puts the
+  city's best grown citizen for that tile there (`assign_best_citizen`, by the city's focus).
+- **Council**: seated members appear only on the board; the pool lists the unassigned. Members
+  placed by Auto carry an "auto" tag. After each council change a message gives the change in
+  gold, science and beacon per turn. (With Auto, citizens who have no tile are already seated,
+  so seating one often changes nothing; moving one from a general to a domain seat lowers the
+  total, since a domain seat counts only its own domain.)
+- **Unconnected roads**: 1 gold a turn per road or rail hex of yours not joined to one of your
+  cities (shown in the gold breakdown).
+

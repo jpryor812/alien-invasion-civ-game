@@ -17,6 +17,7 @@ from typing import Any
 
 from beacon import hexgrid, promotions, rng
 from beacon.cities import alien_effect
+from beacon.cities import max_hp as city_max_hp
 from beacon.config import Config
 from beacon.liberation import credit, liberate, overrun
 from beacon.recruits import council_lines, traitor_lines
@@ -298,10 +299,21 @@ def preview_attack(state: GameState, cfg: Config, unit: Unit, target: int) -> di
     return {
         "legal": True,
         "kind": "ranged" if ranged else "melee",
-        "attacker": {"unit": unit.id, "hp": unit.hp, "strength": att.total, "lines": att.lines},
+        "attacker": {
+            "unit": unit.id,
+            "type": unit.type,
+            "hp": unit.hp,
+            "max_hp": max_hp(cfg, unit),
+            "strength": att.total,
+            "lines": att.lines,
+        },
         "defender": {
             "city" if isinstance(defender, City) else "unit": defender.id,
+            "type": "city" if isinstance(defender, City) else defender.type,
             "hp": defender.hp,
+            "max_hp": city_max_hp(cfg, defender, state)
+            if isinstance(defender, City)
+            else max_hp(cfg, defender),
             "strength": dfn.total,
             "lines": dfn.lines,
         },

@@ -382,6 +382,8 @@ function draw(t = performance.now()) {
   const reach = new Set(S.options ? [...S.options.reachable, ...mergeTiles()] : []);
   const attackable = new Set((S.options ? S.options.attacks : []).map((a) => a.tile));
   const bombard = new Set(S.targetMode === "bombard" && S.city ? S.city.bombard : []);
+  // a selected city shows its improved tiles: worked (green, with yields) or free (gold, click to staff)
+  const cityTiles = new Map(S.selected && S.selected.kind === "city" && S.city ? S.city.workable.map((w) => [w.tile, w]) : []);
   const visible = [];
   const total = S.view.width * S.view.height;
   for (let i = 0; i < total; i++) {
@@ -452,6 +454,7 @@ function draw(t = performance.now()) {
   for (const [i, sx, sy] of visible) {
     if (reach.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.stroke(); }
     if (attackable.has(i) || bombard.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(220,60,50,0.28)"; ctx.fill(); ctx.strokeStyle = "#ff6b5a"; ctx.lineWidth = 2.2; ctx.stroke(); }
+    if (cityTiles.has(i)) drawCityTile(cityTiles.get(i), i, sx, sy, R);
     if (S.hover === i) { hexPath(ctx, sx, sy, R - 1); ctx.strokeStyle = "rgba(255,244,214,0.85)"; ctx.lineWidth = 1.6; ctx.stroke(); }
   }
   // 7. cities, units, then banners on top
@@ -764,7 +767,7 @@ async function resolvePending(p) {
   }
   if (p.kind === "city_can_attack") {
     centerOnTile(S.view.cities[p.city].tile); await selectCity(p.city);
-    S.targetMode = "bombard"; S.dirty = true; toast("Enemy near the city: click a red hex to fire, or Hold fire.");
+    S.dirty = true; toast("Enemy near the city: click a red hex to fire, or Hold fire.");
   }
 }
 function describeEvent(e) {
@@ -843,7 +846,7 @@ function renderUnitPanel() {
     }
   }
   if (u.job) add(`Cancel ${pretty(u.job.improvement)}`, () => send({ kind: "cancel_job", unit: u.id }), "Stop building (the work is lost) so the engineers can move away");
-  if (spec.role !== "civilian" && !u.job) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defence; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
+  if (spec.role !== "civilian" && !u.job && u.attacks_left > 0) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defence; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
   add("Skip (S)", () => send({ kind: "skip_unit", unit: u.id }));
   for (const imp of o.builds) {
     const bi = o.build_info[imp];
@@ -869,6 +872,8 @@ async function selectCity(id, centerIt = false) {
   try { S.city = await api(`/api/city/${id}`); } catch (err) { clearSelection(); return; }
   S.selected = { kind: "city", id }; S.options = null; S.targetMode = null;
   if (centerIt) centerOnTile(S.city.city.tile);
+  // Civ style: a city that can fire shows its targets in red straight away; click one to fire.
+  if (S.city.bombard.length) S.targetMode = "bombard";
   renderCityPanel(); S.dirty = true;
 }
 function yieldBox(k, total, lines) {
@@ -897,12 +902,13 @@ function renderCityPanel() {
     ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
     <div class="list" id="prodlist">${list}</div>`}
     <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>
+    <div class="muted small">Improved tiles are outlined on the map: green ✓ is worked, gold + is free; click a + to put your best citizen there.</div>
     <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
     <h3>Defences</h3>
     <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, level ${u.promotion.level + 1}` : ""})${u.promotion && u.promotion.upgrade_cost != null ? ` <button class="small" data-upgrade-gun="${u.id}" ${S.view.economy.gold < u.promotion.upgrade_cost ? "disabled" : ""} title="+${u.promotion.strength_pct}% attack and defence">Upgrade (${u.promotion.upgrade_cost}g)</button>` : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
-    ${d.bombard.length ? `<div class="actions"><button id="bombard" class="primary">Attack with city…</button>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
+    ${d.bombard.length ? `<div class="actions"><span class="bad">Enemies in range are marked red: click one to fire.</span>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
   side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
   side.querySelectorAll("[data-upgrade-gun]").forEach((el) => el.onclick = () => send({ kind: "upgrade_defence", unit: Number(el.dataset.upgradeGun) }));
@@ -917,7 +923,6 @@ function renderCityPanel() {
   if ($("changeprod")) $("changeprod").onclick = () => { S.cityListOpen = true; renderCityPanel(); };
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
   if ($("buy")) $("buy").onclick = () => send({ kind: "purchase", city: c.id });
-  if ($("bombard")) $("bombard").onclick = () => { S.targetMode = "bombard"; S.dirty = true; toast("Click a red hex to bombard."); };
   side.classList.remove("hidden");
 }
 
@@ -1000,7 +1005,10 @@ async function onClick(e) {
   if (i === null) return;
   if (S.targetMode === "bombard" && S.city) {
     if (S.city.bombard.includes(i)) return send({ kind: "city_attack", city: S.city.city.id, target: i });
-    S.targetMode = null; S.dirty = true;
+  }
+  if (S.city && S.selected && S.selected.kind === "city" && S.city.workable.some((w) => w.tile === i)) {
+    const worked = S.city.citizens.some((p) => p.tile === i);
+    if (!worked) return send({ kind: "assign_best_citizen", city: S.city.city.id, tile: i }).then(() => S.city && toastJob());
   }
   if (S.options) {
     const u = S.options.unit;
@@ -1066,15 +1074,45 @@ function strengthLines(side) {
     return `${pretty(l.source)} ${l.value >= 0 ? "+" : ""}${l.value}%`;
   }).join("<br>");
 }
+// Combat preview, Civ V style: an outcome banner, both strengths with their modifiers, and HP
+// bars where the flashing red part is the damage each side should take.
+function hpBar(side, dmg) {
+  const max = side.max_hp || 100, hp = side.hp, lost = Math.min(hp, dmg.expected);
+  const keep = Math.max(0, hp - lost);
+  return `<div class="hpbar"><div class="keep" style="height:${100 * keep / max}%"></div><div class="lose" style="height:${100 * lost / max}%"></div></div>
+    <div class="hptext">${hp} → <b>${keep}</b><br><span class="muted">${dmg.min}-${dmg.max} dmg</span></div>`;
+}
+function modLines(side) {
+  return side.lines.filter((l) => l.kind !== "base" || l.source !== "base").map((l) => {
+    const v = l.kind === "pct" ? `${l.value >= 0 ? "+" : ""}${l.value}%` : l.kind === "pct_of" ? `×${l.value}%` : l.kind === "multiplier" ? `×${l.value}` : l.kind === "flat_hundredths" ? `+${(l.value / 100).toFixed(1)}` : `+${l.value}`;
+    const good = !(l.kind === "pct_of" && l.value < 100) && !(l.kind === "pct" && l.value < 0);
+    return `<div class="mod"><span>${esc(pretty(l.source.replace(/^\w+:/, "")))}</span><b class="${good ? "good" : "bad"}">${v}</b></div>`;
+  }).join("");
+}
 function previewHtml(p) {
-  if (p.kind === "capture") return "<b>Capture</b><br>Only civilians stand here.";
+  if (p.kind === "capture") return '<div class="cbanner capture">CAPTURE</div><div class="muted">Only civilians stand here: walk in to take them.</div>';
   const dd = p.damage_to_defender, da = p.damage_to_attacker;
-  return `<b>${p.kind === "ranged" ? "Ranged attack" : "Melee attack"}</b>
-    <table><tr><th>You</th><th>Defender</th></tr>
-    <tr><td>${(p.attacker.strength / 100).toFixed(1)}</td><td>${(p.defender.strength / 100).toFixed(1)}</td></tr>
-    <tr><td class="muted">${strengthLines(p.attacker)}</td><td class="muted">${strengthLines(p.defender)}</td></tr>
-    <tr><td>takes <b class="bad">${da.expected}</b> <span class="muted">(${da.min}-${da.max})</span><br>HP ${p.attacker.hp}</td>
-        <td>takes <b class="good">${dd.expected}</b> <span class="muted">(${dd.min}-${dd.max})</span><br>HP ${p.defender.hp}</td></tr></table>`;
+  const kills = dd.expected >= p.defender.hp, dies = da.expected >= p.attacker.hp;
+  const [label, cls] = kills && p.defender.type === "city" && p.kind === "melee" ? ["CAPTURE CITY", "win"]
+    : kills ? ["DECISIVE VICTORY", "win"] : dies ? ["LIKELY DEFEAT", "lose"]
+    : p.kind === "ranged" ? ["RANGED ATTACK", "win"]
+    : dd.expected > da.expected * 1.5 ? ["MAJOR VICTORY", "win"] : dd.expected >= da.expected ? ["MINOR VICTORY", "even"] : ["COSTLY ATTACK", "lose"];
+  return `<div class="cbanner ${cls}">${label}</div>
+    <div class="cgrid">
+      <div class="cside">
+        <div class="cname">Your ${esc(pretty(p.attacker.type))}</div>
+        <div class="cstr">${(p.attacker.strength / 100).toFixed(1)}</div><div class="muted small">strength</div>
+        ${modLines(p.attacker)}
+      </div>
+      <div class="cbars">${hpBar(p.attacker, da)}</div>
+      <div class="cbars">${hpBar(p.defender, dd)}</div>
+      <div class="cside">
+        <div class="cname">${p.defender.type === "city" ? "City" : esc(pretty(p.defender.type))}</div>
+        <div class="cstr">${(p.defender.strength / 100).toFixed(1)}</div><div class="muted small">strength</div>
+        ${modLines(p.defender)}
+      </div>
+    </div>
+    <div class="cdmg"><span>You deal <b class="good">${dd.expected}</b></span><span>You take <b class="bad">${da.expected}</b></span></div>`;
 }
 
 window.addEventListener("keydown", (e) => {
@@ -1212,7 +1250,7 @@ function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<sp
 function memberCard(m, picked) {
   const chips = Object.entries(m.scores).map(([k, v]) => `<span class="tag ${k}">${v} ${k}</span>`).join("");
   return `<div class="member ${m.kind}${picked ? " picked" : ""}" data-member="${m.kind}:${m.id}">
-    <div class="avatar">${m.kind === "recruit" ? "◈" : "●"}</div><div class="mname">${esc(m.name)}</div>
+    <div class="avatar">${m.kind === "recruit" ? "◈" : "●"}</div><div class="mname">${esc(m.name)}${m.seats.length && !m.pinned ? ' <span class="autotag" title="Placed by Auto: it gives way to recruits; click it and a seat to fix it here">auto</span>' : ""}</div>
     <div class="muted small">${esc(m.where)}</div><div>${chips}</div>
     ${m.traits.length ? `<div class="small">${m.traits.map((t) => `<span class="trait">${esc(pretty(t))}</span>`).join(" ")}</div>` : ""}</div>`;
 }
@@ -1227,7 +1265,8 @@ function councilScreen(d) {
   const general = Array.from({ length: d.general_seats }, (_, k) => slot("general", k)).join("");
   const domains = d.domains.map((x) => `<div class="domaincol"><div class="seathead tag ${x}">${pretty(x)}${d.bonus[x] ? ` +${d.bonus[x]}%` : ""}</div>
       ${Array.from({ length: d.seats_per_domain }, (_, k) => slot(x, k)).join("")}</div>`).join("");
-  const pool = d.members.map((m) => memberCard(m, pick === `${m.kind}:${m.id}`)).join("");
+  // members already on a seat are shown on the board only (designer: so you can see who is assigned)
+  const pool = d.members.filter((m) => !m.seats.length || pick === `${m.kind}:${m.id}`).map((m) => memberCard(m, pick === `${m.kind}:${m.id}`)).join("");
   const others = S.view.players.filter((p) => p.id !== S.view.me);
   const gifts = d.recruits.map((r) => `<div class="row small">${esc(r.name)} · ${r.lifespan ? `age ${r.age}/${r.lifespan}` : "immortal"}${r.betrayal ? ` · <span class="bad">betrayal ${r.betrayal / 10}%/turn</span>` : ""}
       <select data-giftto="${r.id}">${others.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><button class="small" data-gift="${r.id}">Gift</button></div>`).join("");
@@ -1238,17 +1277,31 @@ function councilScreen(d) {
     <div class="seatrow general">${general}</div>
     <div class="seatrow domains">${domains}</div>
     ${offers ? `<h3>Offers</h3>${offers}` : ""}
-    <h3>Members</h3><div class="pool">${pool || '<p class="muted">No grown citizens or recruits yet.</p>'}</div>
+    <h3>Unassigned members</h3><div class="pool">${pool || '<p class="muted">Everyone is on a seat. Free a seat (×) to move someone.</p>'}</div>
     ${gifts ? `<h3>Recruits: gifts</h3>${gifts}` : ""}`;
 }
-async function seatMember(key, seat, d) {
+// After a council change, say what it did to the per-turn totals.
+function perTurn() {
+  const e = S.view.economy, b = e.breakdown;
+  return { gold: e.gold_per_turn, science: e.science_per_turn, beacon: b ? b.beacon.sources.reduce((a, [, v]) => a + v, 0) : 0 };
+}
+async function councilChange(fn) {
+  const before = perTurn();
+  await fn();
+  const after = perTurn();
+  const diff = Object.keys(after).filter((k) => after[k] !== before[k]).map((k) => `${pretty(k)} ${after[k] - before[k] > 0 ? "+" : ""}${after[k] - before[k]} per turn`);
+  toast(diff.length ? `Council change: ${diff.join(", ")}` : "Council change: no change to gold, science or beacon (food and production show in each city).");
+}
+async function seatMember(key, seat, d) { return councilChange(() => seatMember0(key, seat, d)); }
+async function freeSeat(key, d) { return councilChange(() => freeSeat0(key, d)); }
+async function seatMember0(key, seat, d) {
   const [kind, id] = key.split(":"); const n = Number(id);
   if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: `council:${seat}` }, "council");
   const m = d.members.find((x) => x.kind === "recruit" && x.id === n);
   const seats = seat === "general" ? ["general"] : [...new Set([...m.seats.filter((s) => s !== "general"), seat])];
   return act({ kind: "seat_recruit", recruit: n, seats }, "council");
 }
-async function freeSeat(key, d) {
+async function freeSeat0(key, d) {
   const [kind, id, seat] = key.split(":"); const n = Number(id);
   if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: "auto" }, "council");
   const m = d.members.find((x) => x.kind === "recruit" && x.id === n);
@@ -1579,3 +1632,25 @@ function drawTurret(t, sx, sy, R) {
   ctx.fillStyle = "#f2d38a"; ctx.font = `700 ${Math.max(7, Math.round(s * 0.9))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(String(t.turret), x, y + s * 0.25);
 }
+
+const YIELD_COLOR = { food: "#7cc35a", production: "#e69a5c", science: "#6cbbec", gold: "#f2d15c", beacon: "#c88df2" };
+function drawCityTile(w, i, sx, sy, R) {
+  const worker = S.city.citizens.find((p) => p.tile === i);
+  hexPath(ctx, sx, sy, R - 2);
+  ctx.fillStyle = worker ? "rgba(90,200,110,0.16)" : "rgba(242,211,138,0.12)"; ctx.fill();
+  ctx.strokeStyle = worker ? "#6fdc7c" : "#f2d38a"; ctx.lineWidth = 2.4; ctx.setLineDash(worker ? [] : [R * 0.15, R * 0.1]); ctx.stroke(); ctx.setLineDash([]);
+  // yield dots: one coloured disc per yield type with its amount
+  const ys = Object.entries(w.yields).filter(([, v]) => v > 0);
+  const r = Math.max(5, R * 0.17);
+  ys.forEach(([k, v], n) => {
+    const x = sx + (n - (ys.length - 1) / 2) * r * 2.2, y = sy + R * 0.5;
+    ctx.fillStyle = YIELD_COLOR[k]; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#10161c"; ctx.font = `700 ${Math.round(r * 1.2)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(v), x, y + 0.5);
+  });
+  const bx = sx, by = sy - R * 0.5, br = Math.max(7, R * 0.2);
+  ctx.fillStyle = worker ? "#2f8a35" : "#b8860b"; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(br * 1.3)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(worker ? "✓" : "+", bx, by + 0.5);
+  if (worker && S.cam.zoom > 0.8) { ctx.font = `600 ${Math.max(9, Math.round(R * 0.2))}px Roboto, sans-serif`; ctx.fillStyle = "#e9ffe6"; ctx.fillText(worker.name, sx, sy - R * 0.78); }
+}
+function toastJob() { toast("Assigned the best citizen to that tile."); }

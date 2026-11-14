@@ -311,3 +311,42 @@ def test_moving_onto_a_twin_merges_and_jobs_can_be_cancelled(cfg):
     apply_command(s, cfg, BuildImprovement(player=EU, unit=eng.id, improvement="farm"))
     apply_command(s, cfg, CancelJob(player=EU, unit=eng.id))
     assert eng.job is None and eng.order == "none"
+
+
+def test_unlinked_roads_cost_gold_until_connected(cfg):
+    from beacon.economy import road_upkeep
+    from beacon.fog import touch_built
+
+    s = arena(cfg)
+    city = city_with_tiles(cfg, s, pop=1)
+    far = [at(12, 2), east(at(12, 2))]
+    for t in far:
+        s.tiles[t].route, s.tiles[t].built_by = "road", EU
+    touch_built(s)
+    assert road_upkeep(s, cfg, EU) == 2 * cfg.t("economy.unlinked_road_upkeep")
+    near = east(city.tile)
+    s.tiles[near].route, s.tiles[near].built_by = "road", EU
+    touch_built(s)
+    assert road_upkeep(s, cfg, EU) == 2  # the road beside the city is joined to it: free
+
+
+def test_assign_best_citizen_and_no_fortify_after_attack(cfg):
+    from beacon.commands import AssignBestCitizen, Attack, Fortify
+
+    s = arena(cfg)
+    city = city_with_tiles(cfg, s, pop=2)
+    mine = east(city.tile)
+    weak = person(s, city, {"food": 3, "gold": 3})
+    strong = person(s, city, {"production": 3, "science": 3})
+    strong.job = "council"  # the weaker one works the mine at first
+    citizens.assign(s, cfg, EU)
+    assert weak.tile == mine
+    apply_command(s, cfg, AssignBestCitizen(player=EU, city=city.id, tile=mine))
+    assert strong.tile == mine and strong.job == f"tile:{mine}"
+    assert weak.tile is None
+    a = at(10, 3)
+    inf = create_unit(s, cfg, "infantry", EU, a)
+    create_unit(s, cfg, "alien_hatchling", ALIENS, east(a))
+    apply_command(s, cfg, Attack(player=EU, unit=inf.id, target=east(a)))
+    with pytest.raises(CommandError, match="attacked this turn"):
+        apply_command(s, cfg, Fortify(player=EU, unit=inf.id))
