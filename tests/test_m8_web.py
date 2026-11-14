@@ -18,6 +18,12 @@ from web.session import Session
 HUMAN = "europe"
 
 
+@pytest.fixture(autouse=True)
+def temp_saves(tmp_path, monkeypatch):
+    """Keep test saves (including autosaves) out of runs/saves."""
+    monkeypatch.setattr(session_mod, "SAVE_DIR", tmp_path / "saves")
+
+
 @pytest.fixture
 def sess(cfg):
     return Session(cfg, seed=3, human=HUMAN)
@@ -88,17 +94,29 @@ def test_end_turn_runs_the_ai(sess):
     assert sess.state.players[HUMAN].research is None  # the human seat was left alone
 
 
-def test_save_and_load(sess, tmp_path, monkeypatch):
-    monkeypatch.setattr(session_mod, "SAVE_DIR", tmp_path)
+def test_save_and_load(sess):
     sess.end_turn()
     sess.save("slot_1")
-    assert Session.saves() == ["slot_1"]
+    saves = Session.saves()
+    assert [m["name"] for m in saves] == ["autosave", "slot_1"] or [m["name"] for m in saves] == [
+        "slot_1",
+        "autosave",
+    ]
+    meta = next(m for m in saves if m["name"] == "slot_1")
+    assert meta["turn"] == sess.state.turn and meta["player"] == HUMAN
     turn = sess.state.turn
     sess.end_turn()
     sess.load("slot_1")
     assert sess.state.turn == turn and sess.human == HUMAN
     with pytest.raises(ValueError):
         sess.save("../escape")
+
+
+def test_status_and_continents(sess):
+    st = sess.status()
+    assert st["player"] == HUMAN and st["turn"] == 0
+    names = [c["name"] for c in sess.continents()]
+    assert len(names) == 6 and "Europe" in names
 
 
 def test_screens_build(sess):
@@ -135,6 +153,8 @@ def test_http_api_round_trip():
         assert status == 200 and json.loads(body)["turn"] == 0
         assert post("/api/end_turn", {})["ok"]
         assert json.loads(get("/api/view")[1])["turn"] == 1
+        assert json.loads(get("/api/status")[1])["turn"] == 1
+        assert len(json.loads(get("/api/continents")[1])) == 6
         assert post("/api/command", {"kind": "set_research", "tech": "nope"})["ok"] is False
         with pytest.raises(urllib.error.HTTPError):
             get("/../pyproject.toml")

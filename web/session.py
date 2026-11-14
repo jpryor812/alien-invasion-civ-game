@@ -7,7 +7,10 @@ action goes through `apply_command`, exactly as for the AI.
 
 from __future__ import annotations
 
+import contextlib
+import json
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +73,8 @@ class Session:
             raise ValueError("save names use letters, digits, - and _ (up to 40)")
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
         (SAVE_DIR / f"{name}.json").write_text(state_to_json(self.state), encoding="utf-8")
+        meta = {"name": name, **self.status(), "saved_at": int(time.time())}
+        (SAVE_DIR / f"{name}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
         return name
 
     def load(self, name: str) -> None:
@@ -86,8 +91,43 @@ class Session:
         self.events = []
 
     @staticmethod
-    def saves() -> list[str]:
-        return sorted(p.stem for p in SAVE_DIR.glob("*.json")) if SAVE_DIR.exists() else []
+    def saves() -> list[dict[str, Any]]:
+        """Saved games, newest first, with what the menus show about them."""
+        if not SAVE_DIR.exists():
+            return []
+        out = []
+        for path in SAVE_DIR.glob("*.json"):
+            if path.name.endswith(".meta.json"):
+                continue
+            meta_path = path.with_name(f"{path.stem}.meta.json")
+            meta: dict[str, Any] = {"name": path.stem, "saved_at": int(path.stat().st_mtime)}
+            if meta_path.exists():
+                meta.update(json.loads(meta_path.read_text(encoding="utf-8")))
+            out.append(meta)
+        return sorted(out, key=lambda m: (-m["saved_at"], m["name"]))
+
+    def status(self) -> dict[str, Any]:
+        s = self.state
+        return {
+            "turn": s.turn,
+            "year": year(self.cfg, s.turn),
+            "player": self.human,
+            "player_name": s.players[self.human].name,
+            "seed": s.seed,
+            "outcome": s.outcome,
+        }
+
+    def continents(self) -> list[dict[str, Any]]:
+        cfg = self.cfg
+        return [
+            {
+                "id": c,
+                "name": cfg.continents[c]["name"],
+                "note": note(cfg, "continents", c),
+                "capital": cfg.continents[c]["cities"][0],
+            }
+            for c in cfg.continent_ids()
+        ]
 
     # -- acting ------------------------------------------------------------------------------
 
@@ -116,6 +156,8 @@ class Session:
                 ai.take_turn(s, cfg, pid, submit)
         events = advance_turn(s, cfg)
         self.events = [e for e in events if self._mine(e)]
+        with contextlib.suppress(OSError):
+            self.save("autosave")  # so Continue works after a restart
         return {"ok": True, "events": self.events}
 
     def _mine(self, e: dict[str, Any]) -> bool:
