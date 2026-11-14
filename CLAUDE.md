@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Read docs/DESIGN.md first, then the current milestone spec (docs/SPEC_M0-M3.md). This is a
+Read docs/DESIGN.md first, then the current milestone spec (docs/SPEC_M*.md, latest). This is a
 turn-based 4X cooperative-competitive game: six continents, a common alien foe, a beacon tech
 branch that recruits alien characters, and an MVP score.
 
@@ -18,7 +18,8 @@ branch that recruits alien characters, and an MVP score.
 - Test: `uv run pytest -q`
 - Lint: `uv run ruff check . && uv run ruff format --check .`
 - One run: `uv run python -m beacon.runner run --seed 1 --turns 100 --out runs/s1`
-- Batch: `uv run python -m beacon.runner batch --seeds 1-20 --turns 100`
+  (`--driver ai|bot`, default ai; `--human europe` leaves a seat to a human client)
+- Batch: `uv run python -m beacon.runner batch --seeds 1-20 --turns 100 --driver ai`
 
 ## Working agreements
 - Plan before coding. A milestone spec approved by the designer may be built without stopping
@@ -33,9 +34,11 @@ branch that recruits alien characters, and an MVP score.
 ## Layout
 ```
 beacon/   config, rng, canonical, hexgrid, state, mapgen, fog, economy, tech, units,
-          combat, commands, turn, view, bots, runner
-data/     tuning, terrain, resources, improvements, buildings, units, techs, continents, bots
-docs/     DESIGN, SPEC_M0-M3, ASSUMPTIONS
+          movement, combat, aliens, recruits, diplomacy, commands, actions, turn, view,
+          bots, ai, runner
+data/     tuning, terrain, resources, improvements, buildings, units, techs, continents,
+          aliens, bots, ai
+docs/     DESIGN, SPEC_*, ASSUMPTIONS, BALANCE_*
 tests/
 runs/     run output (git-ignored)
 ```

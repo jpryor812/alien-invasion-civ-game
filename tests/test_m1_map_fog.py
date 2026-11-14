@@ -133,11 +133,13 @@ def test_view_hides_unexplored_tiles_and_unseen_units(cfg, world):
 
 
 def test_lost_cities_unknown_until_seen(cfg, world):
+    """Players know every active city from the start (nations in contact, M6) but lost cities on
+    other continents only once seen."""
     pid = "asia"
     player = world.players[pid]
     for city in world.cities:
         known = str(city.id) in player.known_cities
-        if city.owner == pid:
+        if city.status == ACTIVE:
             assert known
         elif city.continent != pid:
             assert not known

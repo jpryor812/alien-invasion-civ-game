@@ -25,6 +25,9 @@ CREDIT_KEYS = (
     "recruits_given",
     "recruits_sold",
     "recruits_lost",
+    "aid_gold",
+    "aid_units",
+    "aid_techs",
 )
 
 

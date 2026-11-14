@@ -1,7 +1,7 @@
 # Spec: milestone M6, AI continents, trade, aid and troops abroad
 
-Status: **draft for designer review** (2026-11-13). Nothing here is built. Items marked
-**DECIDE** need the designer; each has a proposed default the build will use if approved.
+Status: **approved 2026-11-13** with all proposed defaults, plus one change: alliances need a
+tech that both continents know (International Accords, an early economic tech).
 Source: DESIGN.md section 6 (troops abroad), section 13 (rescuing fallen continents), section 14
 (trade and diplomacy), section 15 (AI). All six continents and their players already exist.
 
@@ -36,8 +36,9 @@ No war between players (DESIGN.md 14). Diplomacy has three parts:
 - **Deals** (section 3): trading goods, gold and help.
 - **Aid** (section 4): gifts of gold, units and recruits, which count toward the MVP score.
 - **Alliances:** a standing agreement between two players.
-  - **DECIDE (alliance effect):** *default: allies share vision (each sees what the other's units
-    and cities see) and can enter each other's cities.*
+  - Allies share vision (each sees what the other's units and cities see) and share their maps
+    of discovered cities.
+  - An alliance needs both players to know International Accords (designer, 2026-11-13).
 
 ## 3. Trade
 
@@ -142,6 +143,10 @@ later client and server concern, and the simulation does not change for it.
   - AI continents free at least as many cities on average as the test bot;
   - every game hits 100 turns in under 15 s.
 - **Report:** `docs/BALANCE_M6.md` compares the four AI characters and the bot.
+
+## Outcome (2026-11-13)
+
+Built. All M6 gates met (see `docs/BALANCE_M6.md`); 107 tests pass.
 
 ## Out of scope for M6
 

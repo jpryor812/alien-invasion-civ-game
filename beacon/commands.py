@@ -183,6 +183,43 @@ class DeclineOffer(Command):
     offer: int
 
 
+@register
+@dataclass(frozen=True)
+class ProposeDeal(Command):
+    """Propose a deal. give/take are term dicts (gold, gold_per_turn, resources, techs,
+    recruits, units, alliance); a deal with nothing to take is aid."""
+
+    kind: ClassVar[str] = "propose_deal"
+    to_player: str
+    give: dict[str, Any]
+    take: dict[str, Any]
+    duration: int
+
+
+@register
+@dataclass(frozen=True)
+class AcceptDeal(Command):
+    kind: ClassVar[str] = "accept_deal"
+    deal: int
+
+
+@register
+@dataclass(frozen=True)
+class DeclineDeal(Command):
+    kind: ClassVar[str] = "decline_deal"
+    deal: int
+
+
+@register
+@dataclass(frozen=True)
+class ShipUnit(Command):
+    """Ship a unit from its owner's port to a known coastal city on another continent."""
+
+    kind: ClassVar[str] = "ship_unit"
+    unit: int
+    city: int
+
+
 def command_to_dict(cmd: Command) -> dict[str, Any]:
     data = asdict(cmd)
     for key, value in data.items():

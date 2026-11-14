@@ -279,3 +279,24 @@ aliens:
     status: placeholder
     note: Alien units placed in each overrun city at the start (the first sits in the city).
     list: [alien_hive_guard, alien_warrior]
+
+trade:
+  alliance_tech:
+    value: international_accords
+    status: calibrated
+    note: Designer decision 2026-11-13 - both players must know it to ally.
+  shipping:
+    status: placeholder
+    note: Goods and units travel by sea at speed hexes per turn (at least 1 turn). Shipping a unit
+      costs base_gold + per_hex_gold x distance / 10. Ports are coastal cities with a Port.
+    speed: 20
+    unit_base_gold: 10
+    unit_per_10_hexes_gold: 3
+  deals:
+    status: placeholder
+    note: Allowed durations for per-turn parts of deals (gold per turn, resource lending).
+    durations: [10, 20, 30]
+  abroad_upkeep_pct:
+    value: 100
+    status: placeholder
+    note: Extra upkeep, as percent of normal unit upkeep, for unit members on another continent.

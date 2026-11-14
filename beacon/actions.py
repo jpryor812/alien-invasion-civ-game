@@ -11,6 +11,7 @@ from typing import Any
 
 from beacon import (
     combat,
+    diplomacy,
     economy,
     fog,
     hexgrid,
@@ -21,23 +22,27 @@ from beacon import (
     tech,
 )
 from beacon.commands import (
+    AcceptDeal,
     AcceptOffer,
     Attack,
     BuildImprovement,
     CityAttack,
     Command,
     CommandError,
+    DeclineDeal,
     DeclineOffer,
     Fortify,
     MergeUnits,
     MoveUnit,
     OfferRecruit,
+    ProposeDeal,
     Purchase,
     RefoundCity,
     SeatRecruit,
     SetFocus,
     SetProduction,
     SetResearch,
+    ShipUnit,
     SkipUnit,
     SplitUnit,
     UnseatRecruit,
@@ -348,6 +353,66 @@ def _decline(state: GameState, cfg: Config, cmd: DeclineOffer) -> Events:
     return [{"kind": "offer_declined", "offer": o.id}]
 
 
+# -- diplomacy and troops abroad -----------------------------------------------------------------
+
+
+@handles(ProposeDeal)
+def _propose(state: GameState, cfg: Config, cmd: ProposeDeal) -> Events:
+    if cmd.to_player not in state.players:
+        raise CommandError(f"unknown player {cmd.to_player!r}")
+    try:
+        give, take = diplomacy.terms_from(dict(cmd.give)), diplomacy.terms_from(dict(cmd.take))
+    except (ValueError, TypeError) as err:
+        raise CommandError(str(err)) from None
+    probe = diplomacy.Deal(
+        id=0,
+        proposer=cmd.player,
+        receiver=cmd.to_player,
+        give=give,
+        take=take,
+        duration=cmd.duration,
+        proposed_turn=state.turn,
+    )
+    problem = diplomacy.deal_problem(state, cfg, probe)
+    if problem:
+        raise CommandError(problem)
+    deal = diplomacy.propose(state, cfg, cmd.player, cmd.to_player, give, take, cmd.duration)
+    return [{"kind": "deal_proposed", "deal": deal.id, "to": cmd.to_player}]
+
+
+def _incoming_deal(state: GameState, pid: str, deal_id: int):
+    deal = state.deals.get(str(deal_id))
+    if deal is None or deal.receiver != pid or deal.active:
+        raise CommandError(f"no open deal {deal_id} for {pid}")
+    return deal
+
+
+@handles(AcceptDeal)
+def _accept_deal(state: GameState, cfg: Config, cmd: AcceptDeal) -> Events:
+    deal = _incoming_deal(state, cmd.player, cmd.deal)
+    problem = diplomacy.deal_problem(state, cfg, deal)  # things may have changed since
+    if problem:
+        raise CommandError(problem)
+    return diplomacy.accept(state, cfg, deal)
+
+
+@handles(DeclineDeal)
+def _decline_deal(state: GameState, cfg: Config, cmd: DeclineDeal) -> Events:
+    deal = _incoming_deal(state, cmd.player, cmd.deal)
+    del state.deals[str(deal.id)]
+    return [{"kind": "deal_declined", "deal": deal.id}]
+
+
+@handles(ShipUnit)
+def _ship(state: GameState, cfg: Config, cmd: ShipUnit) -> Events:
+    unit = own_unit(state, cmd.player, cmd.unit)
+    known = {int(k) for k in state.players[cmd.player].known_cities}
+    problem = diplomacy.ship_problem(state, cfg, unit, cmd.city, known)
+    if problem:
+        raise CommandError(problem)
+    return diplomacy.ship_unit(state, cfg, unit, cmd.city)
+
+
 def _seat_options(state: GameState, cfg: Config, rec) -> list[tuple[str, ...]]:
     options = [("general",)] + [(d,) for d in sorted(rec.scores)]
     if len(rec.scores) > 1:
@@ -434,6 +499,19 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
             if player.gold >= o.price:
                 out.append(AcceptOffer(player=pid, offer=o.id))
             out.append(DeclineOffer(player=pid, offer=o.id))
+    known = {int(k) for k in player.known_cities}
+    for deal in sorted(state.deals.values(), key=lambda d: d.id):
+        if deal.receiver == pid and not deal.active:
+            if diplomacy.deal_problem(state, cfg, deal) is None:
+                out.append(AcceptDeal(player=pid, deal=deal.id))
+            out.append(DeclineDeal(player=pid, deal=deal.id))
+    for unit in state.sorted_units():
+        if unit.owner == pid and state.city_at(unit.tile) is not None:
+            out += [
+                ShipUnit(player=pid, unit=unit.id, city=c)
+                for c in sorted(known)
+                if diplomacy.ship_problem(state, cfg, unit, c, known) is None
+            ]
     return out
 
 
@@ -458,4 +536,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for o in sorted(state.offers.values(), key=lambda x: x.id):
         if o.to_player == pid:
             out.append({"kind": "offer_received", "offer": o.id})
+    for deal in sorted(state.deals.values(), key=lambda d: d.id):
+        if deal.receiver == pid and not deal.active:
+            out.append({"kind": "deal_received", "deal": deal.id})
     return out

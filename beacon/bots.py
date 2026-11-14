@@ -46,8 +46,13 @@ class Bot:
         self.view = PlayerView(state, cfg, pid)
         self.w, self.h = state.width, state.height
         self._frontier_cache: list[int] | None = None
+        self.reserved: set[int] = set()  # units given other orders this turn (AI expeditions)
 
     # -- helpers ---------------------------------------------------------------------------
+
+    def param(self, path: str) -> Any:
+        """A bot setting (data/bots.yaml). The AI overrides some by character."""
+        return self.cfg.bot(path)
 
     def submit(self, cmd: Command) -> bool:
         try:
@@ -62,12 +67,17 @@ class Bot:
     def nearest(self, origin: int, tiles: list[int]) -> int | None:
         return min(tiles, key=lambda t: (self.dist(origin, t), t), default=None)
 
-    def known(self, status: str) -> list[int]:
+    def known(self, status: str, continent: str | None = None) -> list[int]:
+        """Tiles of known cities with this status, optionally only on one continent."""
         return sorted(
             self.view.city_tile(cid)  # type: ignore[misc]
             for cid, memory in self.view.known_cities().items()
             if memory.status == status
+            and (continent is None or self.state.cities[cid].continent == continent)
         )
+
+    def here(self, unit: Unit) -> str | None:
+        return self.state.tiles[unit.tile].continent
 
     def remembered(self, i: int) -> Tile | None:
         """Terrain of a hex the player has ever explored. The rules re-fog terrain, but the bot
@@ -84,7 +94,7 @@ class Bot:
         if player.research is None:
             options = tech.available(self.cfg, player)
             if options:
-                first = [t for t in self.cfg.bot("research.priority") if t in options]
+                first = [t for t in self.param("research.priority") if t in options]
                 best = (
                     first[0]
                     if first
@@ -108,7 +118,7 @@ class Bot:
 
     def _military_choice(self, city: Any, counts: dict[str, int]) -> str | None:
         options = economy.production_options(self.state, self.cfg, city)
-        every = self.cfg.bot("production.ranged_every")
+        every = self.param("production.ranged_every")
         if counts["military"] % every == every - 1:
             ranged = [
                 o
@@ -116,10 +126,11 @@ class Bot:
                 if o.startswith("unit:")
                 and self.cfg.units[o[5:]]["role"] == "ranged"
                 and self.cfg.units[o[5:]]["domain"] == "land"
+                and economy.resource_available(self.state, self.cfg, self.pid, o[5:])
             ]
             if ranged:
                 return max(ranged, key=lambda o: (self.cfg.units[o[5:]]["ranged_strength"], o))
-        for unit_type in self.cfg.bot("production.military_priority"):
+        for unit_type in self.param("production.military_priority"):
             item = f"unit:{unit_type}"
             if item in options and economy.resource_available(
                 self.state, self.cfg, self.pid, unit_type
@@ -128,12 +139,27 @@ class Bot:
         return None
 
     def production(self) -> None:
-        bot = self.cfg.bot("production")
+        bot = {
+            k: self.param(f"production.{k}")
+            for k in (
+                "capital_build_military_pct",
+                "capital_priority",
+                "military_per_city_pct",
+                "engineers",
+                "restoration_teams",
+                "recon",
+                "building_priority",
+            )
+        }
         counts = self._counts()
         cities = [c for c in self.view.my_cities() if c.status == "active"]
-        empties = self.known(EMPTY)
+        empties = self.known(EMPTY, self.pid)
         for city in cities:
-            if city.queue:
+            head = city.queue[0] if city.queue else ""
+            starved = head.startswith("unit:") and not economy.resource_available(
+                self.state, self.cfg, self.pid, head[5:]
+            )
+            if city.queue and not starved:
                 continue
             options = economy.production_options(self.state, self.cfg, city)
             item = None
@@ -275,7 +301,7 @@ class Bot:
     # -- other civilians and recon ---------------------------------------------------------
 
     def restorer(self, unit: Unit) -> None:
-        target = self.nearest(unit.tile, self.known(EMPTY))
+        target = self.nearest(unit.tile, self.known(EMPTY, self.here(unit)))
         if target is None:
             self.submit(SkipUnit(player=self.pid, unit=unit.id))
             return
@@ -307,7 +333,7 @@ class Bot:
             ),
             key=lambda t: (self.dist(unit.tile, t), t),
         )
-        for t in options[: self.cfg.bot("explore.attempts")]:
+        for t in options[: self.param("explore.attempts")]:
             if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
                 return
         self.submit(Fortify(player=self.pid, unit=unit.id))
@@ -315,7 +341,7 @@ class Bot:
     # -- military --------------------------------------------------------------------------
 
     def _best_attack(self, unit: Unit) -> int | None:
-        ratio = self.cfg.bot("combat.attack_ratio_pct")
+        ratio = self.param("combat.attack_ratio_pct")
         reach = max(1, self.cfg.units[unit.type]["range"])
         best = None
         for t in hexgrid.within(unit.tile, reach, self.w, self.h):
@@ -332,7 +358,7 @@ class Bot:
                 # Siege: shell cities freely; melee attacks on a good trade, to finish the
                 # city, or once it is weakened if the unit can afford the losses.
                 city = self.state.cities[p["defender"]["city"]]
-                weak = city.hp * 100 <= cities.max_hp(self.cfg, city, self.state) * self.cfg.bot(
+                weak = city.hp * 100 <= cities.max_hp(self.cfg, city, self.state) * self.param(
                     "combat.siege_city_hp_pct"
                 )
                 good_trade = dealt * 100 >= ratio * max(1, taken)
@@ -350,7 +376,7 @@ class Bot:
     def _try_merge(self, unit: Unit) -> Unit:
         if unit.count != 1 or is_civilian(self.cfg, unit.type):
             return unit
-        threshold = self.cfg.bot("combat.merge_min_hp_pct")
+        threshold = self.param("combat.merge_min_hp_pct")
         stack_hp = self.cfg.t("combat.unit_max_hp") * self.cfg.t("combat.stack_size")
         for n in hexgrid.neighbours(unit.tile, self.w, self.h):
             for other in self.state.units_at(n):
@@ -391,8 +417,8 @@ class Bot:
         ]
         out: dict[int, int] = {}
         taken: set[int] = set()
-        radius = self.cfg.bot("combat.garrison_radius")
-        danger = self.known(OVERRUN) + [
+        radius = self.param("combat.garrison_radius")
+        danger = self.known(OVERRUN, self.pid) + [
             u.tile for u in self.view.visible_units() if u.owner == ALIENS
         ]
         cities = sorted(
@@ -448,7 +474,7 @@ class Bot:
     def threats(self) -> list[int]:
         """Visible alien units near own cities."""
         own = [c.tile for c in self.view.my_cities()]
-        radius = self.cfg.bot("combat.threat_radius")
+        radius = self.param("combat.threat_radius")
         return sorted(
             u.tile
             for u in self.view.visible_units()
@@ -467,7 +493,7 @@ class Bot:
             self.submit(Attack(player=self.pid, unit=unit.id, target=target))
             return
         own = [c.tile for c in self.view.my_cities()]
-        if unit.hp * 100 < max_hp(self.cfg, unit) * self.cfg.bot("combat.retreat_hp_pct"):
+        if unit.hp * 100 < max_hp(self.cfg, unit) * self.param("combat.retreat_hp_pct"):
             home = self.nearest(unit.tile, own)
             if home is not None and home != unit.tile:
                 self.submit(MoveUnit(player=self.pid, unit=unit.id, target=home))
@@ -477,12 +503,12 @@ class Bot:
         threat = self.nearest(unit.tile, self.threats())
         if threat is not None and self._approach(unit, threat):
             return
-        dormant = self.nearest(unit.tile, self.known(DORMANT))
+        dormant = self.nearest(unit.tile, self.known(DORMANT, self.here(unit)))
         if dormant is not None and self.submit(
             MoveUnit(player=self.pid, unit=unit.id, target=dormant)
         ):
             return
-        overrun = self.nearest(unit.tile, self.known(OVERRUN))
+        overrun = self.nearest(unit.tile, self.known(OVERRUN, self.here(unit)))
         in_reach = overrun is not None and self.dist(unit.tile, overrun) <= max(
             1, self.cfg.units[unit.type]["range"]
         )
@@ -521,7 +547,7 @@ class Bot:
             self.submit(OfferRecruit(player=self.pid, recruit=rec.id, to_player=to, price=0))
 
     def _seats_for(self, rec) -> tuple[str, ...] | None:
-        spread = self.cfg.bot("recruits.general_min_domains")
+        spread = self.param("recruits.general_min_domains")
         if (
             len(rec.scores) >= spread
             and recruits.seat_problem(self.state, self.cfg, rec, ["general"]) is None
@@ -538,6 +564,15 @@ class Bot:
             return ("general",)
         return None
 
+    def convoy(self, unit: Unit) -> None:
+        """Trade convoys head for the nearest own port city."""
+        from beacon.diplomacy import ports
+
+        targets = [c.tile for c in ports(self.state, self.cfg, self.pid)]
+        target = self.nearest(unit.tile, targets)
+        if target is not None and target != unit.tile:
+            self.submit(MoveUnit(player=self.pid, unit=unit.id, target=target))
+
     def play(self) -> None:
         self.research()
         self.production()
@@ -546,11 +581,18 @@ class Bot:
         net = self._network()
         claimed: set[int] = set()
         garrisons = {uid: tile for tile, uid in self._garrisons().items()}
+        self.play_units(net, claimed, garrisons)
+
+    def play_units(self, net: set[int], claimed: set[int], garrisons: dict[int, int]) -> None:
         for unit in self.view.my_units():
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
+            if unit.id in self.reserved:
+                continue
             spec = self.cfg.units[unit.type]
-            if spec.get("can_build"):
+            if spec.get("not_buildable") and spec["role"] == "civilian":
+                self.convoy(unit)
+            elif spec.get("can_build"):
                 self.engineer(unit, net, claimed)
             elif spec.get("can_refound"):
                 self.restorer(unit)

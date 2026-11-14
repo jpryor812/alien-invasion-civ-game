@@ -142,6 +142,7 @@ FILES = (
     "techs",
     "continents",
     "bots",
+    "ai",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
@@ -241,6 +242,10 @@ class Config:
 
     def bot(self, path: str) -> Any:
         return self._section("bots", path)
+
+    def ai(self, path: str) -> Any:
+        """A value from data/ai.yaml (cached; read-only)."""
+        return self._section("ai", path)
 
     def alien(self, path: str) -> Any:
         """A value from data/aliens.yaml. Treat as read-only (cached)."""

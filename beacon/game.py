@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from beacon import cities, fog, mapgen, network
+from beacon import cities, fog, mapgen, network, rng
 from beacon.config import Config
-from beacon.state import ALIENS, OVERRUN, GameState, Player
+from beacon.state import ACTIVE, ALIENS, OVERRUN, CityMemory, GameState, Player
 from beacon.units import place_unit
 
 
@@ -19,6 +19,16 @@ def new_players(cfg: Config, continents: list[str]) -> dict[str, Player]:
         )
         for cid in continents
     }
+
+
+def assign_characters(cfg: Config, state: GameState) -> None:
+    """Deal the AI characters out in a seeded order, cycling, so any five players include at
+    least three different characters."""
+    chars = sorted(cfg.ai("characters"))
+    r = rng.stream(state.seed, "map", "characters")
+    r.shuffle(chars)
+    for k, pid in enumerate(state.player_ids()):
+        state.players[pid].character = chars[k % len(chars)]
 
 
 def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> GameState:
@@ -47,6 +57,15 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
                 if place_unit(state, cfg, entry["type"], pid, capital.tile, radius) is None:
                     raise ValueError(f"no room for starting {entry['type']} near {capital.name}")
     state.aliens.start_cities = sum(1 for c in state.cities if c.status == OVERRUN)
+    assign_characters(cfg, state)
+    # Modern nations are in contact: each knows where the others' cities are (docs/SPEC_M6.md).
+    for pid in state.player_ids():
+        player = state.players[pid]
+        for city in state.cities:
+            if city.status == ACTIVE and str(city.id) not in player.known_cities:
+                player.known_cities[str(city.id)] = CityMemory(
+                    status=city.status, owner=city.owner, pop=city.pop, turn_seen=0
+                )
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)

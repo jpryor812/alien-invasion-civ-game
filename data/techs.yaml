@@ -57,3 +57,6 @@ techs:
   harmonic_lattice: {status: placeholder, note: Rarity 3; legendary recruits can arrive., tree: beacon, tier: 3, cost: 700, prereqs: [signal_amplification, applied_ai], known_at_start: false}
   deep_resonance: {status: placeholder, note: Rarity 4., tree: beacon, tier: 4, cost: 1200, prereqs: [harmonic_lattice], known_at_start: false}
   stellar_chorus: {status: placeholder, note: Rarity 5., tree: beacon, tier: 5, cost: 2000, prereqs: [deep_resonance, quantum_computing], known_at_start: false}
+
+  # M6: alliances need this tech on both sides (designer, 2026-11-13: not immediate, but early).
+  international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 1, cost: 100, prereqs: [market_economy], known_at_start: false}

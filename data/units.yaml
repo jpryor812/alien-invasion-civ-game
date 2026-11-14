@@ -45,3 +45,6 @@ units:
   alien_wraith: {status: placeholder, note: Fast flanker., faction: alien, domain: land, role: melee, cost: 60, moves: 4, strength: 40, ranged_strength: 0, range: 0, vision: 2, tech: null, alien_tech: phase_skin}
   alien_shieldbearer: {status: placeholder, note: Heavy garrison., faction: alien, domain: land, role: melee, cost: 65, moves: 1, strength: 55, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: hardened_carapace}
   alien_leviathan: {status: placeholder, note: Late-game colossus., faction: alien, domain: land, role: melee, cost: 180, moves: 2, strength: 120, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: leviathan_bio}
+
+  # M6: carries traded goods overland to a port; aliens capture it unless a military unit escorts.
+  trade_convoy: {status: placeholder, note: Overland trade carrier (made by deals; not buildable)., faction: player, domain: land, role: civilian, cost: 0, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true}

@@ -1,0 +1,102 @@
+# AI characters (DESIGN.md 15, docs/SPEC_M6.md). The AI is the test bot's play (beacon/bots.py)
+# with these overrides of data/bots.yaml values, plus diplomacy:
+# - trade_interval: turns between deal proposals (0 = never proposes trades)
+# - aid_interval / aid_reserve / aid_share_pct: how often it gives gold aid, the treasury it keeps,
+#   and the share of the rest it gives to the weakest continent
+# - abroad_share_pct: share of its field units it ships abroad once its own continent is quiet
+# - accept_ratio_pct: accepts a deal when value received is at least this percent of value given
+# - lend_price: gold per turn it asks per strategic resource unit it lends
+# - allies: whether it proposes alliances (all accept alliances)
+
+characters:
+  builder:
+    status: placeholder
+    note: Economy and beacons first, defends well, sends gold aid.
+    overrides:
+      production.military_per_city_pct: 200
+      production.capital_build_military_pct: 30
+      production.capital_priority: [beacon_i, port, beacon_ii, beacon_iii, beacon_iv]
+      research.priority: [international_accords, beacon_theory, signal_amplification, harmonic_lattice]
+      combat.attack_ratio_pct: 120
+    trade_interval: 6
+    aid_interval: 8
+    aid_reserve: 120
+    aid_share_pct: 40
+    abroad_share_pct: 10
+    accept_ratio_pct: 90
+    lend_price: 2
+    allies: true
+  fighter:
+    status: placeholder
+    note: Large army, liberates aggressively, sends troops abroad.
+    overrides:
+      production.military_per_city_pct: 300
+      production.capital_build_military_pct: 80
+      production.capital_priority: [port, beacon_i]
+      research.priority: [mechanized_warfare, international_accords, beacon_theory]
+      combat.attack_ratio_pct: 90
+    trade_interval: 10
+    aid_interval: 16
+    aid_reserve: 200
+    aid_share_pct: 15
+    abroad_share_pct: 40
+    accept_ratio_pct: 100
+    lend_price: 3
+    allies: true
+  trader:
+    status: placeholder
+    note: Ports early, many deals, lends resources.
+    overrides:
+      production.military_per_city_pct: 220
+      production.capital_build_military_pct: 30
+      production.capital_priority: [port, market, beacon_i, beacon_ii]
+      research.priority: [international_accords, digital_finance, beacon_theory, global_logistics]
+      combat.attack_ratio_pct: 110
+    trade_interval: 3
+    aid_interval: 10
+    aid_reserve: 150
+    aid_share_pct: 25
+    abroad_share_pct: 15
+    accept_ratio_pct: 80
+    lend_price: 2
+    allies: true
+  isolationist:
+    status: placeholder
+    note: Defends its own continent and rarely trades or helps until a continent falls.
+    overrides:
+      production.military_per_city_pct: 260
+      production.capital_build_military_pct: 60
+      production.capital_priority: [beacon_i, beacon_ii]
+      research.priority: [fortification_doctrine, beacon_theory]
+      combat.attack_ratio_pct: 120
+    trade_interval: 0
+    aid_interval: 20
+    aid_reserve: 250
+    aid_share_pct: 10
+    abroad_share_pct: 0
+    accept_ratio_pct: 120
+    lend_price: 4
+    allies: false
+
+value:
+  status: placeholder
+  note: How the AI values deal items in gold. A tech is worth tech_pct of its research cost; a
+    lent resource unit resource_per_turn gold a turn; a recruit recruit_per_point gold per score
+    point; a unit unit_pct of its production cost; an alliance alliance gold.
+  tech_pct: 100
+  resource_per_turn: 3
+  recruit_per_point: 8
+  unit_pct: 100
+  alliance: 150
+
+expedition:
+  status: placeholder
+  note: The AI ships troops abroad when its own continent has at most quiet_overrun known alien
+    cities, to the continent with the most known alien cities (a fallen continent first).
+  quiet_overrun: 1
+
+aid:
+  status: placeholder
+  note: The AI gives aid to a fallen continent, or else to the player holding the fewest cities if
+    that is at most need_pct percent of its own count (50 left a quarter of games with no aid; 75 left one).
+  need_pct: 85

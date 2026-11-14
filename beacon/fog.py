@@ -22,6 +22,14 @@ def unit_vision(state: GameState, cfg: Config, unit_type: str, tile: int) -> int
 
 
 def visible_tiles(state: GameState, cfg: Config, pid: str) -> set[int]:
+    """What a player sees now: their own sight plus their allies' (docs/SPEC_M6.md)."""
+    seen = _own_visible(state, cfg, pid)
+    for ally in state.players[pid].allies if pid in state.players else []:
+        seen |= _own_visible(state, cfg, ally)
+    return seen
+
+
+def _own_visible(state: GameState, cfg: Config, pid: str) -> set[int]:
     w, h = state.width, state.height
     seen: set[int] = set()
     for unit in state.units.values():
@@ -82,3 +90,14 @@ def refresh(state: GameState, cfg: Config, pid: str) -> None:
 def refresh_all(state: GameState, cfg: Config) -> None:
     for pid in state.player_ids():
         refresh(state, cfg, pid)
+    share_city_maps(state)
+
+
+def share_city_maps(state: GameState) -> None:
+    """Allies know every city the other has discovered."""
+    for pid in state.player_ids():
+        player = state.players[pid]
+        for ally in player.allies:
+            for key, memory in state.players[ally].known_cities.items():
+                if key not in player.known_cities:
+                    player.known_cities[key] = memory

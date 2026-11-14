@@ -248,3 +248,43 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Balance**: 20 seeds x 100 turns: alien share in band 10/20 (M4 13), captures 15/20,
   all-fallen 0/20, 40-76 recruits per game, 3-15 betrayals, slowest game 5.8 s. The new alien
   techs 9-18 and betrayals make aliens slightly stronger than in M4.
+
+## M6: AI continents, trade, aid and troops abroad
+
+- **Controllers**: every player is `ai` unless the runner marks it `human` (`--human europe`); a
+  human seat issues no commands in the runner (a client will drive it). Batches run six AIs.
+- **AI = test bot + character**: the AI reuses the bot's play with per-character overrides of
+  `data/bots.yaml` values (`data/ai.yaml`), plus diplomacy. Characters are dealt per seed in a
+  shuffled cycle, so any five players include at least three characters. No randomness in the AI.
+- **Nations in contact**: from turn 0 every player knows where every active city is (live status
+  from then on). Lost cities elsewhere stay unknown until seen. Without this, nobody could aim aid
+  or troops at another continent.
+- **Alliances** (designer): need International Accords (economic, tier 1, cost 100) on both sides;
+  mutual; allies share vision and their maps of discovered cities. Any AI accepts an alliance.
+- **Deals**: gold (lump, or per turn for 10/20/30 turns), strategic resources lent for a duration,
+  techs the receiver can research now, recruits, units standing in or next to a receiver's city,
+  and alliance. One-sided deals are aid and credit the giver (`aid_gold`, `aid_units`,
+  `aid_techs`, `recruits_given`). Proposals lapse at turn end; per-turn gold stops early if the
+  payer cannot pay. Lent resources apply at once for the deal's duration.
+- **Delivery**: gold, resources, units and alliances apply at once (treated as financial or
+  standing arrangements). Techs and recruits travel: from the giver's port (connected coastal city
+  with a Port) to the receiver's capital at 20 hexes per turn (minimum one turn); without a port,
+  a trade convoy forms at the giver's capital and must walk to a port first. Aliens capture a
+  lone convoy (goods lost); a military unit on its hex escorts it. Sea routes ignore geography
+  (straight hex distance) and are safe (aliens never cross water).
+- **Troops abroad**: a land unit in its owner's port can ship to any known coastal city on another
+  continent that is a player city, or dormant or empty (rescue). Cost 10 + 3 gold per 10 hexes;
+  arrival after the same sea delay; it lands on or next to the destination, and a military unit
+  landing on a dormant city reclaims it for that continent's player. Units on another continent
+  cost +100% upkeep. No naval combat, no embarking (designer default).
+- **AI diplomacy**: values items in gold (techs at research cost, resources 3 gold per unit-turn,
+  recruits 8 per score point, units at production cost, alliance 150); accepts when value received
+  is at least its character's ratio of value given. Proposes alliances (if its character allies),
+  tech swaps and resource lending every trade interval, gold aid to a fallen continent or to a
+  player holding at most 85% of its city count, and ships a share of its field units abroad once
+  its own continent has at most one known alien city.
+- **Bot fixes found in M6**: ranged unit choice now checks strategic resources, and a city whose
+  queued unit cannot get its resource is replanned (both affected M5 balance runs). Soldiers only
+  chase cities on the continent they stand on.
+- **Balance**: see `docs/BALANCE_M6.md`. All M6 gates met; M4 bands under AI play: captures 15/20,
+  alien-share band 11/20.

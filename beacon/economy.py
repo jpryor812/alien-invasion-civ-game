@@ -124,8 +124,8 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
     player = state.players.get(city.owner or "")
     if player is None:
         return "city has no player owner"
-    if spec["faction"] != "player":
-        return "not a player unit"
+    if spec["faction"] != "player" or spec.get("not_buildable"):
+        return "not a buildable unit"
     if not tech.knows(player, spec["tech"]):
         return f"needs tech {spec['tech']}"
     if spec["domain"] == "sea" and not is_coastal(state, cfg, city):
@@ -169,7 +169,28 @@ def resource_supply(state: GameState, cfg: Config, pid: str) -> dict[str, int]:
     for tile in state.tiles:
         if tile.city in linked and tile.resource in supply and resource_active(cfg, tile):
             supply[tile.resource] += cfg.resources[tile.resource]["quantity"]
+    for res, n in lent(state, pid).items():
+        supply[res] += n
     return supply
+
+
+def lent(state: GameState, pid: str) -> dict[str, int]:
+    """Net strategic resources a player has lent out (negative) or borrowed (positive) through
+    active deals (docs/SPEC_M6.md)."""
+    out: dict[str, int] = {}
+    for deal in state.deals.values():
+        if not deal.active:
+            continue
+        for giver, receiver, terms in (
+            (deal.proposer, deal.receiver, deal.give),
+            (deal.receiver, deal.proposer, deal.take),
+        ):
+            for res, n in terms.resources.items():
+                if giver == pid:
+                    out[res] = out.get(res, 0) - n
+                if receiver == pid:
+                    out[res] = out.get(res, 0) + n
+    return out
 
 
 def resource_usage(state: GameState, cfg: Config, pid: str) -> dict[str, int]:
@@ -281,7 +302,13 @@ def unit_upkeep(state: GameState, cfg: Config, pid: str) -> int:
     members = sum(u.count for u in state.units.values() if u.owner == pid)
     cities_n = sum(1 for c in state.cities if c.owner == pid and c.status == ACTIVE)
     free = cfg.t("economy.free_units_per_city") * cities_n
-    return max(0, members - free) * cfg.t("economy.unit_upkeep")
+    abroad = sum(
+        u.count
+        for u in state.units.values()
+        if u.owner == pid and state.tiles[u.tile].continent != pid
+    )
+    extra = abroad * cfg.t("economy.unit_upkeep") * cfg.t("trade.abroad_upkeep_pct") // 100
+    return max(0, members - free) * cfg.t("economy.unit_upkeep") + extra
 
 
 def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]:

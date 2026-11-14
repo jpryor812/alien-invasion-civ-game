@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 3
+STATE_VERSION = 4
 ALIENS = "aliens"
 
 # City status values.
@@ -109,6 +109,50 @@ class Player:
     credits: dict[str, int] = field(default_factory=dict)
     fallen: bool = False  # holds no cities (DESIGN.md 13)
     times_fallen: int = 0
+    controller: str = "ai"  # ai | human
+    character: str | None = None  # AI character (data/ai.yaml)
+    allies: list[str] = field(default_factory=list)
+
+
+@dataclass
+class DealTerms:
+    """What one side gives in a deal (docs/SPEC_M6.md)."""
+
+    gold: int = 0
+    gold_per_turn: int = 0
+    resources: dict[str, int] = field(default_factory=dict)  # strategic units lent
+    techs: list[str] = field(default_factory=list)
+    recruits: list[int] = field(default_factory=list)
+    units: list[int] = field(default_factory=list)
+    alliance: bool = False
+
+
+@dataclass
+class Deal:
+    id: int
+    proposer: str
+    receiver: str
+    give: DealTerms  # from proposer to receiver
+    take: DealTerms  # from receiver to proposer
+    duration: int
+    proposed_turn: int
+    active: bool = False
+    ends_turn: int | None = None
+
+
+@dataclass
+class Shipment:
+    """Goods or a unit at sea, or goods waiting for their convoy to reach a port."""
+
+    id: int
+    from_player: str
+    to_player: str
+    techs: list[str] = field(default_factory=list)
+    recruits: list[int] = field(default_factory=list)
+    unit: Unit | None = None
+    dest_city: int | None = None
+    arrive_turn: int | None = None  # None while the convoy is still overland
+    convoy: int | None = None  # convoy unit id
 
 
 @dataclass
@@ -170,6 +214,8 @@ class GameState:
     aliens: AlienState = field(default_factory=AlienState)
     recruits: dict[str, Recruit] = field(default_factory=dict)
     offers: dict[str, Offer] = field(default_factory=dict)
+    deals: dict[str, Deal] = field(default_factory=dict)
+    shipments: dict[str, Shipment] = field(default_factory=dict)
     version: int = STATE_VERSION
 
     # -- lookups -------------------------------------------------------------------------------

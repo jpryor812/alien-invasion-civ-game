@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from beacon import bots, canonical
+from beacon import ai, bots, canonical
 from beacon.actions import apply_command
 from beacon.commands import Command, CommandError, command_from_dict, command_to_dict
 from beacon.config import Config, load
@@ -22,12 +22,24 @@ from beacon.game import new_game
 from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, state_digest, state_to_json
 from beacon.turn import advance_turn
 
+DRIVERS = {"bot": bots.take_turn, "ai": ai.take_turn}
+
 
 def play(
-    cfg: Config, seed: int, turns: int, continents: list[str] | None = None
+    cfg: Config,
+    seed: int,
+    turns: int,
+    continents: list[str] | None = None,
+    driver: str = "bot",
+    humans: tuple[str, ...] = (),
 ) -> tuple[GameState, list[dict[str, Any]], list[dict[str, Any]]]:
-    """Play `turns` turns with bots. Returns final state, event log and command log."""
+    """Play `turns` turns. Every non-human player is driven by `driver` ("bot", the M3-M5 test
+    bot, or "ai", the M6 characters). Human seats issue no commands here (a client drives them).
+    Returns final state, event log and command log."""
     state = new_game(cfg, seed, continents)
+    for pid in humans:
+        state.players[pid].controller = "human"
+    take_turn = DRIVERS[driver]
     events: list[dict[str, Any]] = []
     log: list[dict[str, Any]] = []
 
@@ -44,7 +56,8 @@ def play(
 
     for _ in range(turns):
         for pid in state.player_ids():
-            bots.take_turn(state, cfg, pid, submit)
+            if state.players[pid].controller != "human":
+                take_turn(state, cfg, pid, submit)
         events.extend(advance_turn(state, cfg))
     return state, events, log
 
@@ -96,6 +109,11 @@ def summary(state: GameState, log: list[dict[str, Any]], elapsed_ms: int) -> dic
         ),
         "recruits_held": sum(1 for r in state.recruits.values() if r.patron is not None),
         "recruits_betrayed": sum(p.credits.get("recruits_lost", 0) for p in state.players.values()),
+        "deals": sum(1 for e in log if e["ok"] and e["cmd"]["kind"] == "accept_deal"),
+        "aid_gold": sum(p.credits.get("aid_gold", 0) for p in state.players.values()),
+        "shipped_units": sum(1 for e in log if e["ok"] and e["cmd"]["kind"] == "ship_unit"),
+        "alliances": sum(len(p.allies) for p in state.players.values()) // 2,
+        "characters": {pid: p.character for pid, p in state.players.items()},
         "commands": len(log),
         "rejected_commands": sum(1 for e in log if not e["ok"]),
         "credits": credits,
@@ -129,18 +147,22 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--turns", type=int, default=10)
     run_p.add_argument("--continents", default="")
     run_p.add_argument("--out", default="")
+    run_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
+    run_p.add_argument("--human", default="", help="comma-separated player ids left to a human")
     batch_p = sub.add_parser("batch")
     batch_p.add_argument("--seeds", default="1-5")
     batch_p.add_argument("--turns", type=int, default=50)
     batch_p.add_argument("--continents", default="")
     batch_p.add_argument("--out", default="runs/batch")
+    batch_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
     args = parser.parse_args(argv)
 
     cfg = load()
     continents = [c for c in args.continents.split(",") if c] or None
     if args.cmd == "run":
         start = time.perf_counter()
-        state, events, log = play(cfg, args.seed, args.turns, continents)
+        humans = tuple(h for h in args.human.split(",") if h)
+        state, events, log = play(cfg, args.seed, args.turns, continents, args.driver, humans)
         info = summary(state, log, int((time.perf_counter() - start) * 1000))
         out = Path(args.out or f"runs/seed{args.seed}")
         write_run(out, state, events, log, info)
@@ -150,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     rows = []
     for seed in _parse_seeds(args.seeds):
         start = time.perf_counter()
-        state, _, log = play(cfg, seed, args.turns, continents)
+        state, _, log = play(cfg, seed, args.turns, continents, args.driver)
         row = summary(state, log, int((time.perf_counter() - start) * 1000))
         del row["credits"]
         rows.append(row)
