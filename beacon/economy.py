@@ -17,7 +17,7 @@ from beacon.tiles import Line, resource_active, tile_yields, totals
 from beacon.units import hostile, occupancy, place_unit
 
 PROJECTS = ("wealth", "research")
-COUNCIL_YIELDS = ("food", "production", "science", "beacon")  # military applies in combat
+COUNCIL_YIELDS = ("food", "production", "science", "gold", "beacon")  # military: combat
 PROJECT_YIELD = {"wealth": "gold", "research": "science"}
 FOCUSES = ("balanced", "food", "production", "science", "gold")
 

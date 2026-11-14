@@ -146,7 +146,7 @@ FILES = (
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
 TREES = frozenset({"economic", "production", "military", "beacon"})
-DOMAINS = ("food", "production", "military", "science", "beacon")
+DOMAINS = ("food", "production", "military", "science", "gold", "beacon")
 
 
 def _is_number(value: Any) -> bool:

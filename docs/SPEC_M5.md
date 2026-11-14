@@ -90,6 +90,10 @@ recruits greedily (best score per domain seat, the most balanced recruits on gen
 gifts recruits it cannot seat to the player with the fewest recruits, and accepts offers it can
 seat and afford.
 
+## Change after review (2026-11-13)
+
+Gold is a sixth council domain with two seats; the proposal's gold scores are restored.
+
 ## Outcome (2026-11-13)
 
 Built. All acceptance criteria met: 91 tests pass; over 20 seeds x 100 turns the alien-share

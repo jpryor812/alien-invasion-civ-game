@@ -162,6 +162,19 @@ def test_general_seats_apply_everything_and_hold_three(cfg):
     assert sum(p for _, p in recruits.council_lines(s, EU, "food")) == 6
 
 
+def test_gold_council(cfg):
+    s = arena(cfg)
+    city = add_city(s, cfg, at(5, 5), ACTIVE, EU, pop=3)
+    city.connected = True
+    before = economy.city_yields(s, cfg, city).totals["gold"]
+    rec = make(s, EU, {"gold": 50}, traits=["greedy"])
+    apply_command(s, cfg, SeatRecruit(player=EU, recruit=rec.id, seats=("gold",)))
+    assert economy.city_yields(s, cfg, city).totals["gold"] == before + before * 50 // 100
+    assert "gold" in cfg.alien("recruits.domains")
+    rolled = recruits.make_recruit(s, cfg, EU, 1)
+    assert set(rolled.scores) <= set(DOMAINS)
+
+
 def test_council_bonuses_show_in_yields_and_combat(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(5, 5), ACTIVE, EU, pop=3)
@@ -191,7 +204,7 @@ def test_gift_sale_and_decline(cfg):
     assert gift.patron == NA and gift.seats == []
     assert s.players[EU].credits["recruits_given"] == 1
 
-    sale = make(s, EU, {"science": 6}, traits=["greedy"])
+    sale = make(s, EU, {"science": 6})
     s.players[NA].gold, s.players[EU].gold = 100, 0
     oid = apply_command(s, cfg, OfferRecruit(player=EU, recruit=sale.id, to_player=NA, price=40))[
         0
@@ -200,7 +213,7 @@ def test_gift_sale_and_decline(cfg):
         apply_command(s, cfg, AcceptOffer(player=EU, offer=oid))  # only the recipient answers
     apply_command(s, cfg, AcceptOffer(player=NA, offer=oid))
     assert s.players[NA].gold == 60
-    assert s.players[EU].gold == 40 * (100 + 25) // 100  # greedy sells for more
+    assert s.players[EU].gold == 40
     assert s.players[EU].credits["recruits_sold"] == 1
 
     keep = make(s, EU, {"beacon": 4})

@@ -111,13 +111,13 @@ Alien technology can also be gained through espionage (section 10), outside the 
 - Two investment levers: **more beacons** gives more frequent alien arrivals; **stronger
   beacons** gives stronger aliens that arrive less often. Both together give frequent strong
   aliens, at rapidly rising cost (**TUNE**).
-- A recruit is a random character, as in Crusader Kings III. Four scores: **military, science,
-  production, beacon**. Some are specialists, some are generalists.
+- A recruit is a random character, as in Crusader Kings III. Six scores (decided 2026-11-13): **food, production,
+  military, science, gold, beacon**. Some are specialists, some are generalists.
 - **Traits** (random, each with effects): examples to be designed, such as loyal, ambitious,
   traitor, mortal, immortal, short-lived, berserker, scholar. Some recruits die, some are
   immortal, some may turn traitor.
 - **Councils** (decided 2026-11-13): two seats on each domain council (food, production,
-  military, science, beacon) and three general seats. A recruit on a domain seat applies its score
+  military, science, gold, beacon) and three general seats. A recruit on a domain seat applies its score
   in that domain and may sit on one seat in several domains; a recruit on a general seat applies
   all its scores. A score of N is +N% in that domain.
 - **Beacon levers** (decided 2026-11-13): five speed levels (Beacon I-V buildings) and five

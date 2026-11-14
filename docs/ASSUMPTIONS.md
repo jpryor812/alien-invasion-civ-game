@@ -218,10 +218,13 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   techs, 10 alien techs, the recruit pool) are now active. Effects needing later systems are
   inert: medical team healing, nanorepair crew repairs, marines' landings and the logistics hub's
   trade role. New alien unit types joined the alien spawn weights.
-- **Gold mapped to military** in the recruit pool (designer's council domains are food,
-  production, military, science, beacon). Berserker now boosts military; greedy's gold bonus
-  became `sale_pct` (+25% gold when sold, created, not taken from the buyer).
-- **Scores are percent**: a seated recruit's score N gives +N% to that yield in every city, or +N%
+- **Six council domains** (designer, 2026-11-13, after first mapping gold to military): food,
+  production, military, science, gold, beacon, two seats each, plus three general seats. The
+  proposal's gold scores are restored (legends, merchant focus, greedy's +25% gold); berserker
+  boosts military, and soldiers focus on military and production. `sale_pct` stays available as a
+  trait effect but no trait uses it.
+- **Scores are percent**: a seated recruit's score N gives +N% to that yield (food, production,
+  science, gold, beacon) in every city, or +N%
   combat strength to every unit for military. Percent bonuses apply to the city's flat subtotal,
   like buildings. Percent rather than flat yields keeps one recruit meaningful at any empire size.
 - **Recruit rolls** (stream `recruits`): character type by weight; the level's budget split one

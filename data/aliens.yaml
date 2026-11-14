@@ -122,18 +122,18 @@ surge:
 # balance runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
 
 # -- Recruits (M5, docs/SPEC_M5.md) ------------------------------------------------------------
-# A recruit scores in five domains. While seated on a council, a score of N gives the patron +N%
+# A recruit scores in six domains. While seated on a council, a score of N gives the patron +N%
 # in that domain: food, production, science and beacon yields in every city, military combat
-# strength of every unit. Built from the proposed recruit pool (commit 0b79762); gold mapped to
-# military, since gold is not a council domain.
+# strength of every unit. Built from the proposed recruit pool (commit 0b79762); gold is a
+# council domain too (designer, 2026-11-13).
 
 recruits:
   status: placeholder
-  note: Council seats (designer, 2026-11-13) - two per domain, three general. Lifespans are
+  note: Council seats (designer, 2026-11-13) - two per domain (gold added), three general. Lifespans are
     clamped to 50-100 turns (designer). Rarity levels come from beacon-tree techs, listed in
     order; each level sets the beacon points one arrival costs (steep), the score budget, and the
     per-thousand chances of a legendary or an immortal recruit.
-  domains: [food, production, military, science, beacon]
+  domains: [food, production, military, science, gold, beacon]
   seats_per_domain: 2
   general_seats: 3
   min_lifespan: 50
@@ -154,7 +154,7 @@ recruits:
 
 # Traits (designer: this list is fixed). yield_pct scales the recruit's own score in a domain;
 # lifespan_delta shifts its lifespan; betrayal_permille is the chance per turn it betrays;
-# immortal stops ageing; sale_pct adds to the gold it fetches when sold.
+# immortal stops ageing; sale_pct (unused for now) adds to the gold it fetches when sold.
 recruit_traits:
   loyal: {status: placeholder, note: Stays with its patron., effects: {betrayal_permille: 0}}
   ambitious: {status: placeholder, note: Wants more than it is given., effects: {yield_pct: {beacon: 20}, betrayal_permille: 5}}
@@ -166,7 +166,7 @@ recruit_traits:
   engineer: {status: placeholder, note: Loves building., effects: {yield_pct: {production: 25}}}
   charismatic: {status: placeholder, note: Draws others to the cause., effects: {yield_pct: {beacon: 25}}}
   cautious: {status: placeholder, note: Slow to act and slow to age., effects: {lifespan_delta: 10}}
-  greedy: {status: placeholder, note: Wants a larger share (was gold yield; now its sale price)., effects: {sale_pct: 25, betrayal_permille: 10}}
+  greedy: {status: placeholder, note: Wants a larger share., effects: {yield_pct: {gold: 25}, betrayal_permille: 10}}
 
 # Character types: weight (how often), focus (domains its points go to), lifespan (turns, inside
 # 50-100) and the traits it may roll.
@@ -175,12 +175,12 @@ recruit_types:
   scientist: {status: placeholder, note: Common researcher., weight: 3, focus: [science, beacon], lifespan: [60, 90], traits: [scholar, cautious, loyal]}
   engineer: {status: placeholder, note: Common builder., weight: 3, focus: [production, science], lifespan: [55, 85], traits: [engineer, greedy, loyal]}
   mystic: {status: placeholder, note: Rare beacon adept., weight: 2, focus: [beacon, food], lifespan: [50, 75], traits: [charismatic, ambitious, short_lived]}
-  merchant: {status: placeholder, note: Trader and deal-maker., weight: 2, focus: [food, production], lifespan: [55, 85], traits: [greedy, ambitious, traitor]}
-  drifter: {status: placeholder, note: Unpredictable wanderer with something in every domain., weight: 1, focus: [food, production, military, science, beacon], lifespan: [50, 70], traits: [traitor, short_lived, berserker]}
+  merchant: {status: placeholder, note: Trader and deal-maker., weight: 2, focus: [gold, production], lifespan: [55, 85], traits: [greedy, ambitious, traitor]}
+  drifter: {status: placeholder, note: Unpredictable wanderer with something in every domain., weight: 1, focus: [food, production, military, science, gold, beacon], lifespan: [50, 70], traits: [traitor, short_lived, berserker]}
 
-# Named legends (fixed). scores replace the proposal's yields, gold mapped to military.
+# Named legends (fixed), with the proposal's scores.
 legendary_recruits:
-  ilyrath_unbroken: {status: placeholder, note: The last to hold a fallen wall., name: Ilyrath the Unbroken, scores: {production: 12, food: 8, military: 10}, lifespan: 100, traits: [immortal, loyal]}
+  ilyrath_unbroken: {status: placeholder, note: The last to hold a fallen wall., name: Ilyrath the Unbroken, scores: {production: 12, food: 8, gold: 10}, lifespan: 100, traits: [immortal, loyal]}
   oss_vanthe_archivist: {status: placeholder, note: Keeper of every lost record., name: Oss Vanthe the Archivist, scores: {science: 16, beacon: 8, food: 6}, lifespan: 100, traits: [scholar, immortal]}
-  quen_morrow_forgemaster: {status: placeholder, note: Builder of the first engines., name: Quen Morrow the Forgemaster, scores: {production: 14, science: 8, military: 8}, lifespan: 100, traits: [engineer, ambitious]}
-  mireth_calla_echo: {status: placeholder, note: Voice that carries across the fog., name: Mireth Calla the Echo, scores: {beacon: 15, military: 9, food: 6}, lifespan: 90, traits: [charismatic, traitor]}
+  quen_morrow_forgemaster: {status: placeholder, note: Builder of the first engines., name: Quen Morrow the Forgemaster, scores: {production: 14, science: 8, gold: 8}, lifespan: 100, traits: [engineer, ambitious]}
+  mireth_calla_echo: {status: placeholder, note: Voice that carries across the fog., name: Mireth Calla the Echo, scores: {beacon: 15, gold: 9, food: 6}, lifespan: 90, traits: [charismatic, traitor]}
