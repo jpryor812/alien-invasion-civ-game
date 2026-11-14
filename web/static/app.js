@@ -338,6 +338,7 @@ async function refresh(keepSelection = true) {
   renderChrome();
   if (newTurn) splash(`Turn ${v.turn} · ${v.year}`);
   S.dirty = true;
+  if (window.Advisors) Advisors.check();
 }
 async function reselect() {
   const sel = S.selected;
@@ -813,6 +814,7 @@ function yieldBox(k, total, lines) {
 }
 function renderCityPanel() {
   const d = S.city, c = d.city, side = $("side");
+  if (window.Advisors) Advisors.trigger("production");
   const surplus = d.totals.food - d.food_eaten;
   const head = c.queue[0];
   const headOpt = head ? d.options.find((o) => o.item === head) : null;
@@ -937,7 +939,7 @@ function showTooltip(i, x, y) {
   if (i === null) { tip.classList.add("hidden"); return; }
   let html = "";
   const attack = S.options && S.options.attacks.find((a) => a.tile === i);
-  if (attack) html = previewHtml(attack.preview);
+  if (attack) { html = previewHtml(attack.preview); if (window.Advisors) Advisors.trigger("combat"); }
   else {
     const t = S.tilesByIndex.get(i), c = S.citiesByTile.get(i), us = S.unitsByTile.get(i) || [];
     if (t) {
@@ -1152,6 +1154,7 @@ function gameMenu(saves) {
       <div class="row"><input id="savename" value="turn${S.view.turn}" style="flex:1"><button id="m-save">Save game</button></div>
       <h3>Load game</h3>
       <div class="save-list">${saveRows(saves)}</div>
+      <label class="row"><input type="checkbox" id="m-advice" ${window.Advisors && !Advisors.isOff() ? "checked" : ""}> Show advisor tips</label>
       <button class="menu-btn" id="m-title">Main menu</button>
     </div>
     <p class="muted">Enter: next turn · Space: next unit · F: fortify · S: skip · T/C/D/P: screens · Esc: menu · drag or arrows: pan · wheel: zoom.</p>`;
@@ -1186,6 +1189,7 @@ function wireScreen(name) {
     $("m-resume").onclick = closeModal;
     $("m-save").onclick = async () => { try { await api("/api/save", { name: $("savename").value }); toast("Game saved."); openScreen("menu"); } catch (err) { toast(err.message); } };
     $("m-title").onclick = () => { closeModal(); showTitle(); };
+    $("m-advice").onchange = (e) => { if (window.Advisors) { if (e.target.checked) Advisors.reset(); else Advisors.setOff(true); } };
     on("[data-loadsave]", async (el) => { try { await api("/api/load", { name: el.dataset.loadsave }); closeModal(); await enterGame(); } catch (err) { toast(err.message); } });
   }
 }

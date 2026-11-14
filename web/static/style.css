@@ -150,3 +150,22 @@ th { color: var(--brass); font-weight: 600; font-size: 12px; }
   .save-row { grid-template-columns: 1fr 1fr auto; }
   .save-row .opt { display: none; }
 }
+
+/* -- advisors ----------------------------------------------------------------------------- */
+#advisor { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(3,6,9,0.45); }
+.advisor-card { display: grid; grid-template-columns: 1fr 170px; grid-template-rows: 1fr auto; width: min(720px, 94vw); background: linear-gradient(#1f2d3a, #111a22); border: 2px solid var(--brass); border-radius: 10px; box-shadow: 0 18px 60px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.04); overflow: hidden; animation: advisor-in 0.25s ease-out; }
+@keyframes advisor-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+.advisor-text { padding: 20px 22px 8px; }
+.advisor-text h2 { margin: 0 0 10px; font: 700 18px var(--heading); color: var(--brass-hi); letter-spacing: 0.04em; text-align: center; }
+.advisor-text p { margin: 0 0 10px; font-size: 14px; line-height: 1.55; color: #e9e3d2; }
+.advisor-text b { color: #fff4d6; }
+.advisor-more { color: var(--muted) !important; }
+.advisor-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; background: radial-gradient(ellipse at top, rgba(217,174,85,0.16), transparent 70%); border-left: 1px solid rgba(217,174,85,0.25); }
+.advisor-emblem { width: 120px; height: 120px; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6)); }
+.advisor-name { font: 500 12px var(--heading); letter-spacing: 0.06em; text-transform: uppercase; color: var(--brass-hi); text-align: center; }
+.advisor-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 10px 18px 14px; border-top: 1px solid rgba(217,174,85,0.25); background: rgba(0,0,0,0.18); }
+.advisor-foot label { color: var(--muted); font-size: 12px; cursor: pointer; }
+.advisor-foot .primary { min-width: 170px; padding: 8px 18px; font: 700 13px var(--heading); letter-spacing: 0.06em; text-transform: uppercase; }
+button.link { background: none; border: none; box-shadow: none; padding: 0; color: var(--brass); text-decoration: underline; cursor: pointer; }
+button.link:hover { color: var(--brass-hi); background: none; }
+@media (max-width: 640px) { .advisor-card { grid-template-columns: 1fr; } .advisor-side { border-left: none; border-top: 1px solid rgba(217,174,85,0.25); flex-direction: row; } .advisor-emblem { width: 56px; height: 56px; } }

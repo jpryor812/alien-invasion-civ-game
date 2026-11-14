@@ -227,6 +227,7 @@ class Session:
                 "outcome": s.outcome,
                 "outcome_turn": s.outcome_turn,
                 "mothership_alive": s.aliens.mothership_alive,
+                "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
                 "ranking": [[r["player"], r["total"]] for r in mvp.ranking(s, cfg)],
                 "unit_types": {
                     u: {
