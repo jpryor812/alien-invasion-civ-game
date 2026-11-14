@@ -46,6 +46,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
             for _ in range(entry["count"]):
                 if place_unit(state, cfg, entry["type"], pid, capital.tile, radius) is None:
                     raise ValueError(f"no room for starting {entry['type']} near {capital.name}")
+    state.aliens.start_cities = sum(1 for c in state.cities if c.status == OVERRUN)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)

@@ -4,12 +4,21 @@ from __future__ import annotations
 
 from beacon import hexgrid
 from beacon.config import Config
-from beacon.state import City, GameState
+from beacon.state import ALIENS, City, GameState
 from beacon.tiles import is_water
 
 
-def max_hp(cfg: Config, city: City) -> int:
-    return cfg.t("cities.base_hp") + sum(cfg.buildings[b].get("city_hp", 0) for b in city.buildings)
+def max_hp(cfg: Config, city: City, state: GameState | None = None) -> int:
+    """City HP: base + buildings, + alien wall techs for alien cities (needs `state`)."""
+    hp = cfg.t("cities.base_hp") + sum(cfg.buildings[b].get("city_hp", 0) for b in city.buildings)
+    if state is not None and city.owner == ALIENS:
+        hp += alien_effect(state, cfg, "city_hp")
+    return hp
+
+
+def alien_effect(state: GameState, cfg: Config, key: str) -> int:
+    """Sum of one effect over the alien techs gained so far."""
+    return sum(cfg.alien_techs[t]["effects"].get(key, 0) for t in state.aliens.techs)
 
 
 def is_coastal(state: GameState, cfg: Config, city: City) -> bool:

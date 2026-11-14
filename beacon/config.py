@@ -97,13 +97,18 @@ TABLES: dict[str, TableSpec] = {
             "vision",
             "tech",
         ),
-        {"tech": "techs", "requires_resource": "resources"},
+        {"tech": "techs", "requires_resource": "resources", "alien_tech": "alien_techs"},
     ),
     "techs": TableSpec(
         "techs",
         "techs",
         ("tree", "tier", "cost", "prereqs", "known_at_start"),
         {"prereqs": "techs"},
+    ),
+    "alien_techs": TableSpec(
+        "aliens",
+        "techs",
+        ("order", "cost", "effects"),
     ),
     "continents": TableSpec(
         "continents",
@@ -114,6 +119,7 @@ TABLES: dict[str, TableSpec] = {
 }
 
 FILES = (
+    "aliens",
     "tuning",
     "terrain",
     "resources",
@@ -206,13 +212,32 @@ class Config:
         self._cache[path] = value
         return value
 
-    def bot(self, path: str) -> Any:
-        node: Any = self.raw["bots"]
+    def _section(self, file: str, path: str) -> Any:
+        key = f"{file}:{path}"
+        if key in self._cache:
+            return self._cache[key]
+        node: Any = self.raw[file]
         for part in path.split("."):
             if not isinstance(node, dict) or part not in node:
-                raise KeyError(f"bot value '{path}' is missing from data/bots.yaml")
+                raise KeyError(f"value '{path}' is missing from data/{file}.yaml")
             node = node[part]
-        return strip_meta(node)
+        value = strip_meta(node)
+        self._cache[key] = value
+        return value
+
+    def bot(self, path: str) -> Any:
+        return self._section("bots", path)
+
+    def alien(self, path: str) -> Any:
+        """A value from data/aliens.yaml. Treat as read-only (cached)."""
+        return self._section("aliens", path)
+
+    @property
+    def alien_techs(self) -> dict[str, dict[str, Any]]:
+        return self.tables["alien_techs"]
+
+    def alien_tech_order(self) -> list[str]:
+        return sorted(self.alien_techs, key=lambda t: self.alien_techs[t]["order"])
 
     @property
     def terrains(self) -> dict[str, dict[str, Any]]:
@@ -307,6 +332,11 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
     for entry_id, entry in tables["improvements"].items():
         if entry["kind"] not in ("tile", "route"):
             raise ConfigError(f"improvements.{entry_id}: kind must be tile or route")
+    effect_keys = {"city_strength", "city_hp", "production", "growth", "max_pop", "heal"}
+    for entry_id, entry in tables["alien_techs"].items():
+        unknown = set(entry["effects"]) - effect_keys
+        if unknown:
+            raise ConfigError(f"alien_techs.{entry_id}: unknown effects {sorted(unknown)}")
     orders = [c["order"] for c in tables["continents"].values()]
     if len(set(orders)) != len(orders):
         raise ConfigError("continents: order values must be unique")

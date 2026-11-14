@@ -28,3 +28,11 @@ techs:
   powered_exoskeletons: {status: placeholder, note: Exo infantry., tree: military, tier: 2, cost: 250, prereqs: [mechanized_warfare], known_at_start: false}
   railguns: {status: placeholder, note: Merge with production., tree: military, tier: 3, cost: 450, prereqs: [powered_exoskeletons, advanced_manufacturing], known_at_start: false}
   hover_armour: {status: placeholder, note: Merge with production., tree: military, tier: 4, cost: 700, prereqs: [railguns, fusion_power], known_at_start: false}
+
+# Proposed techs, not yet in play. The loader reads only the active sections above, so balance
+# runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
+additional:
+  techs:
+    climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 3, cost: 450, prereqs: [global_logistics], known_at_start: false}
+    quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 700, prereqs: [fusion_power, applied_ai], known_at_start: false}
+    directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 4, cost: 700, prereqs: [railguns], known_at_start: false}

@@ -2,25 +2,36 @@
 
 production:
   status: placeholder
-  note: The bot keeps about this many military units per active city and this many engineers.
-  military_per_city_pct: 100
+  note: The bot keeps about this many military units per active city (one garrison plus one
+    field unit at 200) and this many engineers.
+  military_per_city_pct: 250
   engineers: 2
-  restoration_teams: 1
-  recon: 1
+  restoration_teams: 2
+  recon: 2
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
                       research_lab, defence_perimeter, vertical_farm, financial_center, hospital,
                       radio_tower, fusion_plant]
   military_priority: [hover_tank, exo_infantry, mech_infantry, tank, infantry]
   ranged_every:
-    value: 3
+    value: 2
     status: placeholder
-    note: Every third military unit the bot builds is ranged, if one is available.
+    note: Every second military unit the bot builds is ranged, if one is available.
 
 combat:
   status: placeholder
   note: Attack when expected damage dealt is at least attack_ratio_pct of damage taken; retreat
     below retreat_hp_pct of max HP; merge with a neighbour when the pair has at least
-    merge_min_hp_pct of a full stack's HP.
-  attack_ratio_pct: 120
+    merge_min_hp_pct of a full stack's HP; hunt visible aliens within threat_radius of own cities;
+    melee units assault a city once it is below siege_city_hp_pct of its HP; garrison the capital
+    and cities within garrison_radius of known aliens.
+  attack_ratio_pct: 100
   retreat_hp_pct: 35
-  merge_min_hp_pct: 75
+  merge_min_hp_pct: 50
+  threat_radius: 3
+  siege_city_hp_pct: 60
+  garrison_radius: 6
+
+explore:
+  status: placeholder
+  note: Frontier targets an explorer tries per turn before giving up (bounds pathfinding cost).
+  attempts: 3

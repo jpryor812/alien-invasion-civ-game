@@ -11,10 +11,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from beacon import combat, economy, hexgrid, improvements, movement, tech
+from beacon import cities, combat, economy, hexgrid, improvements, movement, tech
 from beacon.commands import (
     Attack,
     BuildImprovement,
+    CityAttack,
     Command,
     CommandError,
     Fortify,
@@ -27,7 +28,7 @@ from beacon.commands import (
 )
 from beacon.config import Config
 from beacon.paths import reachable, shortest_path
-from beacon.state import DORMANT, EMPTY, OVERRUN, GameState, Tile, Unit
+from beacon.state import ALIENS, DORMANT, EMPTY, OVERRUN, GameState, Tile, Unit
 from beacon.tiles import is_passable_land
 from beacon.units import can_stand, is_civilian, max_hp, occupancy
 from beacon.view import PlayerView
@@ -258,21 +259,22 @@ class Bot:
         start = unit.tile
         seen = {start}
         frontier = [start]
-        while frontier:
+        attempts = self.cfg.bot("explore.attempts")
+        while frontier and attempts > 0:
             frontier.sort(key=lambda t: (self.dist(start, t), t))
             nxt: list[int] = []
             for t in frontier:
                 tile = self.remembered(t)
                 if tile is None:
                     continue
-                if (
-                    t != start
-                    and any(
-                        not self.view.is_explored(n) for n in hexgrid.neighbours(t, self.w, self.h)
-                    )
-                    and self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t))
+                if t != start and any(
+                    not self.view.is_explored(n) for n in hexgrid.neighbours(t, self.w, self.h)
                 ):
-                    return
+                    if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
+                        return
+                    attempts -= 1
+                    if attempts <= 0:
+                        break
                 for n in hexgrid.neighbours(t, self.w, self.h):
                     nt = self.remembered(n)
                     if n not in seen and nt is not None and is_passable_land(self.cfg, nt):
@@ -297,7 +299,22 @@ class Bot:
             taken = p["damage_to_attacker"]["expected"]
             if taken >= unit.hp:
                 continue
-            if dealt * 100 < ratio * max(1, taken):
+            if "city" in p["defender"]:
+                # Siege: shell cities freely; melee attacks on a good trade, to finish the
+                # city, or once it is weakened if the unit can afford the losses.
+                city = self.state.cities[p["defender"]["city"]]
+                weak = city.hp * 100 <= cities.max_hp(self.cfg, city, self.state) * self.cfg.bot(
+                    "combat.siege_city_hp_pct"
+                )
+                good_trade = dealt * 100 >= ratio * max(1, taken)
+                if not (
+                    taken == 0
+                    or dealt >= city.hp
+                    or good_trade
+                    or (weak and taken * 2 < unit.hp)
+                ):
+                    continue
+            elif dealt * 100 < ratio * max(1, taken):
                 continue
             key = (dealt >= p["defender"]["hp"], dealt - taken, -t)
             if best is None or key > best[0]:
@@ -336,6 +353,82 @@ class Bot:
             return False
         return self.submit(MoveUnit(player=self.pid, unit=unit.id, target=spot))
 
+    def _garrisons(self) -> dict[int, int]:
+        """Assign one land military unit to the capital and to every own city within
+        garrison_radius of known aliens (city tile -> unit id), nearest first. Units already
+        standing in such a city keep it."""
+        mil = [
+            u
+            for u in self.view.my_units()
+            if self.cfg.units[u.type]["role"] in ("melee", "ranged")
+            and self.cfg.units[u.type]["domain"] == "land"
+        ]
+        out: dict[int, int] = {}
+        taken: set[int] = set()
+        radius = self.cfg.bot("combat.garrison_radius")
+        danger = self.known(OVERRUN) + [
+            u.tile for u in self.view.visible_units() if u.owner == ALIENS
+        ]
+        cities = sorted(
+            (
+                c
+                for c in self.view.my_cities()
+                if c.is_capital or any(self.dist(c.tile, d) <= radius for d in danger)
+            ),
+            key=lambda c: c.id,
+        )
+        for city in cities:
+            here = next((u for u in mil if u.tile == city.tile), None)
+            if here is not None:
+                out[city.tile] = here.id
+                taken.add(here.id)
+        for city in cities:
+            if city.tile in out:
+                continue
+            free = [u for u in mil if u.id not in taken]
+            best = min(free, key=lambda u: (self.dist(u.tile, city.tile), u.id), default=None)
+            if best is not None:
+                out[city.tile] = best.id
+                taken.add(best.id)
+        return out
+
+    def guard(self, unit: Unit, city_tile: int) -> None:
+        """Hold a city: ranged garrisons fire, melee garrisons never leave the walls."""
+        if unit.tile != city_tile:
+            self.submit(MoveUnit(player=self.pid, unit=unit.id, target=city_tile))
+        if not self.alive(unit) or unit.moves_left <= 0:
+            return
+        if unit.tile == city_tile and self.cfg.units[unit.type]["role"] == "ranged":
+            target = self._best_attack(unit)
+            if target is not None:
+                self.submit(Attack(player=self.pid, unit=unit.id, target=target))
+                return
+        if unit.order != "fortify":
+            self.submit(Fortify(player=self.pid, unit=unit.id))
+
+    def bombard(self) -> None:
+        for city in self.view.my_cities():
+            best = None
+            for t in hexgrid.within(city.tile, self.cfg.t("cities.attack_range"), self.w, self.h):
+                if combat.city_attack_problem(self.state, self.cfg, city, t, self.view.visible):
+                    continue
+                victim = combat.defender_at(self.state, self.cfg, self.pid, t)
+                key = (-(victim.hp if victim else 0), -t)
+                if best is None or key > best[0]:
+                    best = (key, t)
+            if best is not None:
+                self.submit(CityAttack(player=self.pid, city=city.id, target=best[1]))
+
+    def threats(self) -> list[int]:
+        """Visible alien units near own cities."""
+        own = [c.tile for c in self.view.my_cities()]
+        radius = self.cfg.bot("combat.threat_radius")
+        return sorted(
+            u.tile
+            for u in self.view.visible_units()
+            if u.owner == ALIENS and any(self.dist(u.tile, t) <= radius for t in own)
+        )
+
     def soldier(self, unit: Unit) -> None:
         if self.cfg.units[unit.type]["domain"] != "land":
             self.submit(Fortify(player=self.pid, unit=unit.id))
@@ -355,6 +448,9 @@ class Bot:
             if self.alive(unit) and unit.moves_left > 0:
                 self.submit(Fortify(player=self.pid, unit=unit.id))
             return
+        threat = self.nearest(unit.tile, self.threats())
+        if threat is not None and self._approach(unit, threat):
+            return
         dormant = self.nearest(unit.tile, self.known(DORMANT))
         if dormant is not None and self.submit(
             MoveUnit(player=self.pid, unit=unit.id, target=dormant)
@@ -366,6 +462,9 @@ class Bot:
         )
         if overrun is not None and not in_reach and self._approach(unit, overrun):
             return
+        if overrun is None and dormant is None:
+            self.explorer(unit)  # nothing known to free: go and find some
+            return
         self.submit(Fortify(player=self.pid, unit=unit.id))
 
     # -- turn ------------------------------------------------------------------------------
@@ -373,8 +472,10 @@ class Bot:
     def play(self) -> None:
         self.research()
         self.production()
+        self.bombard()
         net = self._network()
         claimed: set[int] = set()
+        garrisons = {uid: tile for tile, uid in self._garrisons().items()}
         for unit in self.view.my_units():
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
@@ -385,7 +486,9 @@ class Bot:
                 self.restorer(unit)
             elif spec["role"] == "recon":
                 self.explorer(unit)
-            elif unit.order != "fortify" or self.known(DORMANT) or self.known(OVERRUN):
+            elif unit.id in garrisons:
+                self.guard(unit, garrisons[unit.id])
+            else:
                 self.view = PlayerView(self.state, self.cfg, self.pid)
                 self.soldier(unit)
 

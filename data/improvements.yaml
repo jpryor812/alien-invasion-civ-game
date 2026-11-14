@@ -11,3 +11,15 @@ improvements:
   military_base: {status: placeholder, note: Fortified position., kind: tile, turns: 3, tech: fortification_doctrine, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], defense_pct: 25}
   road: {status: placeholder, note: One third of a move per step (Civ V)., kind: route, turns: 1, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 10}
   railway: {status: placeholder, note: One tenth of a move per step., kind: route, turns: 2, tech: high_speed_rail, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 3, requires_route: road}
+
+# Proposed content, not yet in play. The loader reads only the active sections above, so balance
+# runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
+additional:
+  improvements:
+    solar_array: {status: placeholder, note: Solar panels on open flat land., kind: tile, turns: 3, tech: industrial_base, yields: {production: 1}, terrains: [grassland, plains, desert], elevations: [flat]}
+    wind_turbines: {status: placeholder, note: Turbines on high ground., kind: tile, turns: 3, tech: industrial_base, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
+    minefield: {status: placeholder, note: Defensive mines on flat ground., kind: tile, turns: 2, tech: mechanized_warfare, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat], defense_pct: 15}
+    sensor_mast: {status: placeholder, note: Tall mast for wide sight., kind: tile, turns: 3, tech: radio_beacon_network, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills], vision: 3}
+    hydroponic_plot: {status: placeholder, note: Desert and tundra growing beds., kind: tile, turns: 3, tech: vertical_farming, yields: {food: 2}, terrains: [desert, tundra], elevations: [flat]}
+    geothermal_vent: {status: placeholder, note: Heat from the ground on hills., kind: tile, turns: 3, tech: fusion_power, yields: {production: 2}, terrains: [grassland, plains, desert, tundra], elevations: [hills]}
+    hyperloop: {status: placeholder, note: Fast rail on top of a railway., kind: route, turns: 4, tech: nanofabrication, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 1, requires_route: railway}

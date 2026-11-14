@@ -158,10 +158,16 @@ def _move(state: GameState, cfg: Config, cmd: MoveUnit) -> Events:
         raise CommandError(f"no tile {cmd.target}")
     if unit.moves_left <= 0:
         raise CommandError("no moves left")
-    found = movement.find_path(state, cfg, unit, cmd.target, seen=_seen(state, cfg, cmd.player))
+    seen = _seen(state, cfg, cmd.player)
+    found = movement.find_path(state, cfg, unit, cmd.target, seen=seen)
     if found is None or len(found[0]) < 2:
         raise CommandError(f"no path for unit {unit.id} to tile {cmd.target}")
     events = movement.move_along(state, cfg, unit, found[0])
+    if not events:
+        # This turn's leg ended on a friendly-occupied hex; route around friendly units.
+        detour = movement.find_path(state, cfg, unit, cmd.target, seen=seen, avoid_friends=True)
+        if detour is not None and len(detour[0]) >= 2:
+            events = movement.move_along(state, cfg, unit, detour[0])
     if not events:
         raise CommandError(f"unit {unit.id} cannot make progress toward {cmd.target} this turn")
     return events

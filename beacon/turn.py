@@ -15,8 +15,9 @@ def year(cfg: Config, turn: int) -> int:
 
 
 def alien_phase(state: GameState, cfg: Config) -> list[dict[str, Any]]:
-    """Alien growth, movement and attacks arrive in M4."""
-    return []
+    from beacon import aliens
+
+    return aliens.alien_phase(state, cfg)
 
 
 def heal_amount(state: GameState, cfg: Config, unit) -> int:
@@ -47,7 +48,9 @@ def reset_units(state: GameState, cfg: Config) -> None:
 def heal_cities(state: GameState, cfg: Config) -> None:
     for city in state.cities:
         city.bombarded = False
-        city.hp = min(cities.max_hp(cfg, city), city.hp + cfg.t("cities.heal_per_turn"))
+        if not city.besieged:
+            city.hp = min(cities.max_hp(cfg, city, state), city.hp + cfg.t("cities.heal_per_turn"))
+        city.besieged = False
 
 
 def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:

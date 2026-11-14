@@ -136,13 +136,10 @@ cities:
     status: placeholder
     note: City combat strength per population.
   garrison_share_pct:
-    value: 50
+    value: 30
     status: placeholder
-    note: Share of the garrison's effective strength added to the city's.
-  alien_strength_bonus:
-    value: 10
-    status: placeholder
-    note: Extra combat strength for alien-held cities (alien walls stand-in until M4).
+    note: Share of the garrison's effective strength added to the city's (50 made alien cities
+      near-impregnable to early units in M4 runs).
   base_hp:
     value: 200
     status: placeholder
@@ -150,7 +147,7 @@ cities:
   heal_per_turn:
     value: 20
     status: placeholder
-    note: City HP regained each turn.
+    note: City HP regained each turn, unless the city took damage that turn.
   attack_range:
     value: 2
     status: placeholder
@@ -267,10 +264,11 @@ combat:
 start:
   units:
     status: placeholder
-    note: Units each player starts with, placed at and around the capital.
+    note: Units each player starts with, placed at and around the capital. Modern nations start
+      with standing armies (raised from 2 infantry and 1 artillery after M4 balance runs).
     list:
-      - {type: infantry, count: 2}
-      - {type: artillery, count: 1}
+      - {type: infantry, count: 3}
+      - {type: artillery, count: 2}
       - {type: recon_team, count: 1}
       - {type: engineers, count: 2}
       - {type: restoration_team, count: 1}

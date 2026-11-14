@@ -47,14 +47,22 @@ def _blocked(
     tile: int,
     occ: dict[int, list[Unit]],
     seen: set[int] | None,
+    avoid_friends: bool = False,
 ) -> bool:
-    """Can the unit not pass through this hex at all?"""
+    """Can the unit not pass through this hex at all? With `avoid_friends`, hexes where a
+    friendly unit of the same layer stands count as blocked too."""
     if not domain_allows(state, cfg, unit.type, unit.owner, tile):
         return True
     if city_blocks(state, unit.owner, tile):
         return True
     for other in occ.get(tile, []):
         if hostile(other.owner, unit.owner) and (seen is None or tile in seen):
+            return True
+        if (
+            avoid_friends
+            and other.id != unit.id
+            and (is_civilian(cfg, other.type) == is_civilian(cfg, unit.type))
+        ):
             return True
     return False
 
@@ -69,6 +77,7 @@ def find_path(
     seen: set[int] | None = None,
     allow_occupied_target: bool = False,
     max_turns: int | None = None,
+    avoid_friends: bool = False,
 ) -> tuple[list[int], int] | None:
     """Cheapest path to `target` as (tiles from start to target, turns needed beyond this one).
 
@@ -105,7 +114,7 @@ def find_path(
         if max_turns is not None and turns > max_turns:
             continue
         for nxt in hexgrid.neighbours(tile, w, h):
-            if nxt != target and _blocked(state, cfg, unit, nxt, occ, seen):
+            if nxt != target and _blocked(state, cfg, unit, nxt, occ, seen, avoid_friends):
                 continue
             if nxt == target and not domain_allows(state, cfg, unit.type, unit.owner, nxt):
                 continue

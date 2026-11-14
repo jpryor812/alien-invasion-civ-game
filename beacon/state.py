@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 1
+STATE_VERSION = 2
 ALIENS = "aliens"
 
 # City status values.
@@ -59,6 +59,8 @@ class City:
     connected: bool = False
     bombarded: bool = False  # has used its ranged attack this turn
     damage_by: dict[str, int] = field(default_factory=dict)  # damage dealt to it, by player
+    liberated_turn: int | None = None  # last turn players freed it (alien retake target)
+    besieged: bool = False  # took damage this turn, so it does not heal at turn end
 
 
 @dataclass
@@ -105,6 +107,24 @@ class Player:
     known_cities: dict[str, CityMemory] = field(default_factory=dict)
     beacon_points: int = 0
     credits: dict[str, int] = field(default_factory=dict)
+    fallen: bool = False  # holds no cities (DESIGN.md 13)
+    times_fallen: int = 0
+
+
+@dataclass
+class AlienOrder:
+    kind: str  # siege | raid | patrol
+    target: int  # tile
+
+
+@dataclass
+class AlienState:
+    progress: int = 0
+    techs: list[str] = field(default_factory=list)
+    reinforcement_store: int = 0
+    surge_cooldown: int = 0
+    start_cities: int = 0
+    orders: dict[str, AlienOrder] = field(default_factory=dict)  # by unit id
 
 
 @dataclass
@@ -120,6 +140,7 @@ class GameState:
     turn: int = 0
     next_id: int = 1
     combat_seq: int = 0
+    aliens: AlienState = field(default_factory=AlienState)
     version: int = STATE_VERSION
 
     # -- lookups -------------------------------------------------------------------------------

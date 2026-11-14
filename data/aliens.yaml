@@ -1,0 +1,113 @@
+# The alien faction (docs/SPEC_M4.md). Integers only; *_permille values are per thousand.
+
+progress:
+  status: placeholder
+  note: Progress per turn = max(floor, base + per_city x alien cities + per_pop_pct% of alien
+    population). More cities, faster progress (the tipping point, DESIGN.md 9).
+  base: 2
+  per_city: 1
+  per_pop_pct: 20
+  floor: 8
+
+# Bought in `order` with progress. Effects add up. Units unlock through `alien_tech` in units.yaml.
+techs:
+  chitin_walls: {status: placeholder, note: Walls., order: 1, cost: 150, effects: {city_strength: 4, city_hp: 25}}
+  spitter_glands: {status: placeholder, note: Unlocks spitters., order: 2, cost: 300, effects: {}}
+  deep_mines: {status: placeholder, note: Mines., order: 3, cost: 450, effects: {production: 2}}
+  brood_chambers: {status: placeholder, note: Growth., order: 4, cost: 650, effects: {growth: 2, max_pop: 2}}
+  regeneration: {status: placeholder, note: Faster healing., order: 5, cost: 850, effects: {heal: 10}}
+  brute_strain: {status: placeholder, note: Unlocks brutes., order: 6, cost: 1100, effects: {}}
+  hardened_carapace: {status: placeholder, note: Stronger walls., order: 7, cost: 1400, effects: {city_strength: 8, city_hp: 50}}
+  hive_titans: {status: placeholder, note: Unlocks titans., order: 8, cost: 1800, effects: {}}
+
+cities:
+  status: placeholder
+  note: Alien cities work no tiles. Production per turn = base + per_pop x pop (+ techs); they
+    rebuild their garrison first, then spawn units by weight while fewer than max_units_nearby
+    alien units stand within nearby_radius and the aliens field fewer than units_per_city_pct
+    of their city count in total (reinforcements and surges ignore the cap).
+  base_production: 2
+  production_per_pop: 1
+  food_per_turn: 2
+  growth_threshold: 20
+  max_pop: 6
+  max_units_nearby: 3
+  nearby_radius: 3
+  units_per_city_pct: 120
+  garrison: alien_hive_guard
+  spawn_weights: {alien_drone: 3, alien_warrior: 4, alien_spitter: 2, alien_brute: 3, alien_titan: 1}
+
+fortress:
+  status: placeholder
+  note: Alien city strength gets base_strength (+ wall techs), then a hardening percent of
+    per_lost_city_pct per city lost since the start plus per_interval_pct every interval_turns,
+    capped (DESIGN.md 9, "harden into fewer, stronger fortresses"; designer, "as time goes on").
+  base_strength: 4
+  per_lost_city_pct: 2
+  interval_turns: 20
+  per_interval_pct: 5
+  cap_pct: 50
+
+reinforcements:
+  status: placeholder
+  note: The mothership adds per_turn to a store; at cost a group lands beside a seeded alien city
+    (or on open land at least landing_distance from player cities if a continent has none).
+    Never stops in M4; the M7 barrage stops it.
+  per_turn: 1
+  cost: 15
+  units: [alien_warrior, alien_drone]
+  landing_distance: 4
+
+director:
+  status: placeholder
+  note: Orders for alien units. A siege attacks once alien strength within gather_radius of the
+    target is siege_ratio_pct of the city's defence. Opportunistic attacks need expected damage
+    dealt of at least attack_ratio_pct of damage taken (or a kill). Patrols roam to seeded
+    points within patrol_radius. Recently liberated cities (within retake_turns) and capitals
+    score higher as targets. For the first grace_turns turns aliens do not besiege or raid.
+  weights: {siege: 6, raid: 2, patrol: 3}
+  grace_turns: 8
+  siege_ratio_pct: 100
+  gather_radius: 3
+  attack_ratio_pct: 100
+  patrol_radius: 6
+  raid_radius: 10
+  retake_turns: 20
+  value_base: 20
+  value_capital: 30
+  value_per_pop: 5
+  value_retake: 25
+  defence_per_strength: 1
+  distance_penalty: 2
+
+decay:
+  status: placeholder
+  note: Each turn an unreached dormant or empty city falls with chance (per thousand) base +
+    per_interval x (turn // interval_turns) + near x (alien cities within near_radius), capped;
+    never while a player military unit is within guard_radius (DESIGN.md 5).
+  base_permille: 0
+  interval_turns: 25
+  per_interval_permille: 1
+  near_permille: 0
+  near_radius: 6
+  cap_permille: 4
+  guard_radius: 2
+
+surge:
+  status: placeholder
+  note: Fires when alien cities drop below city_pct of their starting count, or one player has
+    liberated lead more cities than the average; lands size units of the best unlocked types
+    distance hexes from that player's frontier city, then waits cooldown turns.
+  city_pct: 40
+  lead: 4
+  size: 3
+  cooldown: 15
+  distance: 3
+
+# Proposed alien techs, not yet in play. The loader reads only the active sections above, so
+# balance runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
+additional:
+  techs:
+    spore_clouds: {status: placeholder, note: Unlocks sporecasters., order: 9, cost: 2200, effects: {}}
+    phase_skin: {status: placeholder, note: Unlocks wraiths., order: 10, cost: 2600, effects: {}}
+    leviathan_bio: {status: placeholder, note: Unlocks leviathans., order: 11, cost: 3000, effects: {}}

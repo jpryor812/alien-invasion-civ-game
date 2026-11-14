@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from beacon import hexgrid, rng
+from beacon.cities import alien_effect
 from beacon.config import Config
 from beacon.liberation import credit, liberate, overrun
 from beacon.state import ALIENS, OVERRUN, City, GameState, Unit
@@ -103,15 +104,23 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
                     "value": cfg.buildings[b]["city_strength"],
                 }
             )
+    harden = 0
     if city.owner == ALIENS:
         lines.append(
             {
                 "source": "alien_fortress",
                 "kind": "base",
-                "value": cfg.t("cities.alien_strength_bonus"),
+                "value": cfg.alien("fortress.base_strength"),
             }
         )
+        walls = alien_effect(state, cfg, "city_strength")
+        if walls:
+            lines.append({"source": "alien_walls", "kind": "base", "value": walls})
+        harden = hardening_pct(state, cfg)
     total = sum(line["value"] for line in lines) * 100
+    if harden:
+        lines.append({"source": "alien_hardening", "kind": "pct", "value": harden})
+        total = total * (100 + harden) // 100
     guard = garrison(state, cfg, city)
     if guard is not None:
         share = unit_strength(state, cfg, guard, ranged=False, defending=True).total
@@ -121,6 +130,15 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
         )
         total += extra
     return Strength(total=total, lines=lines)
+
+
+def hardening_pct(state: GameState, cfg: Config) -> int:
+    """Alien cities harden as they lose cities and as time passes (DESIGN.md 9)."""
+    f = cfg.alien("fortress")
+    held = sum(1 for c in state.cities if c.status == OVERRUN)
+    lost = max(0, state.aliens.start_cities - held)
+    pct = lost * f["per_lost_city_pct"] + state.turn // f["interval_turns"] * f["per_interval_pct"]
+    return min(f["cap_pct"], pct)
 
 
 def raw_damage(cfg: Config, own: int, other: int) -> int:
@@ -163,6 +181,14 @@ def defender_at(
     return None
 
 
+def capturable(state: GameState, cfg: Config, attacker_owner: str, tile: int) -> bool:
+    """Only hostile civilians stand here: a melee unit can walk in and destroy them."""
+    here = state.units_at(tile)
+    return bool(here) and all(
+        hostile(u.owner, attacker_owner) and is_civilian(cfg, u.type) for u in here
+    )
+
+
 def attack_problem(
     state: GameState, cfg: Config, unit: Unit, target: int, seen: set[int] | None = None
 ) -> str | None:
@@ -174,9 +200,17 @@ def attack_problem(
     if seen is not None and target not in seen:
         return "target is not visible"
     defender = defender_at(state, cfg, unit.owner, target)
-    if defender is None:
-        return "nothing hostile to attack there"
     dist = hexgrid.distance(unit.tile, target, state.width)
+    if defender is None:
+        if (
+            capturable(state, cfg, unit.owner, target)
+            and not is_ranged(cfg, unit)
+            and dist == 1
+            and spec["domain"] == "land"
+            and is_passable_land(cfg, state.tiles[target])
+        ):
+            return None
+        return "nothing hostile to attack there"
     if is_ranged(cfg, unit):
         if dist > spec["range"]:
             return "target out of range"
@@ -214,6 +248,16 @@ def preview_attack(state: GameState, cfg: Config, unit: Unit, target: int) -> di
     problem = attack_problem(state, cfg, unit, target)
     if problem:
         return {"legal": False, "reason": problem}
+    if defender_at(state, cfg, unit.owner, target) is None:
+        zero = {"expected": 0, "min": 0, "max": 0}
+        return {
+            "legal": True,
+            "kind": "capture",
+            "attacker": {"unit": unit.id, "hp": unit.hp},
+            "defender": {"civilians": [u.id for u in state.units_at(target)], "hp": 0},
+            "damage_to_defender": zero,
+            "damage_to_attacker": zero,
+        }
     att, dfn, defender = _sides(state, cfg, unit, target)
     ranged = is_ranged(cfg, unit)
     to_def = _range(cfg, raw_damage(cfg, dfn.total, att.total))
@@ -302,6 +346,14 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     problem = attack_problem(state, cfg, unit, target)
     if problem:
         raise ValueError(problem)
+    if defender_at(state, cfg, unit.owner, target) is None:
+        unit.attacks_left -= 1
+        unit.moves_left = 0
+        unit.fortified = False
+        unit.acted = True
+        events: Events = [{"kind": "civilians_captured", "attacker": unit.id, "target": target}]
+        events.extend(_advance(state, cfg, unit, target))
+        return events
     att, dfn, defender = _sides(state, cfg, unit, target)
     ranged = is_ranged(cfg, unit)
     land_melee = not ranged and cfg.units[unit.type]["domain"] == "land"
@@ -315,7 +367,7 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     if unit.order == "fortify":
         unit.order = "none"
 
-    events: Events = [
+    events = [
         {
             "kind": "attack",
             "attacker": unit.id,
@@ -334,6 +386,7 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
         city = defender
         floor = 0 if land_melee else 1
         city.hp = max(floor, city.hp - to_def)
+        city.besieged = True
         city.damage_by[unit.owner] = city.damage_by.get(unit.owner, 0) + to_def
         if to_att:
             events.extend(damage_unit(state, cfg, unit, to_att, city.owner or ALIENS))
