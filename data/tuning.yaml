@@ -60,7 +60,7 @@ cities:
     value: 3
     status: placeholder
     note: Cities known at the start per continent (designer 2026-11-14 - three, spread out, e.g.
-      New York, Chicago and Mexico City); the other twelve must be liberated.
+      New York, Los Angeles and Mexico City); the other twelve must be liberated.
   work_radius:
     value: 2
     status: placeholder

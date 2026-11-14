@@ -6,8 +6,8 @@
 // palette, helpers
 
 const OWNER = {
-  north_america: "#3b78e0", south_america: "#38b072", europe: "#e0b03a", asia: "#d1503f",
-  africa: "#e0843a", oceania: "#36bfcc", aliens: "#a347c9",
+  north_america: "#3b78e0", south_america: "#38b072", europe: "#e0b03a", asia: "#c463c9",
+  africa: "#e0843a", oceania: "#36bfcc", aliens: "#e0362c",
 };
 const GROUND = {
   grassland: ["#6b9c48", "#628f42", "#73a34e"], plains: ["#b3a55b", "#a99b51", "#bbac63"],
@@ -327,7 +327,13 @@ async function refresh(keepSelection = true) {
   S.explored = new Set(v.explored);
   S.tilesByIndex = new Map(Object.entries(v.tiles).map(([k, t]) => [Number(k), t]));
   S.unitsByTile = new Map();
+  S.defencesByTile = new Map();  // city defences are part of their city: not drawn or selected
   for (const u of v.units) {
+    if (v.unit_types[u.type]?.fixed) {
+      if (!S.defencesByTile.has(u.tile)) S.defencesByTile.set(u.tile, []);
+      S.defencesByTile.get(u.tile).push(u);
+      continue;
+    }
     if (!S.unitsByTile.has(u.tile)) S.unitsByTile.set(u.tile, []);
     S.unitsByTile.get(u.tile).push(u);
   }
@@ -493,15 +499,15 @@ function drawCity(c, sx, sy, R, i) {
   const rnd = rng(i * 31 + 7);
   if (c.status === "overrun") {
     const rg = ctx.createRadialGradient(sx, sy, R * 0.1, sx, sy, R * 0.85);
-    rg.addColorStop(0, "rgba(160,70,200,0.55)"); rg.addColorStop(1, "rgba(60,20,80,0)");
+    rg.addColorStop(0, "rgba(220,50,40,0.6)"); rg.addColorStop(1, "rgba(90,15,10,0)");
     ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(sx, sy, R * 0.85, 0, Math.PI * 2); ctx.fill();
     const n = 3 + Math.min(5, Math.floor(c.pop / 2));
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + rnd(), d = k === 0 ? 0 : R * (0.25 + rnd() * 0.25);
       const x = sx + Math.cos(a) * d, y = sy + Math.sin(a) * d * 0.7 + R * 0.15, h = R * (0.35 + rnd() * 0.3);
-      ctx.fillStyle = "#4b1f63"; ctx.beginPath(); ctx.moveTo(x - R * 0.1, y); ctx.quadraticCurveTo(x - R * 0.12, y - h * 0.6, x, y - h); ctx.quadraticCurveTo(x + R * 0.1, y - h * 0.5, x + R * 0.1, y); ctx.fill();
-      ctx.fillStyle = "#b45be0"; ctx.beginPath(); ctx.moveTo(x - R * 0.04, y); ctx.quadraticCurveTo(x - R * 0.06, y - h * 0.6, x, y - h); ctx.lineTo(x, y); ctx.fill();
-      ctx.fillStyle = "#8dff9e"; ctx.beginPath(); ctx.arc(x, y - h * 0.55, R * 0.025, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#5e1612"; ctx.beginPath(); ctx.moveTo(x - R * 0.1, y); ctx.quadraticCurveTo(x - R * 0.12, y - h * 0.6, x, y - h); ctx.quadraticCurveTo(x + R * 0.1, y - h * 0.5, x + R * 0.1, y); ctx.fill();
+      ctx.fillStyle = "#e0453a"; ctx.beginPath(); ctx.moveTo(x - R * 0.04, y); ctx.quadraticCurveTo(x - R * 0.06, y - h * 0.6, x, y - h); ctx.lineTo(x, y); ctx.fill();
+      ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.arc(x, y - h * 0.55, R * 0.025, 0, Math.PI * 2); ctx.fill();
     }
     return;
   }
@@ -554,7 +560,7 @@ function drawBanner(c, sx, sy, R) {
   const bh = fs * 1.75, bw = tw + bh + pw + fs * 1.2, bx = sx - bw / 2, by = sy - R * 1.32 - bh;
   ctx.fillStyle = "rgba(0,0,0,0.4)"; roundRect(bx + 2, by + 3, bw, bh, bh / 2); ctx.fill();
   const bg = ctx.createLinearGradient(0, by, 0, by + bh);
-  bg.addColorStop(0, c.status === "overrun" ? "#3a1a4a" : "#2a3846"); bg.addColorStop(1, c.status === "overrun" ? "#1f0d29" : "#141d26");
+  bg.addColorStop(0, c.status === "overrun" ? "#5a1712" : "#2a3846"); bg.addColorStop(1, c.status === "overrun" ? "#2a0906" : "#141d26");
   ctx.fillStyle = bg; roundRect(bx, by, bw, bh, bh / 2); ctx.fill();
   ctx.strokeStyle = mine ? "#f2d38a" : shade(owner, -0.1); ctx.lineWidth = mine ? 1.6 : 1.2; ctx.stroke();
   ctx.fillStyle = owner; ctx.beginPath(); ctx.arc(bx + bh / 2, by + bh / 2, bh / 2 - 1.5, 0, Math.PI * 2); ctx.fill();
@@ -586,11 +592,11 @@ function drawBadge(u, x, y, r, R) {
   const alien = u.owner === "aliens";
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x + 1, y + r * 0.95, r * 0.9, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
-  g.addColorStop(0, alien ? "#3c1f4c" : "#2c3a48"); g.addColorStop(1, alien ? "#170a1f" : "#10171e");
+  g.addColorStop(0, alien ? "#4c1611" : "#2c3a48"); g.addColorStop(1, alien ? "#1f0705" : "#10171e");
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = owner; ctx.lineWidth = Math.max(2, r * 0.18); ctx.stroke();
-  if (alien) { ctx.strokeStyle = "rgba(141,255,158,0.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r + 1.5, 0, Math.PI * 2); ctx.stroke(); }
-  drawUnitIcon(u, x, y, r * 0.62, alien ? "#d9a8f5" : shade(owner, 0.35));
+  if (alien) { ctx.strokeStyle = "rgba(255,170,120,0.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r + 1.5, 0, Math.PI * 2); ctx.stroke(); }
+  drawUnitIcon(u, x, y, r * 0.62, alien ? "#ffb3a6" : shade(owner, 0.35));
   if (u.count > 1) {
     ctx.fillStyle = "#f2d38a"; ctx.beginPath(); ctx.arc(x + r * 0.82, y - r * 0.82, r * 0.38, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#1a1408"; ctx.font = `700 ${Math.max(7, Math.round(r * 0.45))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("2", x + r * 0.82, y - r * 0.8);
@@ -806,6 +812,7 @@ function renderUnitPanel() {
   side.classList.remove("hidden");
 }
 async function selectCity(id, centerIt = false) {
+  if (!S.selected || S.selected.kind !== "city" || S.selected.id !== id) S.cityListOpen = false;
   try { S.city = await api(`/api/city/${id}`); } catch (err) { clearSelection(); return; }
   S.selected = { kind: "city", id }; S.options = null; S.targetMode = null;
   if (centerIt) centerOnTile(S.city.city.tile);
@@ -824,7 +831,7 @@ function renderCityPanel() {
   const groups = { building: [], unit: [], project: [] };
   for (const o of d.options) groups[o.kind].push(o);
   const list = Object.entries(groups).filter(([, v]) => v.length).map(([k, v]) =>
-    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item" data-item="${esc(o.item)}" title="${esc(o.note || "")}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}</span></div>`).join("")).join("");
+    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}</span></div>`).join("")).join("");
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
     <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.connected ? "connected" : '<span class="bad">not connected: produces nothing</span>'}</div>
@@ -834,12 +841,21 @@ function renderCityPanel() {
     <h3>Producing</h3>
     <div class="row">${head ? `${esc(pretty(head.split(":")[1]))} <span class="muted">${c.production_store}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
       ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
-    <h3>Change production</h3>
-    <div class="list" id="prodlist">${list}</div>
+    ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
+    <div class="list" id="prodlist">${list}</div>`}
+    <h3>Defences</h3>
+    <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP)`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
     ${d.bombard.length ? '<div class="actions"><button id="bombard">Bombard…</button></div>' : ""}`;
-  side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = () => send({ kind: "set_production", city: c.id, items: [el.dataset.item] }));
+  side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = async () => {
+    if (el.dataset.item === head) return;
+    S.cityListOpen = false;
+    await send({ kind: "set_production", city: c.id, items: [el.dataset.item] });
+    // Civ style: once the city has something to build, move on to the next decision
+    if (!S.view.pending.some((p) => p.kind === "choose_production" && p.city === c.id)) { clearSelection(); }
+  });
+  if ($("changeprod")) $("changeprod").onclick = () => { S.cityListOpen = true; renderCityPanel(); };
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
   if ($("buy")) $("buy").onclick = () => send({ kind: "purchase", city: c.id });
   if ($("bombard")) $("bombard").onclick = () => { S.targetMode = "bombard"; S.dirty = true; toast("Click a red hex to bombard."); };
@@ -1018,8 +1034,26 @@ window.addEventListener("keydown", (e) => {
 // screens (modal)
 
 document.querySelectorAll("#topbar nav button").forEach((b) => b.onclick = () => openScreen(b.dataset.screen));
+// Top-bar numbers open their screens: science -> tech, beacon -> council, gold -> diplomacy,
+// mothership -> projects (Civ V style).
+for (const [id, screen] of [["science", "techs"], ["beacon", "council"], ["gold", "diplomacy"], ["threat", "projects"]]) {
+  $(id).classList.add("clickable"); $(id).onclick = () => openScreen(screen);
+}
 document.querySelector("#modal .close").onclick = closeModal;
 $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+// Hover cards for anything with data-tip (production items, tech unlocks): what it does, Civ style.
+const itemTip = document.createElement("div");
+itemTip.id = "itemtip"; itemTip.className = "hidden"; document.body.appendChild(itemTip);
+document.addEventListener("mouseover", (e) => {
+  const el = e.target.closest && e.target.closest("[data-tip]");
+  if (!el) { itemTip.classList.add("hidden"); return; }
+  itemTip.innerHTML = el.dataset.tip; itemTip.classList.remove("hidden");
+  const r = el.getBoundingClientRect(), w = itemTip.offsetWidth, h = itemTip.offsetHeight;
+  let x = r.right + 8, y = r.top;
+  if (x + w > innerWidth - 8) x = Math.max(8, r.left - w - 8);
+  if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+  itemTip.style.left = `${x}px`; itemTip.style.top = `${y}px`;
+});
 function closeModal() { $("modal").classList.add("hidden"); document.querySelector(".modal-box").classList.remove("narrow"); S.screen = null; }
 
 async function openScreen(name) {
@@ -1043,21 +1077,41 @@ async function act(cmd, screen) {
   if (screen) openScreen(screen);
 }
 
+// Tech timeline (Civ V style): one row from what you know now to the far future, left to right,
+// not split by tree. Each card shows its projected turns and what it unlocks; tags on the unlocks
+// show what they help (military, science, food...). Hover an unlock for the details.
+const TIER_NAME = ["Present day (2025)", "Near future", "Next generation", "Advanced", "Far future", "Beyond"];
+const TAG_LABEL = { food: "Food", production: "Production", science: "Science", gold: "Gold", beacon: "Beacon",
+  military: "Military", defence: "Defence", sight: "Sight", movement: "Movement" };
+function tagChips(tags) { return tags.map((t) => `<span class="tag ${t}">${TAG_LABEL[t] || pretty(t)}</span>`).join(""); }
+function infoHtml(title, info, extra = "") {
+  return `<div class="tip-title">${esc(title)}</div>${info.note ? `<div class="tip-note">${esc(info.note)}</div>` : ""}
+    <ul>${info.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${extra}${info.tags.length ? `<div>${tagChips(info.tags)}</div>` : ""}`;
+}
 function techScreen(d) {
-  const trees = ["economic", "production", "military", "beacon", "alien"];
-  const cols = trees.map((tree) => {
-    const rows = d.techs.filter((t) => t.tree === tree);
-    const tiers = [...new Set(rows.map((t) => t.tier))].sort((a, b) => a - b);
-    return `<div class="techcol"><h3>${pretty(tree)}${tree === "alien" ? " (espionage)" : ""}</h3>` + tiers.map((tier) =>
-      `<div class="tier">${tree === "alien" ? "" : `Tier ${tier}`}</div>` + rows.filter((t) => t.tier === tier).map((t) =>
-        `<div class="tech ${t.status}" data-tech="${t.id}" title="${esc(t.note)}">
-          <div class="name">${esc(pretty(t.id))}</div>
-          <div class="meta">${t.status === "known" ? "known" : t.cost ? `${t.cost} science` : ""}${t.status === "researching" ? ` · ${d.progress}/${t.cost}` : ""}</div>
-          ${t.prereqs.length ? `<div class="meta">needs ${t.prereqs.map(pretty).join(", ")}</div>` : ""}
-          ${t.unlocks.length ? `<div class="meta">unlocks ${t.unlocks.map((u) => pretty(u.split(":")[1])).join(", ")}</div>` : ""}
-        </div>`).join("")).join("") + "</div>";
+  const main = d.techs.filter((t) => t.tree !== "alien");
+  const tiers = [...new Set(main.map((t) => t.tier))].sort((a, b) => a - b);
+  const card = (t) => {
+    const tags = [...new Set([...(t.tree === "beacon" ? ["beacon"] : []), ...t.unlocks.flatMap((u) => u.tags)])];
+    const when = t.status === "known" ? "Known" : t.status === "researching" ? `Researching · ${d.progress}/${t.cost} · ${t.turns ?? "–"} turns`
+      : t.turns != null ? `${t.turns} turns · ${t.cost} science` : `${t.cost} science`;
+    return `<div class="tech ${t.status}" data-tech="${t.id}">
+      <div class="name">${esc(pretty(t.id))}</div>
+      <div class="meta when">${when}</div>
+      ${t.note ? `<div class="meta">${esc(t.note)}</div>` : ""}
+      ${t.prereqs.length && t.status === "locked" ? `<div class="meta">needs ${t.prereqs.map(pretty).join(", ")}</div>` : ""}
+      ${t.unlocks.length ? `<div class="unlocks">${t.unlocks.map((u) => `<span class="unlock" data-tip="${esc(infoHtml(pretty(u.item.split(":")[1]), u, `<div class="tip-kind">${pretty(u.item.split(":")[0])}</div>`))}">${esc(pretty(u.item.split(":")[1]))}</span>`).join("")}</div>` : ""}
+      <div class="tags">${tagChips(tags)}</div>
+    </div>`;
+  };
+  const cols = tiers.map((tier) => {
+    const rows = main.filter((t) => t.tier === tier).sort((a, b) => ({ researching: 0, available: 1, known: 2, locked: 3 }[a.status] - { researching: 0, available: 1, known: 2, locked: 3 }[b.status]) || a.cost - b.cost);
+    return `<div class="techcol"><h3>${TIER_NAME[tier] || `Tier ${tier}`}</h3>${rows.map(card).join("")}</div>`;
   }).join("");
-  return `<h2>Technology</h2><div class="techgrid">${cols}</div>`;
+  const alien = d.techs.filter((t) => t.tree === "alien");
+  const alienCol = alien.length ? `<div class="techcol alien"><h3>Alien (espionage only)</h3>${alien.map(card).join("")}</div>` : "";
+  return `<h2>Technology</h2><p class="muted">Present on the left, future on the right. Click a gold-edged tech to research it; hover an unlock for what it does. Science: +${S.view.economy.science_per_turn} per turn.</p>
+    <div class="techline">${cols}${alienCol}</div>`;
 }
 function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<span class="chip ${d}">${pretty(d)} +${v}%</span>`).join(""); }
 function councilScreen(d) {

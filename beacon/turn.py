@@ -6,6 +6,7 @@ from typing import Any
 
 from beacon import (
     cities,
+    combat,
     diplomacy,
     economy,
     endgame,
@@ -66,6 +67,7 @@ def heal_cities(state: GameState, cfg: Config) -> None:
 def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     """Resolve the end of the current turn and start the next. Returns the events produced."""
     events: list[dict[str, Any]] = []
+    events.extend(combat.defences_fire(state, cfg))
     events.extend(alien_phase(state, cfg))
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)

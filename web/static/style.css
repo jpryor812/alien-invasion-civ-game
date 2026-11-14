@@ -121,6 +121,27 @@ th { color: var(--brass); font-weight: 600; font-size: 12px; }
 .menu-stack { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 
 .techgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.techline { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 10px; align-items: flex-start; }
+.techline .techcol { flex: 0 0 230px; }
+.techline .techcol.alien { opacity: 0.85; }
+.tech .when { color: var(--science); }
+.tech.known .when { color: var(--food); }
+.tech .unlocks { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px; }
+.unlock { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #1d2a36; border: 1px solid var(--line); cursor: help; }
+.unlock:hover { border-color: var(--brass); }
+.tech .tags { margin-top: 4px; }
+.tag { display: inline-block; font-size: 10px; padding: 0 5px; margin: 2px 3px 0 0; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+.tag.food { border-color: var(--food); color: var(--food); } .tag.production { border-color: var(--production); color: var(--production); }
+.tag.science { border-color: var(--science); color: var(--science); } .tag.gold { border-color: var(--gold); color: var(--gold); }
+.tag.beacon { border-color: var(--beacon); color: var(--beacon); } .tag.military, .tag.defence { border-color: #e5705f; color: #e5705f; }
+#itemtip { position: fixed; z-index: 60; max-width: 280px; background: #0d141b; border: 1px solid var(--brass); border-radius: 6px; padding: 8px 10px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
+#itemtip ul { margin: 4px 0; padding-left: 16px; }
+#itemtip .tip-title { font: 700 13px var(--heading); color: var(--brass); }
+#itemtip .tip-note { color: var(--muted); font-style: italic; }
+#itemtip .tip-kind { color: var(--muted); margin: 2px 0; }
+.stat.clickable { cursor: pointer; border-radius: 4px; }
+.stat.clickable:hover { background: rgba(242,211,138,0.12); }
+.list .item.current { border-left: 3px solid var(--brass); }
 .techcol h3 { margin-top: 0; }
 .tier { color: var(--muted); font-size: 11px; margin: 8px 0 3px; }
 .tech { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; margin-bottom: 5px; background: #121b24; }

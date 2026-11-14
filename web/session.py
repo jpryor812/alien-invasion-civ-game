@@ -234,6 +234,7 @@ class Session:
                         k: spec[k]
                         for k in ("role", "domain", "strength", "ranged_strength", "range", "moves")
                     }
+                    | {"fixed": bool(spec.get("fixed")), "no_attack": bool(spec.get("no_attack"))}
                     for u, spec in cfg.units.items()
                 },
             }
@@ -350,6 +351,7 @@ class Session:
                     "note": note(cfg, "buildings" if kind == "building" else "units", ident)
                     if kind != "project"
                     else "",
+                    "info": describe(cfg, kind, ident),
                     "price": cost * cfg.t("economy.purchase_pct") // 100 if cost else None,
                 }
             )
@@ -386,9 +388,10 @@ class Session:
             for ident, spec in table.items():
                 if spec.get("tech") and not spec.get("not_buildable"):
                     unlocks.setdefault(spec["tech"], []).append(f"{kind}:{ident}")
+        science = self.view()["economy"]["science_per_turn"]
         rows = []
         for t, spec in sorted(
-            cfg.techs.items(), key=lambda kv: (kv[1]["tree"], kv[1]["tier"], kv[0])
+            cfg.techs.items(), key=lambda kv: (kv[1]["tier"], kv[1]["tree"], kv[0])
         ):
             status = (
                 "known"
@@ -408,7 +411,20 @@ class Session:
                     "prereqs": spec["prereqs"],
                     "note": note(cfg, "techs", t),
                     "status": status,
-                    "unlocks": sorted(unlocks.get(t, [])),
+                    "unlocks": [
+                        {"item": u, **describe(cfg, *u.split(":", 1))}
+                        for u in sorted(unlocks.get(t, []))
+                    ],
+                    "turns": None
+                    if status == "known" or spec["tree"] == "alien" or not science
+                    else -(
+                        -max(
+                            0,
+                            spec["cost"]
+                            - (player.research_progress if status == "researching" else 0),
+                        )
+                        // science
+                    ),
                 }
             )
         return {"techs": rows, "research": player.research, "progress": player.research_progress}
@@ -484,6 +500,108 @@ class Session:
             "outcome_turn": self.state.outcome_turn,
             "names": {pid: p.name for pid, p in self.state.players.items()},
         }
+
+
+YIELD_WORD = {
+    "food": "food",
+    "production": "production",
+    "science": "science",
+    "gold": "gold",
+    "beacon": "beacon points",
+}
+PROJECT_INFO = {
+    "wealth": (["Turns this city's production into gold."], ["gold"]),
+    "research": (["Turns this city's production into science."], ["science"]),
+    "barrage": (
+        ["Sends production to the world barrage that destroys the mothership."],
+        ["military"],
+    ),
+}
+
+
+def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
+    """What a building, unit, improvement or project does, as short lines, plus tags naming
+    what it helps (food, production, science, gold, beacon, military, defence, sight, movement)."""
+    lines: list[str] = []
+    tags: list[str] = []
+    if kind == "project":
+        text, tags = PROJECT_INFO.get(ident, ([], []))
+        return {"lines": list(text), "tags": list(tags), "note": ""}
+    if kind == "building":
+        b = cfg.buildings[ident]
+        for y, v in sorted(b.get("yields", {}).items()):
+            lines.append(f"+{v} {YIELD_WORD.get(y, y)} per turn")
+            tags.append(y)
+        for y, v in sorted(b.get("yield_pct", {}).items()):
+            lines.append(f"+{v}% {YIELD_WORD.get(y, y)} in this city")
+            tags.append(y)
+        if b.get("city_strength"):
+            lines.append(f"+{b['city_strength']} city defence strength")
+            tags.append("defence")
+        if b.get("city_hp"):
+            lines.append(f"+{b['city_hp']} city HP")
+            tags.append("defence")
+        if b.get("unit_production_pct"):
+            lines.append(f"+{b['unit_production_pct']}% production toward units")
+            tags.append("military")
+        if b.get("vision"):
+            lines.append(f"City sees {b['vision']} more hexes")
+            tags.append("sight")
+        if b.get("requires_building"):
+            lines.append(f"Needs a {b['requires_building'].replace('_', ' ')} first")
+        if b.get("coastal"):
+            lines.append("Coastal cities only")
+        if b.get("maintenance"):
+            lines.append(f"Upkeep {b['maintenance']} gold per turn")
+        return {"lines": lines, "tags": sorted(set(tags)), "note": note(cfg, "buildings", ident)}
+    if kind == "unit":
+        u = cfg.units[ident]
+        role = u["role"]
+        if role == "civilian":
+            if u.get("can_build"):
+                lines.append("Builds roads, railways, farms, mines and extractors")
+                tags.append("production")
+            if u.get("can_refound"):
+                lines.append("Rebuilds a ruined city (used up)")
+                tags.append("food")
+            if not lines:
+                lines.append("Does not fight")
+        else:
+            lines.append(
+                f"Strength {u['strength']}" + (" (defence only)" if u.get("no_attack") else "")
+            )
+            if u["ranged_strength"]:
+                lines.append(f"Ranged strength {u['ranged_strength']}, range {u['range']}")
+            tags.append("defence" if u.get("fixed") else "military")
+        if u.get("fixed"):
+            lines.append("City defence: never moves, stays in its city")
+        else:
+            lines.append(f"Moves {u['moves']}, sees {u['vision']}")
+        if role == "recon":
+            lines.append("Scout: finds lost cities in the fog")
+            tags.append("sight")
+        if u["domain"] == "sea":
+            lines.append("Ship: coastal cities only")
+        if u.get("requires_resource"):
+            lines.append(f"Needs 1 {u['requires_resource'].replace('_', ' ')}")
+        return {"lines": lines, "tags": sorted(set(tags)), "note": note(cfg, "units", ident)}
+    if kind == "improvement":
+        m = cfg.improvements[ident]
+        for y, v in sorted(m.get("yields", {}).items()):
+            lines.append(f"+{v} {YIELD_WORD.get(y, y)} on its hex")
+            tags.append(y)
+        if m.get("defense_pct"):
+            lines.append(f"+{m['defense_pct']}% defence on its hex")
+            tags.append("defence")
+        if m.get("vision"):
+            lines.append(f"Reveals {m['vision']} hexes around it")
+            tags.append("sight")
+        if m.get("kind") == "route":
+            lines.append("Faster movement; joins cities to the capital")
+            tags.append("movement")
+        lines.append(f"Engineers build it in {m['turns']} turns")
+        return {"lines": lines, "tags": sorted(set(tags)), "note": note(cfg, "improvements", ident)}
+    return {"lines": [], "tags": [], "note": ""}
 
 
 def note(cfg: Config, file: str, ident: str) -> str:

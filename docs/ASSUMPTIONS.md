@@ -358,7 +358,7 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   lost cities are dormant, ruined or held by aliens; the shapes and city sites are fixed.
 - **Cities**: 15 real cities per continent, chosen to stay at least 5 hexes apart (a test checks
   it; Paris sits a little south of its true spot to keep 5 from London). Three are known at the
-  start, chosen spread out: New York, Chicago, Mexico City; Sao Paulo, Buenos Aires, Bogota;
+  start, chosen spread out: New York, Los Angeles, Mexico City; Sao Paulo, Buenos Aires, Bogota;
   London, Berlin, Rome; Beijing, Delhi, Tokyo; Cairo, Lagos, Johannesburg; Sydney, Perth, Darwin.
 - **Starting roads are unowned**: the known cities are still joined to the capital by road (so
   they produce from turn 1), but nobody owns those roads, so they no longer show through the fog
@@ -371,7 +371,10 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   never moves) and home guard (melee; never moves or attacks, `no_attack: true`). They are placed
   only on a city tile, one per city, in their own slot beside a field unit and a civilian. Every
   own military unit in a city adds its garrison share to the city's strength. They die if the
-  city falls. Bots fire city artillery each turn and never count defence units as field army.
+  city falls. They are part of the city, not units anyone commands: the map does not draw them and
+  the city panel lists them under Defences. At the end of every turn, before the aliens move,
+  each city gun fires at the weakest visible enemy in range (ties by hex), for humans and AI
+  alike. Bots never count defence units as field army.
 - **Bots scout first**: every continent's city list is public (real cities), so while some of its
   own cities are still unfound, a bot builds its recon teams before more military.
 - **Next-turn button**: it names the next decision (choose research, choose production, unit
@@ -381,3 +384,11 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Balance after the change** (20 AI seeds to turn 200): 11/20 victories (turns 160-183, in the
   30-70% band), 0 defeats, barrage fired in every game, the other nine end with 1-2 alien cities
   left. Games are slower on the bigger map: 25-60 s per 200 turns (was up to 20 s).
+- **Client, 2026-11-14 (later)**: the tech screen is one timeline, present on the left and
+  future on the right, not split by tree; each tech shows projected turns at the current science
+  rate (cost left divided by science per turn, rounded up) and tags on what it unlocks (military,
+  defence, food, production, science, gold, beacon, sight, movement). Production items and tech
+  unlocks have hover cards listing their effects from the data. Top-bar numbers open their
+  screens (science: tech, beacon: council, gold: diplomacy, mothership: projects). Choosing
+  production closes the city panel; a city with something queued shows "Change production"
+  instead of the list. Alien cities and units are red; Asia's colour moved to violet.

@@ -4,8 +4,36 @@
     {
       "name": "beacon-web",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "python", "-m", "web.server", "--port", "8765", "--seed", "1", "--human", "europe"],
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8765",
+        "--seed",
+        "1",
+        "--human",
+        "europe"
+      ],
       "port": 8765
+    },
+    {
+      "name": "beacon-web-test",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8766",
+        "--seed",
+        "1",
+        "--human",
+        "north_america"
+      ],
+      "port": 8766
     }
   ]
 }

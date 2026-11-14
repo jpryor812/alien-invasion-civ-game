@@ -468,3 +468,30 @@ def city_attack(state: GameState, cfg: Config, city: City, target: int) -> Event
     ]
     events.extend(damage_unit(state, cfg, defender, dmg, owner))
     return events
+
+
+def defences_fire(state: GameState, cfg: Config) -> Events:
+    """City defence guns are part of their city: at the end of each turn every one that has not
+    fired shoots the weakest visible enemy in range (ties by hex). Nobody gives them orders."""
+    from beacon import fog
+
+    events: Events = []
+    for pid in state.player_ids():
+        seen = fog.visible_tiles(state, cfg, pid)
+        for unit in state.sorted_units():
+            spec = cfg.units[unit.type]
+            if unit.owner != pid or not spec.get("fixed") or spec.get("no_attack"):
+                continue
+            if str(unit.id) not in state.units:
+                continue
+            best = None
+            for t in hexgrid.within(unit.tile, spec["range"], state.width, state.height):
+                if attack_problem(state, cfg, unit, t, seen) is not None:
+                    continue
+                victim = defender_at(state, cfg, pid, t)
+                key = (victim.hp if victim else 0, t)
+                if best is None or key < best:
+                    best = key
+            if best is not None:
+                events.extend(attack(state, cfg, unit, best[1]))
+    return events

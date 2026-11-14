@@ -470,14 +470,6 @@ class Bot:
         if unit.order != "fortify":
             self.submit(Fortify(player=self.pid, unit=unit.id))
 
-    def city_defence(self, unit: Unit) -> None:
-        """City defence units never move: a gun fires at the best target in range."""
-        if not self.alive(unit) or self.cfg.units[unit.type].get("no_attack"):
-            return
-        target = self._best_attack(unit)
-        if target is not None:
-            self.submit(Attack(player=self.pid, unit=unit.id, target=target))
-
     def bombard(self) -> None:
         for city in self.view.my_cities():
             best = None
@@ -606,8 +598,7 @@ class Bot:
     def play_units(self, net: set[int], claimed: set[int], garrisons: dict[int, int]) -> None:
         for unit in self.view.my_units():
             if self.cfg.units[unit.type].get("fixed"):
-                self.city_defence(unit)
-                continue
+                continue  # city defences fire on their own at the end of the turn
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
             if unit.id in self.reserved:

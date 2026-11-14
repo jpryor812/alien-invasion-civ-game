@@ -63,9 +63,9 @@ continents:
         - {kind: hills, points: [[-92, 15], [-86, 13]]}
     cities:
       - {name: New York, lon: -74, lat: 41}
-      - {name: Chicago, lon: -88, lat: 42}
-      - {name: Mexico City, lon: -99, lat: 19}
       - {name: Los Angeles, lon: -118, lat: 34}
+      - {name: Mexico City, lon: -99, lat: 19}
+      - {name: Chicago, lon: -88, lat: 42}
       - {name: Dallas, lon: -97, lat: 33}
       - {name: Atlanta, lon: -84, lat: 34}
       - {name: Miami, lon: -80, lat: 26}

@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: continents drawn from real geography with real city sites (designer 2026-11-14).
-GOLDEN_MAP_SEED_1 = "207eba04e0ea444023eab2a3ea6d87d760da86b6207f6d1c4e0906b80245e085"
+# Last change: North America starts with New York, Los Angeles and Mexico City (designer).
+GOLDEN_MAP_SEED_1 = "a58a158e14afd3f781ec969dc171968994edb4900435779b4904b546365d0e3e"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")

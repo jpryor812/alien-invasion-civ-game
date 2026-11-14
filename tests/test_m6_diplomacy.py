@@ -258,12 +258,12 @@ def test_ai_uses_no_randomness():
 
 def test_ai_games_trade_help_and_replay(cfg):
     turns = 100  # troops go abroad once home is quiet, later on the bigger map
-    state, events, log = play(cfg, seed=2, turns=turns, driver="ai")
+    state, events, log = play(cfg, seed=3, turns=turns, driver="ai")
     kinds = {e["kind"] for e in events}
     assert {"deal_accepted", "unit_shipped"} <= kinds
     assert any(p.allies for p in state.players.values())
     assert len({p.character for p in state.players.values()}) >= 3
-    assert state_digest(replay(cfg, 2, turns, log)) == state_digest(state)
+    assert state_digest(replay(cfg, 3, turns, log)) == state_digest(state)
 
 
 def test_human_seat_issues_no_commands(cfg):

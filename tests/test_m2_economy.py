@@ -115,7 +115,15 @@ def test_tech_gating(cfg, game):
 
 
 def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
-    dormant = next(c for c in game.cities if c.continent == PID and c.status == DORMANT)
+    # a dormant city off the starting roads (one may lie on a road between known cities)
+    w, h = game.width, game.height
+    dormant = next(
+        c
+        for c in game.cities
+        if c.continent == PID
+        and c.status == DORMANT
+        and not any(game.tiles[n].route for n in hexgrid.within(c.tile, 1, w, h))
+    )
     dormant.status, dormant.owner = ACTIVE, PID
     dormant.queue = ["building:food_depot"]
     network.update_connections(game, cfg, PID)
@@ -125,7 +133,6 @@ def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
     assert (dormant.production_store, dormant.food_store) == (store, food)
 
     # Lay a road from the dormant city to the capital's network, as engineers would.
-    w, h = game.width, game.height
     net_tiles = {i for i, t in enumerate(game.tiles) if t.route} | {capital(game).tile}
     path = shortest_path(
         dormant.tile,

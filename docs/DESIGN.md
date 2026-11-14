@@ -38,7 +38,7 @@ The signature features:
 - Single player first (you plus five AI continents). Online multiplayer later, six humans, turn
   based, simultaneous turns with a timer.
 - The map is hex based and large. Each continent has its own climate, terrain, resources and
-  15 real cities, of which three (for example New York, Chicago and Mexico City for North America)
+  15 real cities, of which three (for example New York, Los Angeles and Mexico City for North America)
   are known at the start; the other twelve must be liberated. (Updated 2026-11-14 by the
   designer: continents drawn from real geography, about twice as big, cities farther apart;
   previously about 20 cities with a handful known.)
