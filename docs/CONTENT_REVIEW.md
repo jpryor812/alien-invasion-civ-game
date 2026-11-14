@@ -165,5 +165,5 @@ keys: `yield_pct`, `unit_strength_pct`, `ranged_strength_pct`, `city_strength`, 
 | orbital_launch (prod T3) | item | orbital_relay building, moved from nanofabrication |
 | antimatter_power (prod T4) | item | antimatter_reactor building (production) |
 
-Result: 13 items and 4 bonus-only techs. Count the 17 empty techs: 15 get a home and 1 is cut
+Result for the 17 empty techs: 10 unlock new items, 6 become bonus-only, and 1 is cut
 (carbon_markets). Each new building, unit or bonus needs its numbers tagged placeholder.
