@@ -91,6 +91,11 @@ def summary(state: GameState, log: list[dict[str, Any]], elapsed_ms: int) -> dic
         "player_cities_lost": sum(p.credits.get("cities_lost", 0) for p in state.players.values()),
         "liberated": sum(p.credits.get("cities_liberated", 0) for p in state.players.values()),
         "fallen": sorted(pid for pid, p in state.players.items() if p.fallen),
+        "recruits_arrived": sum(
+            p.credits.get("recruits_gained", 0) for p in state.players.values()
+        ),
+        "recruits_held": sum(1 for r in state.recruits.values() if r.patron is not None),
+        "recruits_betrayed": sum(p.credits.get("recruits_lost", 0) for p in state.players.values()),
         "commands": len(log),
         "rejected_commands": sum(1 for e in log if not e["ok"]),
         "credits": credits,

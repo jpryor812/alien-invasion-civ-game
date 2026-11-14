@@ -19,7 +19,7 @@ import random
 from collections.abc import Sequence
 from typing import TypeVar
 
-STREAMS = frozenset({"map", "cities", "combat", "events"})
+STREAMS = frozenset({"map", "cities", "combat", "events", "recruits"})
 
 T = TypeVar("T")
 

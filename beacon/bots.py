@@ -11,17 +11,21 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from beacon import cities, combat, economy, hexgrid, improvements, movement, tech
+from beacon import cities, combat, economy, hexgrid, improvements, movement, recruits, tech
 from beacon.commands import (
+    AcceptOffer,
     Attack,
     BuildImprovement,
     CityAttack,
     Command,
     CommandError,
+    DeclineOffer,
     Fortify,
     MergeUnits,
     MoveUnit,
+    OfferRecruit,
     RefoundCity,
+    SeatRecruit,
     SetProduction,
     SetResearch,
     SkipUnit,
@@ -80,7 +84,12 @@ class Bot:
         if player.research is None:
             options = tech.available(self.cfg, player)
             if options:
-                best = min(options, key=lambda t: (self.cfg.techs[t]["cost"], t))
+                first = [t for t in self.cfg.bot("research.priority") if t in options]
+                best = (
+                    first[0]
+                    if first
+                    else min(options, key=lambda t: (self.cfg.techs[t]["cost"], t))
+                )
                 self.submit(SetResearch(player=self.pid, tech=best))
 
     def _counts(self) -> dict[str, int]:
@@ -128,7 +137,21 @@ class Bot:
                 continue
             options = economy.production_options(self.state, self.cfg, city)
             item = None
-            if counts["military"] * 100 < len(cities) * bot["military_per_city_pct"]:
+            if (
+                city.is_capital
+                and counts["military"] * 100 >= len(cities) * bot["capital_build_military_pct"]
+            ):
+                item = next(
+                    (
+                        f"building:{b}"
+                        for b in bot["capital_priority"]
+                        if f"building:{b}" in options
+                    ),
+                    None,
+                )
+            if item is not None:
+                pass
+            elif counts["military"] * 100 < len(cities) * bot["military_per_city_pct"]:
                 item = self._military_choice(city, counts)
             elif counts["engineers"] < bot["engineers"] and "unit:engineers" in options:
                 item = "unit:engineers"
@@ -141,7 +164,12 @@ class Bot:
             elif counts["recon"] < bot["recon"] and "unit:recon_team" in options:
                 item = "unit:recon_team"
             if item is None:
-                for b in bot["building_priority"]:
+                order = bot["building_priority"]
+                if city.is_capital:
+                    order = bot["capital_priority"] + order
+                for b in order:
+                    if b.startswith("beacon_") and not city.is_capital:
+                        continue
                     if f"building:{b}" in options:
                         item = f"building:{b}"
                         break
@@ -467,9 +495,53 @@ class Bot:
 
     # -- turn ------------------------------------------------------------------------------
 
+    def council(self) -> None:
+        """Seat recruits greedily; gift those with no free seat; answer offers."""
+        for o in sorted(self.state.offers.values(), key=lambda x: x.id):
+            if o.to_player != self.pid:
+                continue
+            rec = self.state.recruits.get(str(o.recruit))
+            fits = rec is not None and self._seats_for(rec) is not None
+            if fits and self.view.player.gold >= o.price:
+                self.submit(AcceptOffer(player=self.pid, offer=o.id))
+            else:
+                self.submit(DeclineOffer(player=self.pid, offer=o.id))
+        for rec in recruits.recruits_of(self.state, self.pid):
+            if rec.seats:
+                continue
+            seats = self._seats_for(rec)
+            if seats is not None:
+                self.submit(SeatRecruit(player=self.pid, recruit=rec.id, seats=seats))
+                continue
+            others = [p for p in self.state.player_ids() if p != self.pid]
+            if not others:
+                continue
+            counts = {p: len(recruits.recruits_of(self.state, p)) for p in others}
+            to = min(others, key=lambda p: (counts[p], p))
+            self.submit(OfferRecruit(player=self.pid, recruit=rec.id, to_player=to, price=0))
+
+    def _seats_for(self, rec) -> tuple[str, ...] | None:
+        spread = self.cfg.bot("recruits.general_min_domains")
+        if (
+            len(rec.scores) >= spread
+            and recruits.seat_problem(self.state, self.cfg, rec, ["general"]) is None
+        ):
+            return ("general",)
+        free = tuple(
+            d
+            for d in sorted(rec.scores)
+            if recruits.seat_problem(self.state, self.cfg, rec, [d]) is None
+        )
+        if free:
+            return free
+        if recruits.seat_problem(self.state, self.cfg, rec, ["general"]) is None:
+            return ("general",)
+        return None
+
     def play(self) -> None:
         self.research()
         self.production()
+        self.council()
         self.bombard()
         net = self._network()
         claimed: set[int] = set()

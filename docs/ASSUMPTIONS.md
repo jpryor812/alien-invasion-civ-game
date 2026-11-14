@@ -211,3 +211,37 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   improvements change), and per-search hex checks. A 100-turn game takes 3.5-5.4 s.
 - **Balance gate**: 2 of 3 bands met, the alien-share band at 13/20 instead of 15/20. See
   `docs/BALANCE_M4.md`.
+
+## M5: beacons, recruits and councils
+
+- **Promoted content**: all `additional` entries (19 units, 14 buildings, 7 improvements, 19
+  techs, 10 alien techs, the recruit pool) are now active. Effects needing later systems are
+  inert: medical team healing, nanorepair crew repairs, marines' landings and the logistics hub's
+  trade role. New alien unit types joined the alien spawn weights.
+- **Gold mapped to military** in the recruit pool (designer's council domains are food,
+  production, military, science, beacon). Berserker now boosts military; greedy's gold bonus
+  became `sale_pct` (+25% gold when sold, created, not taken from the buyer).
+- **Scores are percent**: a seated recruit's score N gives +N% to that yield in every city, or +N%
+  combat strength to every unit for military. Percent bonuses apply to the city's flat subtotal,
+  like buildings. Percent rather than flat yields keeps one recruit meaningful at any empire size.
+- **Recruit rolls** (stream `recruits`): character type by weight; the level's budget split one
+  point at a time over the type's focus domains; one or two traits from the type's list; trait
+  `yield_pct` scales the recruit's own scores; lifespan from the type's range plus trait shifts,
+  clamped to 50-100; an extra immortal chance by rarity level. Legendary recruits (unique per
+  game) can arrive from rarity 3. Names are fictional syllable pairs.
+- **Speed lever**: Beacon I-V in a city (cost 80-1280, +3 to +8 beacon points each, cumulative).
+  More cities with beacons also means more speed. **Rarity lever**: beacon-tree techs 1-5 (cost
+  150-2000) set arrival cost (40-320 points), budget (10-28), legendary and immortal chances.
+  One recruit can arrive per player per turn.
+- **Councils**: seats are only constrained per player; seat changes are free and immediate.
+- **Offers** (minimal trade before M6): offer a recruit to one player at a price (0 = gift); the
+  recipient accepts or declines; offers lapse at turn end.
+- **Betrayal**: chance per turn from traits. The recruit joins the alien city nearest the old
+  patron's capital (same continent first), lending its military score as strength percent. If no
+  alien city exists, it is simply gone. Liberating the city hands the recruit to the liberator.
+- **Bot**: researches beacon theory and signal amplification first; its capital builds Beacon
+  I-III once it has half a military unit per city; seats recruits greedily (general if they
+  score in 3+ domains); gifts recruits it cannot seat; accepts offers it can seat.
+- **Balance**: 20 seeds x 100 turns: alien share in band 10/20 (M4 13), captures 15/20,
+  all-fallen 0/20, 40-76 recruits per game, 3-15 betrayals, slowest game 5.8 s. The new alien
+  techs 9-18 and betrayals make aliens slightly stronger than in M4.

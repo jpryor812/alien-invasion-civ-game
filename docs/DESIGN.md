@@ -116,9 +116,15 @@ Alien technology can also be gained through espionage (section 10), outside the 
 - **Traits** (random, each with effects): examples to be designed, such as loyal, ambitious,
   traitor, mortal, immortal, short-lived, berserker, scholar. Some recruits die, some are
   immortal, some may turn traitor.
-- **Councils:** one council per domain (military, science, production, beacon) plus a general
-  council. A recruit on a domain council gives a bonus in that domain. A recruit on the general
-  council gives a flat bonus everywhere. Seats are limited (**TUNE**).
+- **Councils** (decided 2026-11-13): two seats on each domain council (food, production,
+  military, science, beacon) and three general seats. A recruit on a domain seat applies its score
+  in that domain and may sit on one seat in several domains; a recruit on a general seat applies
+  all its scores. A score of N is +N% in that domain.
+- **Beacon levers** (decided 2026-11-13): five speed levels (Beacon I-V buildings) and five
+  rarity levels (beacon-tree techs), both with steeply rising costs.
+- **Lifespans and betrayal** (decided 2026-11-13): recruits live 50-100 turns, some are immortal.
+  A betraying recruit never sabotages: it leaves and joins an alien city, and freeing that city
+  brings it back.
 - A recruit can be **kept, sold or gifted** to another continent. Trade is how a weak continent
   gets help and how a strong beacon continent profits.
 - Recruits are mostly random, with a few named legendary characters.

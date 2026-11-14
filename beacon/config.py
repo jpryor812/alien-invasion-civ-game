@@ -110,6 +110,19 @@ TABLES: dict[str, TableSpec] = {
         "techs",
         ("order", "cost", "effects"),
     ),
+    "recruit_traits": TableSpec("aliens", "recruit_traits", ("effects",)),
+    "recruit_types": TableSpec(
+        "aliens",
+        "recruit_types",
+        ("weight", "focus", "lifespan", "traits"),
+        {"traits": "recruit_traits"},
+    ),
+    "legendary_recruits": TableSpec(
+        "aliens",
+        "legendary_recruits",
+        ("name", "scores", "lifespan", "traits"),
+        {"traits": "recruit_traits"},
+    ),
     "continents": TableSpec(
         "continents",
         "continents",
@@ -132,7 +145,8 @@ FILES = (
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
-TREES = frozenset({"economic", "production", "military"})
+TREES = frozenset({"economic", "production", "military", "beacon"})
+DOMAINS = ("food", "production", "military", "science", "beacon")
 
 
 def _is_number(value: Any) -> bool:
@@ -337,6 +351,23 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
         unknown = set(entry["effects"]) - effect_keys
         if unknown:
             raise ConfigError(f"alien_techs.{entry_id}: unknown effects {sorted(unknown)}")
+    trait_keys = {"yield_pct", "lifespan_delta", "betrayal_permille", "immortal", "sale_pct"}
+    for entry_id, entry in tables["recruit_traits"].items():
+        unknown = set(entry["effects"]) - trait_keys
+        if unknown:
+            raise ConfigError(f"recruit_traits.{entry_id}: unknown effects {sorted(unknown)}")
+        bad = set(entry["effects"].get("yield_pct", {})) - set(DOMAINS)
+        if bad:
+            raise ConfigError(f"recruit_traits.{entry_id}: yield_pct keys must be domains: {bad}")
+    for entry_id, entry in tables["recruit_types"].items():
+        if not entry["focus"] or set(entry["focus"]) - set(DOMAINS):
+            raise ConfigError(f"recruit_types.{entry_id}: focus must be non-empty domains")
+        lo, hi = entry["lifespan"]
+        if not 0 < lo <= hi:
+            raise ConfigError(f"recruit_types.{entry_id}: bad lifespan range")
+    for entry_id, entry in tables["legendary_recruits"].items():
+        if set(entry["scores"]) - set(DOMAINS):
+            raise ConfigError(f"legendary_recruits.{entry_id}: scores must be domains")
     orders = [c["order"] for c in tables["continents"].values()]
     if len(set(orders)) != len(orders):
         raise ConfigError("continents: order values must be unique")
@@ -374,4 +405,7 @@ def load(
             raise ConfigError(f"{spec.file}.yaml: missing or empty '{spec.key}' section")
         tables[table] = {eid: strip_meta(entry) for eid, entry in section.items()}
     _validate_tables(tables)
+    for tech in strip_meta(raw["aliens"].get("recruits", {})).get("rarity_techs", []):
+        if tech not in tables["techs"]:
+            raise ConfigError(f"aliens.recruits.rarity_techs: unknown tech '{tech}'")
     return Config(raw=raw, tables=tables, digest=canonical.digest(raw))

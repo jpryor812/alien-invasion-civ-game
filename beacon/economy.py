@@ -11,11 +11,13 @@ from typing import Any
 from beacon import tech
 from beacon.cities import is_coastal, max_hp, work_tiles
 from beacon.config import YIELDS, Config
+from beacon.recruits import council_lines
 from beacon.state import ACTIVE, City, GameState, Player
 from beacon.tiles import Line, resource_active, tile_yields, totals
 from beacon.units import hostile, occupancy, place_unit
 
 PROJECTS = ("wealth", "research")
+COUNCIL_YIELDS = ("food", "production", "science", "beacon")  # military applies in combat
 PROJECT_YIELD = {"wealth": "gold", "research": "science"}
 FOCUSES = ("balanced", "food", "production", "science", "gold")
 
@@ -73,6 +75,12 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
             bonus = max(0, subtotal[y]) * pct // 100
             if bonus:
                 lines.append((f"building:{b} +{pct}%", y, bonus))
+    if city.owner in state.players:
+        for y in COUNCIL_YIELDS:
+            for source, pct in council_lines(state, city.owner, y):
+                bonus = max(0, subtotal[y]) * pct // 100
+                if bonus:
+                    lines.append((f"{source} +{pct}%", y, bonus))
     return CityYields(
         lines=lines,
         totals=totals(lines),

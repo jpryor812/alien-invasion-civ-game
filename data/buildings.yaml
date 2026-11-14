@@ -18,21 +18,25 @@ buildings:
   hospital: {status: placeholder, note: Healthcare., cost: 110, maintenance: 2, tech: biotech_medicine, yields: {food: 2, science: 1}, yield_pct: {}}
   fusion_plant: {status: placeholder, note: Clean power., cost: 220, maintenance: 3, tech: fusion_power, yields: {}, yield_pct: {production: 35}, requires_building: factory}
 
-# Proposed content, not yet in play. The loader reads only the active sections above, so balance
-# runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
-additional:
-  buildings:
-    water_treatment: {status: placeholder, note: Clean water and food security., cost: 90, maintenance: 1, tech: industrial_base, yields: {food: 2}, yield_pct: {}}
-    air_defence_battery: {status: placeholder, note: Anti-air and close defence., cost: 80, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, city_strength: 3}
-    armoury: {status: placeholder, note: Weapons production., cost: 85, maintenance: 1, tech: mechanized_warfare, yields: {}, yield_pct: {}, unit_production_pct: 15}
-    metro: {status: placeholder, note: Urban transit., cost: 120, maintenance: 1, tech: high_speed_rail, yields: {}, yield_pct: {production: 10}}
-    shipyard: {status: placeholder, note: Naval production., cost: 100, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, coastal: true, unit_production_pct: 20}
-    sensor_array: {status: placeholder, note: Wide city sight., cost: 110, maintenance: 1, tech: radio_beacon_network, yields: {}, yield_pct: {}, vision: 3}
-    data_centre: {status: placeholder, note: Computing for research., cost: 180, maintenance: 2, tech: applied_ai, yields: {science: 4, gold: 1}, yield_pct: {}}
-    autonomous_factory: {status: placeholder, note: Robotic heavy industry., cost: 200, maintenance: 2, tech: nanofabrication, yields: {production: 2}, yield_pct: {production: 25}, requires_building: factory}
-    quantum_lab: {status: placeholder, note: Quantum research., cost: 240, maintenance: 3, tech: quantum_computing, yields: {science: 5}, yield_pct: {science: 25}, requires_building: research_lab}
-    plasma_shield: {status: placeholder, note: Directed-energy city shield., cost: 250, maintenance: 3, tech: directed_energy, yields: {}, yield_pct: {}, city_strength: 12, city_hp: 150}
-    arcology: {status: placeholder, note: Self-contained city tower., cost: 300, maintenance: 4, tech: post_scarcity, yields: {food: 8, science: 4}, yield_pct: {}}
-    orbital_relay: {status: placeholder, note: Satellite sight over the continent., cost: 260, maintenance: 3, tech: nanofabrication, yields: {}, yield_pct: {}, vision: 4}
-    climate_dome: {status: placeholder, note: Controlled growing climate., cost: 200, maintenance: 3, tech: climate_engineering, yields: {food: 3}, yield_pct: {}}
-    logistics_hub: {status: placeholder, note: Trade hub; trade effects arrive in M6., cost: 150, maintenance: 1, tech: global_logistics, yields: {gold: 2}, yield_pct: {}, requires_building: port}
+  # Promoted in M5 from the proposed content (commit 0b79762).
+  water_treatment: {status: placeholder, note: Clean water and food security., cost: 90, maintenance: 1, tech: industrial_base, yields: {food: 2}, yield_pct: {}}
+  air_defence_battery: {status: placeholder, note: Anti-air and close defence., cost: 80, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, city_strength: 3}
+  armoury: {status: placeholder, note: Weapons production., cost: 85, maintenance: 1, tech: mechanized_warfare, yields: {}, yield_pct: {}, unit_production_pct: 15}
+  metro: {status: placeholder, note: Urban transit., cost: 120, maintenance: 1, tech: high_speed_rail, yields: {}, yield_pct: {production: 10}}
+  shipyard: {status: placeholder, note: Naval production., cost: 100, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, coastal: true, unit_production_pct: 20}
+  sensor_array: {status: placeholder, note: Wide city sight., cost: 110, maintenance: 1, tech: radio_beacon_network, yields: {}, yield_pct: {}, vision: 3}
+  data_centre: {status: placeholder, note: Computing for research., cost: 180, maintenance: 2, tech: applied_ai, yields: {science: 4, gold: 1}, yield_pct: {}}
+  autonomous_factory: {status: placeholder, note: Robotic heavy industry., cost: 200, maintenance: 2, tech: nanofabrication, yields: {production: 2}, yield_pct: {production: 25}, requires_building: factory}
+  quantum_lab: {status: placeholder, note: Quantum research., cost: 240, maintenance: 3, tech: quantum_computing, yields: {science: 5}, yield_pct: {science: 25}, requires_building: research_lab}
+  plasma_shield: {status: placeholder, note: Directed-energy city shield., cost: 250, maintenance: 3, tech: directed_energy, yields: {}, yield_pct: {}, city_strength: 12, city_hp: 150}
+  arcology: {status: placeholder, note: Self-contained city tower., cost: 300, maintenance: 4, tech: post_scarcity, yields: {food: 8, science: 4}, yield_pct: {}}
+  orbital_relay: {status: placeholder, note: Satellite sight over the continent., cost: 260, maintenance: 3, tech: nanofabrication, yields: {}, yield_pct: {}, vision: 4}
+  climate_dome: {status: placeholder, note: Controlled growing climate., cost: 200, maintenance: 3, tech: climate_engineering, yields: {food: 3}, yield_pct: {}}
+  logistics_hub: {status: placeholder, note: Trade hub; trade effects arrive in M6., cost: 150, maintenance: 1, tech: global_logistics, yields: {gold: 2}, yield_pct: {}, requires_building: port}
+
+  # Beacon chain (M5): the speed lever. Each level needs the one before and adds beacon points.
+  beacon_i: {status: placeholder, note: Speed 1., cost: 80, maintenance: 1, tech: beacon_theory, yields: {beacon: 3}, yield_pct: {}}
+  beacon_ii: {status: placeholder, note: Speed 2., cost: 160, maintenance: 2, tech: beacon_theory, yields: {beacon: 4}, yield_pct: {}, requires_building: beacon_i}
+  beacon_iii: {status: placeholder, note: Speed 3., cost: 320, maintenance: 3, tech: beacon_theory, yields: {beacon: 5}, yield_pct: {}, requires_building: beacon_ii}
+  beacon_iv: {status: placeholder, note: Speed 4., cost: 640, maintenance: 4, tech: beacon_theory, yields: {beacon: 6}, yield_pct: {}, requires_building: beacon_iii}
+  beacon_v: {status: placeholder, note: Speed 5., cost: 1280, maintenance: 5, tech: beacon_theory, yields: {beacon: 8}, yield_pct: {}, requires_building: beacon_iv}

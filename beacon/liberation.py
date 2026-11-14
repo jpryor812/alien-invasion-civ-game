@@ -21,6 +21,10 @@ CREDIT_KEYS = (
     "cities_refounded",
     "cities_lost",
     "damage_dealt",
+    "recruits_gained",
+    "recruits_given",
+    "recruits_sold",
+    "recruits_lost",
 )
 
 
@@ -82,6 +86,9 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     city.hp = cities.max_hp(cfg, city) * cfg.t("cities.liberated_hp_pct") // 100
     city.liberated_turn = state.turn
     credit(state, by, "cities_liberated")
+    from beacon.recruits import freed_by_liberation  # recruits imports this module
+
+    events.extend(freed_by_liberation(state, city.id, by))
     return [
         {
             "kind": "city_liberated",

@@ -9,23 +9,38 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from beacon import combat, economy, fog, hexgrid, improvements, liberation, movement, tech
+from beacon import (
+    combat,
+    economy,
+    fog,
+    hexgrid,
+    improvements,
+    liberation,
+    movement,
+    recruits,
+    tech,
+)
 from beacon.commands import (
+    AcceptOffer,
     Attack,
     BuildImprovement,
     CityAttack,
     Command,
     CommandError,
+    DeclineOffer,
     Fortify,
     MergeUnits,
     MoveUnit,
+    OfferRecruit,
     Purchase,
     RefoundCity,
+    SeatRecruit,
     SetFocus,
     SetProduction,
     SetResearch,
     SkipUnit,
     SplitUnit,
+    UnseatRecruit,
 )
 from beacon.config import Config
 from beacon.state import ACTIVE, EMPTY, City, GameState, Unit
@@ -259,6 +274,87 @@ def _refound(state: GameState, cfg: Config, cmd: RefoundCity) -> Events:
     return events
 
 
+# -- recruits and councils ----------------------------------------------------------------------
+
+
+def own_recruit(state: GameState, pid: str, recruit_id: int):
+    rec = state.recruits.get(str(recruit_id))
+    if rec is None or rec.patron != pid:
+        raise CommandError(f"{pid} has no recruit {recruit_id}")
+    return rec
+
+
+@handles(SeatRecruit)
+def _seat(state: GameState, cfg: Config, cmd: SeatRecruit) -> Events:
+    rec = own_recruit(state, cmd.player, cmd.recruit)
+    problem = recruits.seat_problem(state, cfg, rec, list(cmd.seats))
+    if problem:
+        raise CommandError(problem)
+    rec.seats = list(cmd.seats)
+    return [{"kind": "recruit_seated", "recruit": rec.id, "seats": list(cmd.seats)}]
+
+
+@handles(UnseatRecruit)
+def _unseat(state: GameState, cfg: Config, cmd: UnseatRecruit) -> Events:
+    rec = own_recruit(state, cmd.player, cmd.recruit)
+    rec.seats = []
+    return [{"kind": "recruit_unseated", "recruit": rec.id}]
+
+
+@handles(OfferRecruit)
+def _offer(state: GameState, cfg: Config, cmd: OfferRecruit) -> Events:
+    rec = own_recruit(state, cmd.player, cmd.recruit)
+    if cmd.to_player not in state.players or cmd.to_player == cmd.player:
+        raise CommandError(f"cannot offer to {cmd.to_player!r}")
+    if cmd.price < 0:
+        raise CommandError("price cannot be negative")
+    if any(o.recruit == rec.id for o in state.offers.values()):
+        raise CommandError(f"{rec.name} is already on offer")
+    o = recruits.offer(state, rec, cmd.to_player, cmd.price)
+    return [
+        {
+            "kind": "recruit_offered",
+            "offer": o.id,
+            "recruit": rec.id,
+            "to": cmd.to_player,
+            "price": cmd.price,
+        }
+    ]
+
+
+def _incoming(state: GameState, pid: str, offer_id: int):
+    o = state.offers.get(str(offer_id))
+    if o is None or o.to_player != pid:
+        raise CommandError(f"no offer {offer_id} for {pid}")
+    return o
+
+
+@handles(AcceptOffer)
+def _accept(state: GameState, cfg: Config, cmd: AcceptOffer) -> Events:
+    o = _incoming(state, cmd.player, cmd.offer)
+    rec = state.recruits.get(str(o.recruit))
+    if rec is None or rec.patron != o.from_player:
+        del state.offers[str(o.id)]
+        raise CommandError("that recruit is no longer available")
+    if state.players[cmd.player].gold < o.price:
+        raise CommandError(f"the price is {o.price} gold")
+    return recruits.accept(state, cfg, o)
+
+
+@handles(DeclineOffer)
+def _decline(state: GameState, cfg: Config, cmd: DeclineOffer) -> Events:
+    o = _incoming(state, cmd.player, cmd.offer)
+    del state.offers[str(o.id)]
+    return [{"kind": "offer_declined", "offer": o.id}]
+
+
+def _seat_options(state: GameState, cfg: Config, rec) -> list[tuple[str, ...]]:
+    options = [("general",)] + [(d,) for d in sorted(rec.scores)]
+    if len(rec.scores) > 1:
+        options.append(tuple(sorted(rec.scores)))
+    return [o for o in options if recruits.seat_problem(state, cfg, rec, list(o)) is None]
+
+
 def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
     """Every legal command for a player right now (moves list each reachable hex)."""
     out: list[Command] = []
@@ -321,6 +417,23 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
         if not is_civilian(cfg, unit.type) and unit.job is None:
             out.append(Fortify(player=pid, unit=unit.id))
         out.append(SkipUnit(player=pid, unit=unit.id))
+    for rec in recruits.recruits_of(state, pid):
+        out += [
+            SeatRecruit(player=pid, recruit=rec.id, seats=o) for o in _seat_options(state, cfg, rec)
+        ]
+        if rec.seats:
+            out.append(UnseatRecruit(player=pid, recruit=rec.id))
+        if not any(o.recruit == rec.id for o in state.offers.values()):
+            out += [
+                OfferRecruit(player=pid, recruit=rec.id, to_player=other, price=0)
+                for other in state.player_ids()
+                if other != pid
+            ]
+    for o in sorted(state.offers.values(), key=lambda x: x.id):
+        if o.to_player == pid:
+            if player.gold >= o.price:
+                out.append(AcceptOffer(player=pid, offer=o.id))
+            out.append(DeclineOffer(player=pid, offer=o.id))
     return out
 
 
@@ -339,4 +452,10 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for unit in state.sorted_units():
         if unit.owner == pid and unit.moves_left > 0 and unit.order == "none" and unit.job is None:
             out.append({"kind": "unit_needs_orders", "unit": unit.id})
+    for rec in recruits.recruits_of(state, pid):
+        if not rec.seats and _seat_options(state, cfg, rec):
+            out.append({"kind": "recruit_unseated", "recruit": rec.id})
+    for o in sorted(state.offers.values(), key=lambda x: x.id):
+        if o.to_player == pid:
+            out.append({"kind": "offer_received", "offer": o.id})
     return out

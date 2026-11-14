@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import cities, economy, fog, improvements, network
+from beacon import cities, economy, fog, improvements, network, recruits
 from beacon.config import Config
 from beacon.state import GameState
 from beacon.units import full_moves, max_hp
@@ -62,6 +62,9 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
         events.extend(economy.player_turn(state, cfg, pid))
         events.extend(improvements.progress_jobs(state, cfg, pid))
         network.update_connections(state, cfg, pid)
+    for pid in state.player_ids():
+        events.extend(recruits.arrivals(state, cfg, pid))
+    events.extend(recruits.end_of_turn(state, cfg))
     reset_units(state, cfg)
     heal_cities(state, cfg)
     state.turn += 1

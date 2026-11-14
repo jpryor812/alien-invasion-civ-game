@@ -141,6 +141,48 @@ class RefoundCity(Command):
     unit: int
 
 
+@register
+@dataclass(frozen=True)
+class SeatRecruit(Command):
+    """Seat a recruit: seats is ("general",) or a tuple of domains where it scores."""
+
+    kind: ClassVar[str] = "seat_recruit"
+    recruit: int
+    seats: tuple[str, ...]
+
+
+@register
+@dataclass(frozen=True)
+class UnseatRecruit(Command):
+    kind: ClassVar[str] = "unseat_recruit"
+    recruit: int
+
+
+@register
+@dataclass(frozen=True)
+class OfferRecruit(Command):
+    """Offer a recruit to another player; price 0 is a gift. Lapses at the end of the turn."""
+
+    kind: ClassVar[str] = "offer_recruit"
+    recruit: int
+    to_player: str
+    price: int
+
+
+@register
+@dataclass(frozen=True)
+class AcceptOffer(Command):
+    kind: ClassVar[str] = "accept_offer"
+    offer: int
+
+
+@register
+@dataclass(frozen=True)
+class DeclineOffer(Command):
+    kind: ClassVar[str] = "decline_offer"
+    offer: int
+
+
 def command_to_dict(cmd: Command) -> dict[str, Any]:
     data = asdict(cmd)
     for key, value in data.items():

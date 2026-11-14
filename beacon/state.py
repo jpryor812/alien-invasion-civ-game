@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 2
+STATE_VERSION = 3
 ALIENS = "aliens"
 
 # City status values.
@@ -112,6 +112,33 @@ class Player:
 
 
 @dataclass
+class Recruit:
+    """An alien character called by beacons (docs/SPEC_M5.md)."""
+
+    id: int
+    name: str
+    kind: str  # recruit type id, or legendary id
+    legendary: bool
+    scores: dict[str, int]  # domain -> percent bonus while seated (traits already applied)
+    traits: list[str]
+    born: int
+    lifespan: int | None  # None: immortal
+    patron: str | None  # player id; None once it has betrayed
+    alien_city: int | None = None  # the alien city it joined on betrayal
+    seats: list[str] = field(default_factory=list)  # "general" or domains
+
+
+@dataclass
+class Offer:
+    id: int
+    recruit: int
+    from_player: str
+    to_player: str
+    price: int
+    turn: int
+
+
+@dataclass
 class AlienOrder:
     kind: str  # siege | raid | patrol
     target: int  # tile
@@ -141,6 +168,8 @@ class GameState:
     next_id: int = 1
     combat_seq: int = 0
     aliens: AlienState = field(default_factory=AlienState)
+    recruits: dict[str, Recruit] = field(default_factory=dict)
+    offers: dict[str, Offer] = field(default_factory=dict)
     version: int = STATE_VERSION
 
     # -- lookups -------------------------------------------------------------------------------

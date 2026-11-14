@@ -3,7 +3,8 @@
 production:
   status: placeholder
   note: The bot keeps about this many military units per active city (one garrison plus one
-    field unit at 200) and this many engineers.
+    field unit at 200) and this many engineers. The capital builds capital_priority (beacons)
+    once military reaches capital_build_military_pct of the city count.
   military_per_city_pct: 250
   engineers: 2
   restoration_teams: 2
@@ -11,7 +12,9 @@ production:
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
                       research_lab, defence_perimeter, vertical_farm, financial_center, hospital,
                       radio_tower, fusion_plant]
-  military_priority: [hover_tank, exo_infantry, mech_infantry, tank, infantry]
+  capital_priority: [beacon_i, beacon_ii, beacon_iii]
+  capital_build_military_pct: 50
+  military_priority: [hover_tank, walker, exo_infantry, swarm_drones, mech_infantry, tank, infantry]
   ranged_every:
     value: 2
     status: placeholder
@@ -35,3 +38,15 @@ explore:
   status: placeholder
   note: Frontier targets an explorer tries per turn before giving up (bounds pathfinding cost).
   attempts: 3
+
+recruits:
+  status: placeholder
+  note: Recruits scoring in at least general_min_domains domains take a general seat; others take
+    one seat in each domain where they score. Recruits with no free seat are gifted to the player
+    with the fewest recruits.
+  general_min_domains: 3
+
+research:
+  status: placeholder
+  note: Techs researched as soon as available; otherwise the cheapest first.
+  priority: [beacon_theory, signal_amplification]

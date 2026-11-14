@@ -19,6 +19,7 @@ from beacon import hexgrid, rng
 from beacon.cities import alien_effect
 from beacon.config import Config
 from beacon.liberation import credit, liberate, overrun
+from beacon.recruits import council_lines, traitor_lines
 from beacon.state import ALIENS, OVERRUN, City, GameState, Unit
 from beacon.tiles import defense_lines, is_passable_land, is_water
 from beacon.units import hostile, is_civilian, max_hp, occupancy, remove_unit
@@ -58,7 +59,9 @@ def unit_strength(
         mods.extend(defense_lines(cfg, state.tiles[unit.tile]))
         if unit.fortified:
             mods.append(("fortified", cfg.t("combat.fortify_pct")))
-    elif not ranged and target is not None:
+    if unit.owner in state.players:
+        mods.extend(council_lines(state, unit.owner, "military"))
+    if not defending and not ranged and target is not None:
         flankers = 0
         for n in hexgrid.neighbours(target, state.width, state.height):
             for other in state.units_at(n):
@@ -104,7 +107,7 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
                     "value": cfg.buildings[b]["city_strength"],
                 }
             )
-    harden = 0
+    pcts: list[tuple[str, int]] = []
     if city.owner == ALIENS:
         lines.append(
             {
@@ -116,11 +119,14 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
         walls = alien_effect(state, cfg, "city_strength")
         if walls:
             lines.append({"source": "alien_walls", "kind": "base", "value": walls})
-        harden = hardening_pct(state, cfg)
+        pcts.append(("alien_hardening", hardening_pct(state, cfg)))
+        pcts.extend(traitor_lines(state, city.id))  # betrayed recruits lend their military score
     total = sum(line["value"] for line in lines) * 100
-    if harden:
-        lines.append({"source": "alien_hardening", "kind": "pct", "value": harden})
-        total = total * (100 + harden) // 100
+    pcts = [(source, pct) for source, pct in pcts if pct]
+    for source, pct in pcts:
+        lines.append({"source": source, "kind": "pct", "value": pct})
+    if pcts:
+        total = total * (100 + sum(pct for _, pct in pcts)) // 100
     guard = garrison(state, cfg, city)
     if guard is not None:
         share = unit_strength(state, cfg, guard, ranged=False, defending=True).total
