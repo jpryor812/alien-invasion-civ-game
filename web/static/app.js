@@ -164,6 +164,12 @@ const TERRAIN_PHOTO = {
   tundra: ["tundra", "saturate(0.6) brightness(1.08)", "rgba(140,140,120,0.2)"],
   snow: ["snow", "brightness(1.45) contrast(0.75) saturate(0.35)", "rgba(240,246,250,0.35)"],
 };
+const PATCH = {  // per-hex shades for the patchwork (soft-light: mid-grey is no change)
+  grassland: ["#a8c860", "#6a8a3a", "#94b450", "#7c9c44", "#b8b45c", "#5e7e36", "#8aa84a"],
+  plains: ["#d8bc6a", "#a88e48", "#c8ac5c", "#b89c50", "#9a9a50", "#d0b060"],
+  desert: ["#e8cc90", "#c0a068", "#d8b878", "#b89058"],
+  tundra: ["#9aa088", "#727a66", "#868c78", "#a8a490"],
+};
 const PHOTOS = {};
 let photosPending = 0;
 for (const src of new Set(Object.values(TERRAIN_PHOTO).map((p) => p[0]))) {
@@ -584,6 +590,16 @@ function renderChunk(cx, cy, Rb) {
       const mine = land.filter(([, t]) => t.terrain === kind);
       if (mine.length) paintLayer(lg, kind, mine, () => (masks ? 1.22 : 1.02));
     }
+    // patchwork: each land hex leans a little toward its own shade (soft-light, blurred), so wide
+    // grasslands read as a quilt of greens and golds as in Civ rather than one even colour
+    lg.save(); lg.globalCompositeOperation = "soft-light"; lg.globalAlpha = 0.6; lg.filter = `blur(${Math.max(2, Rb * 0.45)}px)`;
+    for (const [i, t, x, y] of land) {
+      const tones = PATCH[t.terrain];
+      if (!tones) continue;
+      lg.fillStyle = tones[Math.floor(hash(i, 21) * tones.length)];
+      hexPath(lg, x, y, Rb * 0.95); lg.fill();
+    }
+    lg.restore();
     if (masks) {
       // beach: sand along the shore, inside the coastline (pale shingle on cold coasts)
       const B = layerCanvas(w, h, 2), bg = B.getContext("2d");
