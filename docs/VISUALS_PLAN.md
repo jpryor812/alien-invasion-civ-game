@@ -41,7 +41,7 @@ Rules for every slice:
 - [x] 1. Terrain
 - [x] 2. Tile improvements and roads
 - [x] 3. Cities and alien hives
-- [ ] 4. Units
+- [x] 4. Units
 - [ ] 5. Council portraits
 - [ ] 6. Interface skin
 
@@ -58,3 +58,4 @@ Rules for every slice:
 - P2.1 Terrain: coastlines are now organic. Land hexes are blurred into a field (half a wide blur, half a narrow one so one-hex islands survive), wobbled by world-aligned value noise and cut at three levels: land, a beach band inside it and a surf band outside it. The field is built at quarter resolution and scaled up. Hexes next to unexplored ones count as land. Water is a deep-ocean base with one widely blurred shallows layer, so the depth line no longer steps. Forests grow in 2-4 clumps with clearings and a darker forest floor, in six variants per hex (7-14 trees). Every layer fills its hexes in one path, so blur runs once: a full screen of new chunks builds in about 0.2-0.45 s (was 0.15-1.4 s). Still weak: the boundaries between land types are still soft hexes.
 - P2.2 Improvements: mines are now a pithead filling the hex: spoil heaps, a timber headframe with its winding wheel, a shed, a shaft mouth, rails with sleepers and a loaded ore cart. Military bases are a sandbagged compound with a gate, two barracks, a watchtower, an armoured car and a flag. Turrets are a painted, cached emplacement: an octagonal concrete pad and an armoured gun house with one barrel per level and gold level pips (plus a health bar when the view sends max health). Still weak: extractors, beacons and masts are thin line art; roads have no bridges over rivers or coasts.
 - P2.3 Cities: towns and cities spill suburbs onto open neighbouring land (1, 3 or 5 hexes by tier, picked by a hash so they stay put). Suburbs are cached sprites of paving, houses, mid-rises and trees, drawn pulled toward the city so they join it. A hive spreads red creep onto 1-4 neighbours, with veins, small spires and pods. Hives now breathe: a slow pulsing glow from the heart and spores drifting up, drawn each frame (cheap: one gradient and a few dots). Still weak: suburbs ignore roads; city edges are still soft ellipses.
+- P2.4 Units: two more Meshy models (60 credits; 379 left). The scout boat is now a patrol boat and the attack submarine a surfaced submarine; destroyers and railgun cruisers keep the destroyer. The walker was re-rendered with more exposure, so it reads on dark ground. Idle motion: drones bob, hover tanks float, ships rock on the swell (a per-unit phase, no state). Still weak: no facing toward the move direction; land vehicles share the tank model; no attack animation.

@@ -1,7 +1,7 @@
 # Unit art
 
 Each PNG is a 3D model generated with Meshy (text to 3D, on the designer's own Meshy account,
-2026-11-15) and rendered in Blender in this repo. The camera is orthographic, 40 degrees above the
+2026-11-15) and rendered in Blender in this repo (the patrol boat and submarine on 2026-11-15, pass 2; the walker re-rendered brighter). The camera is orthographic, 40 degrees above the
 horizon and turned 30 degrees, matching the map. Renders are 256 px with a transparent background,
 lit by a warm key light, a cool fill light and a rim light, using the AgX "Punchy" look.
 
@@ -18,7 +18,9 @@ client falls back to the drawn badge.
 | artillery | towed howitzer | artillery, city artillery, railgun, SP howitzer, rockets, plasma cannon |
 | walker | military combat mech walker | walker, exo infantry |
 | drone | quadcopter recon drone | drone recon, swarm drones |
-| destroyer | navy destroyer | every ship |
+| destroyer | navy destroyer | destroyer, railgun cruiser |
+| patrol_boat | small military patrol boat | scout boat |
+| submarine | surfaced attack submarine | attack submarine |
 | alien_small | small insectoid alien | alien drone, hatchling |
 | alien_warrior | bipedal alien with blade arms | warrior, pillager, wraith |
 | alien_spitter | alien artillery creature | spitter, sporecaster |

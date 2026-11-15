@@ -1287,7 +1287,7 @@ function isCivilian(type) { const t = S.view.unit_types[type]; return t && t.rol
 const UNIT_MODELS = {
   // model: [size in hex radii, figures in the squad]
   infantry: [0.7, 3], engineer: [0.66, 1], tank: [1.0, 1], artillery: [0.95, 1], walker: [0.95, 1],
-  drone: [0.5, 2, 0.35], destroyer: [1.25, 1], hover_tank: [1.0, 1],
+  drone: [0.5, 2, 0.35], destroyer: [1.25, 1], hover_tank: [1.0, 1], patrol_boat: [0.95, 1], submarine: [1.2, 1],
   alien_small: [0.55, 3], alien_warrior: [0.72, 2], alien_spitter: [0.8, 1], alien_brute: [0.95, 1], alien_titan: [1.25, 1],
 };
 const UNIT_ART = {
@@ -1298,13 +1298,13 @@ const UNIT_ART = {
   artillery: "artillery", city_artillery: "artillery", railgun_artillery: "artillery", self_propelled_howitzer: "artillery",
   rocket_battery: "artillery", plasma_cannon: "artillery", walker: "walker",
   drone_recon: "drone", swarm_drones: "drone",
-  scout_boat: "destroyer", destroyer: "destroyer", railgun_cruiser: "destroyer", attack_submarine: "destroyer",
+  scout_boat: "patrol_boat", destroyer: "destroyer", railgun_cruiser: "destroyer", attack_submarine: "submarine",
   alien_drone: "alien_small", alien_hatchling: "alien_small", alien_warrior: "alien_warrior", alien_pillager: "alien_warrior",
   alien_wraith: "alien_warrior", alien_spitter: "alien_spitter", alien_sporecaster: "alien_spitter",
   alien_hive_guard: "alien_brute", alien_brute: "alien_brute", alien_shieldbearer: "alien_brute",
   alien_titan: "alien_titan", alien_leviathan: "alien_titan",
 };
-const UNIT_IMG = new Map(), UNIT_SPR = new Map();
+const UNIT_IMG = new Map(), UNIT_SPR = new Map(), SHIPS = new Set(["destroyer", "patrol_boat", "submarine"]);
 function unitArt(type, Rb) {
   const model = UNIT_ART[type];
   if (!model || !UNIT_MODELS[model]) return null;
@@ -1349,7 +1349,7 @@ function cropToContent(img) {
 function drawFigures(u, x, y, R, scale = 1) {
   const art = R >= 14 ? unitArt(u.type, zoomStep(R)) : null;
   if (!art) return false;
-  const [sp, [size, n, lift = 0]] = art, side = R * size * 2 * scale / 2;  // sprites are rendered at 2x
+  const [sp, [size, n, lift = 0]] = art, model = UNIT_ART[u.type], side = R * size * 2 * scale / 2;  // sprites are rendered at 2x
   const owner = u.owner === "aliens" ? "#c2362b" : OWNER[u.owner] || "#999";
   // team-coloured base under the squad
   const bw = R * (n > 1 ? 0.5 : Math.min(0.5, size * 0.45)) * scale, bh = bw * 0.4;
@@ -1357,7 +1357,10 @@ function drawFigures(u, x, y, R, scale = 1) {
   ctx.strokeStyle = owner; ctx.lineWidth = Math.max(1.2, R * 0.03 * scale); ctx.globalAlpha = 0.8; ctx.stroke(); ctx.globalAlpha = 1;
   const spots = n === 3 ? [[-0.3, -0.1], [0.3, -0.1], [0, 0.12]] : n === 2 ? [[-0.2, 0], [0.2, 0.04]] : [[0, 0]];
   for (const [dx, dy] of spots) {
-    const fx = x + dx * R * scale, fy = y + (dy - lift) * R * scale;  // drones hover over their base
+    // idle motion: drones and hover tanks bob, ships rock on the swell (drones hover over their base)
+    const ph = performance.now() / 650 + (u.id || 0) * 1.7 + dx * 3;
+    const bob = model === "drone" ? Math.sin(ph) * 0.05 : model === "hover_tank" ? Math.sin(ph * 0.7) * 0.025 : SHIPS.has(model) ? Math.sin(ph * 0.5) * 0.015 : 0;
+    const fx = x + dx * R * scale, fy = y + (dy - lift + bob) * R * scale;
     ctx.drawImage(sp, fx - side / 2, fy - side * 0.94, side, side);
   }
   return true;
