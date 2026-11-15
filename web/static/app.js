@@ -1923,7 +1923,11 @@ function renderUnitPanel() {
   const o = S.options, u = o.unit, spec = o.spec, side = $("side");
   const moves = (u.moves_left / 30).toFixed(1).replace(/\.0$/, "");
   const ranged = spec.ranged_strength ? ` · ranged ${spec.ranged_strength} (range ${spec.range})` : "";
+  // Civ's unit panel: bottom left, with the unit's render in a big round frame
+  side.classList.add("unitmode");
+  const model = UNIT_ART[u.type], col = u.owner === "aliens" ? "#b8322a" : OWNER[u.owner] || "#999";
   side.innerHTML = `
+    <div class="uportrait" style="--c:${col}">${model ? `<img alt="" src="units/${model}.png">` : ""}</div>
     <div class="title">${esc(pretty(u.type))}${u.count > 1 ? " ×2" : ""}</div>
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${spec.fixed ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
@@ -1978,6 +1982,7 @@ function yieldBox(k, total, lines) {
 }
 function renderCityPanel() {
   const d = S.city, c = d.city, side = $("side");
+  side.classList.remove("unitmode");
   if (window.Advisors) Advisors.trigger("production");
   const surplus = d.totals.food - d.food_eaten;
   const head = c.queue[0];
@@ -2936,7 +2941,7 @@ function showTurretPanel(i) {
   clearSelection();
   const t = S.tilesByIndex.get(i), r = S.view.turret_rules, cost = r.costs[i];
   const str = r.strength_base + r.strength_per_level * (t.turret - 1);
-  const side = $("side");
+  const side = $("side"); side.classList.remove("unitmode");
   side.innerHTML = `<div class="title">Turret</div>
     <div class="muted">Guards this ${esc(pretty(t.improvement || "tile"))}. Fires at enemies next to it at the end of every turn; aliens must destroy it before they can pillage the tile.</div>
     <div class="row">Level ${t.turret}/${r.max_level} · strength ${str} · ${t.turret_hp} HP</div>

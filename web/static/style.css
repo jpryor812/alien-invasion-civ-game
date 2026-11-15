@@ -380,3 +380,27 @@ th .icon.medal { width: 15px; height: 15px; }
     linear-gradient(rgba(255,255,255,0.05), transparent); border-bottom: 1px solid rgba(233,199,122,0.25); }
 .modal-box > * { position: relative; }
 .panel .title { border-bottom: 1px solid rgba(233,199,122,0.25); padding-bottom: 4px; margin-bottom: 4px; }
+
+/* -- layout, round 2: Civ's corners. Unit panel bottom left with a round portrait; the action button
+      and minimap share one frame bottom right; a thinner, darker top bar. ----------------------- */
+#topbar { height: 34px; background: var(--weave), linear-gradient(#18262e, #0c161c 60%, #071014); }
+#stage { top: 34px; }
+#side.unitmode { top: auto; bottom: 10px; left: 10px; width: 430px; max-height: 46%; padding: 10px 12px 10px 142px; overflow: visible; }
+#side.unitmode > :not(.uportrait) { position: relative; }
+.uportrait { position: absolute; left: -6px; bottom: -6px; width: 140px; height: 140px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #7fa7b8, #2a4552 60%, #0f1c22); border: 3px solid var(--bronze-hi);
+  box-shadow: 0 0 0 2px #05090c, 0 0 0 6px var(--bronze-lo), 0 0 0 7px #05090c, 0 8px 22px rgba(0,0,0,0.7), inset 0 0 0 4px var(--c, #999);
+  overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+.uportrait img { width: 118%; margin-bottom: -6%; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6)); }
+#side.unitmode .actions { max-height: 120px; overflow-y: auto; }
+#bottom { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; border-radius: 6px;
+  background: var(--corner-tl) top 3px left 3px no-repeat, var(--corner-tr) top 3px right 3px no-repeat, var(--weave), linear-gradient(var(--teal-a), var(--teal-c));
+  border: 1px solid var(--bronze); box-shadow: 0 0 0 1px #05090c, 0 0 0 3px var(--bronze-lo), 0 0 0 4px #05090c, 0 10px 30px rgba(0,0,0,0.65); }
+#bottom #endturn { order: -1; width: 100%; height: 52px; border-radius: 26px; }
+#bottom .minimap-frame { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6); }
+#right { max-height: calc(100% - 290px); }
+/* the combat preview, in Civ's manner: a gilded outcome banner over two framed sides */
+.cbanner { border: 1px solid var(--bronze-hi); box-shadow: 0 0 0 1px #05090c, 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+  font-family: var(--display); font-size: 15px; letter-spacing: 0.12em; padding: 5px 0; text-shadow: 0 1px 0 #000; }
+.cgrid .cside { background: linear-gradient(rgba(29,58,70,0.85), rgba(10,26,34,0.9)); border: 1px solid rgba(185,138,62,0.45); border-radius: 4px; padding: 5px 7px; }
+.cside .cname { font-family: var(--display); }
