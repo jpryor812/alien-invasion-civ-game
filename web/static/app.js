@@ -802,20 +802,39 @@ function paintImprovement(g, kind, cx, cy, R) {
     return;
   }
   if (kind === "mine") {
-    // a shaft in the hillside, timber frame, rails and an ore cart, spoil heaps
-    for (const [dx, dy, s] of [[-0.35, 0.3, 1], [0.38, 0.25, 0.8]]) {
+    // a pithead: spoil heaps, a timber headframe with its winding wheel, a shed, rails and an ore cart
+    for (const [dx, dy, sz] of [[-0.48, 0.18, 1.1], [0.5, 0.3, 0.9], [-0.15, 0.5, 0.7]]) {
       const x = cx + dx * R, y = cy + dy * R;
-      g.fillStyle = "#6b5a49"; g.beginPath(); g.ellipse(x, y, R * 0.22 * s, R * 0.12 * s, 0, Math.PI, 0); g.fill();
-      g.fillStyle = "#857260"; g.beginPath(); g.ellipse(x - R * 0.03, y - R * 0.02, R * 0.14 * s, R * 0.08 * s, 0, Math.PI, 0); g.fill();
+      shadow(x, y, R * 0.28 * sz);
+      const hg = g.createLinearGradient(x - R * 0.25 * sz, y - R * 0.2 * sz, x + R * 0.2 * sz, y);
+      hg.addColorStop(0, "#9a8a76"); hg.addColorStop(1, "#4d4136");
+      g.fillStyle = hg; g.beginPath(); g.moveTo(x - R * 0.3 * sz, y); g.quadraticCurveTo(x - R * 0.05 * sz, y - R * 0.36 * sz, x + R * 0.3 * sz, y); g.closePath(); g.fill();
+      g.fillStyle = "rgba(40,30,22,0.5)"; for (let q = 0; q < 5; q++) { g.beginPath(); g.arc(x + (rnd() - 0.5) * R * 0.35 * sz, y - rnd() * R * 0.12 * sz, R * 0.02, 0, Math.PI * 2); g.fill(); }
     }
-    const x = cx, y = cy - R * 0.05;
-    g.fillStyle = "#1b1612"; g.beginPath(); g.moveTo(x - R * 0.2, y + R * 0.15); g.lineTo(x - R * 0.2, y - R * 0.1); g.quadraticCurveTo(x, y - R * 0.3, x + R * 0.2, y - R * 0.1); g.lineTo(x + R * 0.2, y + R * 0.15); g.fill();
-    g.strokeStyle = "#8a5a2b"; g.lineWidth = Math.max(1.5, R * 0.06);
-    g.beginPath(); g.moveTo(x - R * 0.22, y + R * 0.15); g.lineTo(x - R * 0.22, y - R * 0.12); g.lineTo(x + R * 0.22, y - R * 0.12); g.lineTo(x + R * 0.22, y + R * 0.15); g.stroke();
-    g.strokeStyle = "#5d5852"; g.lineWidth = Math.max(1, R * 0.025);
-    g.beginPath(); g.moveTo(x - R * 0.08, y + R * 0.15); g.lineTo(x - R * 0.18, y + R * 0.6); g.moveTo(x + R * 0.08, y + R * 0.15); g.lineTo(x + R * 0.02, y + R * 0.6); g.stroke();
-    g.fillStyle = "#3b3632"; g.fillRect(x - R * 0.2, y + R * 0.32, R * 0.2, R * 0.12);
-    g.fillStyle = "#c9a35c"; g.beginPath(); g.ellipse(x - R * 0.1, y + R * 0.32, R * 0.1, R * 0.05, 0, Math.PI, 0); g.fill();
+    const x = cx + R * 0.02, y = cy + R * 0.12;
+    // shed beside the frame
+    g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(x + R * 0.12, y - R * 0.02, R * 0.36, R * 0.08);
+    g.fillStyle = "#7a4a30"; g.fillRect(x + R * 0.1, y - R * 0.2, R * 0.32, R * 0.2);
+    g.fillStyle = "#4d4f55"; g.beginPath(); g.moveTo(x + R * 0.06, y - R * 0.2); g.lineTo(x + R * 0.26, y - R * 0.34); g.lineTo(x + R * 0.46, y - R * 0.2); g.fill();
+    g.fillStyle = "#e8c070"; g.fillRect(x + R * 0.16, y - R * 0.13, R * 0.06, R * 0.06);
+    // the headframe
+    shadow(x - R * 0.1, y, R * 0.2);
+    g.strokeStyle = "#5c3d22"; g.lineWidth = Math.max(1.5, R * 0.05); g.lineCap = "round";
+    g.beginPath(); g.moveTo(x - R * 0.28, y); g.lineTo(x - R * 0.12, y - R * 0.78); g.lineTo(x + R * 0.04, y); g.moveTo(x - R * 0.12, y - R * 0.78); g.lineTo(x + R * 0.12, y - R * 0.22); g.stroke();
+    g.lineWidth = Math.max(1, R * 0.03);
+    for (const f of [0.3, 0.55]) { g.beginPath(); g.moveTo(x - R * 0.28 + R * 0.16 * f, y - R * 0.78 * f); g.lineTo(x + R * 0.04 - R * 0.16 * f, y - R * 0.78 * f); g.stroke(); }
+    g.strokeStyle = "#2b2622"; g.lineWidth = Math.max(1.2, R * 0.035);
+    g.beginPath(); g.arc(x - R * 0.12, y - R * 0.78, R * 0.11, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); for (let a = 0; a < 4; a++) { g.moveTo(x - R * 0.12, y - R * 0.78); g.lineTo(x - R * 0.12 + Math.cos(a * Math.PI / 2) * R * 0.11, y - R * 0.78 + Math.sin(a * Math.PI / 2) * R * 0.11); } g.stroke();
+    // shaft mouth, rails and a loaded cart
+    g.fillStyle = "#14100c"; g.beginPath(); g.ellipse(x - R * 0.12, y + R * 0.02, R * 0.12, R * 0.05, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#6d6862"; g.lineWidth = Math.max(1, R * 0.025);
+    g.beginPath(); g.moveTo(x - R * 0.06, y + R * 0.06); g.lineTo(x + R * 0.1, y + R * 0.62); g.moveTo(x + R * 0.06, y + R * 0.05); g.lineTo(x + R * 0.24, y + R * 0.6); g.stroke();
+    g.strokeStyle = "#5c3d22"; for (let q = 0; q < 5; q++) { const f = 0.15 + q * 0.18; g.beginPath(); g.moveTo(x - R * 0.06 + R * 0.16 * f - R * 0.03, y + R * 0.06 + R * 0.56 * f); g.lineTo(x + R * 0.06 + R * 0.18 * f + R * 0.03, y + R * 0.05 + R * 0.55 * f); g.stroke(); }
+    const kx = x + R * 0.14, ky = y + R * 0.4;
+    g.fillStyle = "#3b3632"; g.fillRect(kx - R * 0.12, ky - R * 0.1, R * 0.24, R * 0.12);
+    g.fillStyle = "#c9a35c"; g.beginPath(); g.ellipse(kx, ky - R * 0.1, R * 0.12, R * 0.06, 0, Math.PI, 0); g.fill();
+    g.fillStyle = "#1b1612"; for (const d of [-0.08, 0.08]) { g.beginPath(); g.arc(kx + d * R, ky + R * 0.03, R * 0.03, 0, Math.PI * 2); g.fill(); }
     return;
   }
   if (kind === "extractor") {
@@ -858,11 +877,37 @@ function paintImprovement(g, kind, cx, cy, R) {
   if (kind === "military_base" || kind === "minefield") {
     // sandbag ring and a flag (minefields: warning posts)
     if (kind === "military_base") {
-      g.strokeStyle = "#b39a6a"; g.lineWidth = Math.max(2, R * 0.12); g.setLineDash([R * 0.12, R * 0.04]);
-      g.beginPath(); g.ellipse(cx, cy + R * 0.1, R * 0.5, R * 0.32, 0, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
-      g.fillStyle = "#4b5a3a"; g.fillRect(cx - R * 0.2, cy - R * 0.05, R * 0.4, R * 0.2);
-      g.strokeStyle = "#3a2f22"; g.lineWidth = Math.max(1, R * 0.03); g.beginPath(); g.moveTo(cx + R * 0.25, cy + R * 0.1); g.lineTo(cx + R * 0.25, cy - R * 0.55); g.stroke();
-      g.fillStyle = "#c0392b"; g.beginPath(); g.moveTo(cx + R * 0.25, cy - R * 0.55); g.lineTo(cx + R * 0.55, cy - R * 0.45); g.lineTo(cx + R * 0.25, cy - R * 0.35); g.fill();
+      // a sandbagged compound: barracks, a watchtower, a parked vehicle and a flag
+      const ey = cy + R * 0.12;
+      g.fillStyle = "rgba(90,80,55,0.35)"; g.beginPath(); g.ellipse(cx, ey, R * 0.66, R * 0.44, 0, 0, Math.PI * 2); g.fill();
+      for (let q = 0; q < 26; q++) {  // the sandbag wall, back half first then front
+        const a = (q / 26) * Math.PI * 2, bx = cx + Math.cos(a) * R * 0.66, by = ey + Math.sin(a) * R * 0.44;
+        if (Math.abs(a - Math.PI * 1.5) < 0.25) continue;  // the gate at the back
+        g.fillStyle = q % 2 ? "#c2a878" : "#a88f60"; g.beginPath(); g.ellipse(bx, by, R * 0.09, R * 0.055, a, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = "rgba(60,48,30,0.5)"; g.lineWidth = 0.7; g.stroke();
+      }
+      const hut = (x, y, w, d, roof) => {
+        g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(x - w / 2 + R * 0.04, y, w, d * 0.4);
+        g.fillStyle = "#56603f"; g.fillRect(x - w / 2, y - d, w, d);
+        g.fillStyle = roof; g.beginPath(); g.moveTo(x - w / 2 - R * 0.02, y - d); g.quadraticCurveTo(x, y - d - R * 0.14, x + w / 2 + R * 0.02, y - d); g.fill();
+        g.strokeStyle = "rgba(20,24,14,0.6)"; g.lineWidth = 0.8; g.strokeRect(x - w / 2, y - d, w, d);
+      };
+      hut(cx - R * 0.22, ey - R * 0.08, R * 0.42, R * 0.14, "#6b7550");
+      hut(cx + R * 0.2, ey + R * 0.16, R * 0.36, R * 0.12, "#5e6847");
+      // a parked armoured car
+      const vx = cx - R * 0.3, vy = ey + R * 0.22;
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(vx - R * 0.1, vy, R * 0.24, R * 0.04);
+      g.fillStyle = "#4b5536"; g.fillRect(vx - R * 0.12, vy - R * 0.08, R * 0.24, R * 0.08);
+      g.fillStyle = "#3a4229"; g.fillRect(vx - R * 0.05, vy - R * 0.13, R * 0.1, R * 0.05);
+      g.fillStyle = "#1b1b1b"; for (const d of [-0.08, 0.07]) { g.beginPath(); g.arc(vx + d * R, vy, R * 0.03, 0, Math.PI * 2); g.fill(); }
+      // watchtower and flag
+      const tx = cx + R * 0.42, ty = ey - R * 0.12;
+      g.strokeStyle = "#5c3d22"; g.lineWidth = Math.max(1, R * 0.03);
+      g.beginPath(); g.moveTo(tx - R * 0.07, ty); g.lineTo(tx - R * 0.04, ty - R * 0.42); g.moveTo(tx + R * 0.07, ty); g.lineTo(tx + R * 0.04, ty - R * 0.42); g.moveTo(tx - R * 0.07, ty); g.lineTo(tx + R * 0.05, ty - R * 0.2); g.stroke();
+      g.fillStyle = "#6b4a2a"; g.fillRect(tx - R * 0.08, ty - R * 0.5, R * 0.16, R * 0.09);
+      g.fillStyle = "#4d4f55"; g.beginPath(); g.moveTo(tx - R * 0.1, ty - R * 0.5); g.lineTo(tx, ty - R * 0.58); g.lineTo(tx + R * 0.1, ty - R * 0.5); g.fill();
+      g.strokeStyle = "#3a2f22"; g.beginPath(); g.moveTo(cx - R * 0.05, ey - R * 0.22); g.lineTo(cx - R * 0.05, ey - R * 0.7); g.stroke();
+      g.fillStyle = "#c0392b"; g.beginPath(); g.moveTo(cx - R * 0.05, ey - R * 0.7); g.quadraticCurveTo(cx + R * 0.1, ey - R * 0.72, cx + R * 0.24, ey - R * 0.62); g.lineTo(cx - R * 0.05, ey - R * 0.54); g.fill();
     } else {
       for (const [dx, dy] of [[-0.45, -0.2], [0.4, -0.3], [-0.2, 0.4], [0.35, 0.35]]) {
         const x = cx + dx * R, y = cy + dy * R;
@@ -2481,13 +2526,43 @@ function showTurretPanel(i) {
   side.classList.remove("hidden");
 }
 
+// Turrets: a concrete emplacement with an armoured gun house; one barrel per level, gold pips.
+const TURRETS = new Map();
 function drawTurret(t, sx, sy, R) {
-  const x = sx + R * 0.38, y = sy + R * 0.3, s = R * 0.16;
-  ctx.fillStyle = "#38424c"; ctx.fillRect(x - s, y - s * 0.4, s * 2, s * 1.2);
-  ctx.fillStyle = "#5c6b78"; ctx.beginPath(); ctx.arc(x, y - s * 0.4, s * 0.7, Math.PI, 0); ctx.fill();
-  ctx.strokeStyle = "#c9d4dc"; ctx.lineWidth = Math.max(1, s * 0.3); ctx.beginPath(); ctx.moveTo(x, y - s * 0.6); ctx.lineTo(x + s * 1.3, y - s * 1.2); ctx.stroke();
-  ctx.fillStyle = "#f2d38a"; ctx.font = `700 ${Math.max(7, Math.round(s * 0.9))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(String(t.turret), x, y + s * 0.25);
+  const Rb = zoomStep(R), lvl = Math.max(1, Math.min(3, t.turret)), key = `${lvl}|${Rb}`;
+  let c = TURRETS.get(key);
+  if (!c) {
+    c = document.createElement("canvas"); c.width = Math.ceil(Rb * 0.9); c.height = Math.ceil(Rb * 0.9);
+    const g = c.getContext("2d"), x = c.width / 2, y = c.height * 0.62, s = Rb * 0.3;
+    g.fillStyle = "rgba(0,0,0,0.35)"; g.beginPath(); g.ellipse(x + s * 0.15, y + s * 0.35, s * 1.15, s * 0.45, 0, 0, Math.PI * 2); g.fill();
+    // octagonal concrete pad
+    g.beginPath(); for (let q = 0; q < 8; q++) { const a = (q + 0.5) * Math.PI / 4; g[q ? "lineTo" : "moveTo"](x + Math.cos(a) * s * 1.05, y + Math.sin(a) * s * 0.55); } g.closePath();
+    const pg = g.createLinearGradient(0, y - s * 0.5, 0, y + s * 0.6); pg.addColorStop(0, "#b8b2a6"); pg.addColorStop(1, "#7d776c");
+    g.fillStyle = pg; g.fill(); g.strokeStyle = "rgba(40,36,30,0.7)"; g.lineWidth = 1; g.stroke();
+    // barrels (behind the dome), pointing up-right
+    g.strokeStyle = "#2c3238"; g.lineCap = "round"; g.lineWidth = Math.max(1.5, s * 0.16);
+    for (let b = 0; b < lvl; b++) { const off = (b - (lvl - 1) / 2) * s * 0.22; g.beginPath(); g.moveTo(x + off, y - s * 0.35); g.lineTo(x + off + s * 1.0, y - s * 0.95); g.stroke(); }
+    // armoured gun house
+    const dg = g.createRadialGradient(x - s * 0.25, y - s * 0.55, s * 0.05, x, y - s * 0.3, s * 0.7);
+    dg.addColorStop(0, "#9aa8b4"); dg.addColorStop(1, "#3c4752");
+    g.fillStyle = dg; g.beginPath(); g.ellipse(x, y - s * 0.25, s * 0.62, s * 0.5, 0, Math.PI, 0); g.lineTo(x + s * 0.62, y - s * 0.1); g.lineTo(x - s * 0.62, y - s * 0.1); g.closePath(); g.fill();
+    g.strokeStyle = "rgba(15,20,25,0.7)"; g.lineWidth = 1; g.stroke();
+    g.fillStyle = "#1b2026"; g.fillRect(x - s * 0.25, y - s * 0.42, s * 0.5, s * 0.08);
+    // level pips
+    for (let p = 0; p < lvl; p++) {
+      const px = x - (lvl - 1) * s * 0.2 + p * s * 0.4, py = y + s * 0.22;
+      g.fillStyle = "#f2d38a"; g.strokeStyle = "#5e4419"; g.lineWidth = 0.8;
+      g.beginPath(); g.moveTo(px, py - s * 0.13); g.lineTo(px + s * 0.12, py); g.lineTo(px, py + s * 0.13); g.lineTo(px - s * 0.12, py); g.closePath(); g.fill(); g.stroke();
+    }
+    TURRETS.set(key, c);
+  }
+  const k = R / Rb, x = sx + R * 0.42, y = sy + R * 0.28;
+  ctx.drawImage(c, x - c.width * k / 2, y - c.height * k * 0.62, c.width * k, c.height * k);
+  if (t.turret_hp != null && t.turret_max_hp && t.turret_hp < t.turret_max_hp) {
+    const f = Math.max(0, t.turret_hp / t.turret_max_hp), w = R * 0.4;
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(x - w / 2, y + R * 0.2, w, 3);
+    ctx.fillStyle = f > 0.5 ? "#82c873" : f > 0.25 ? "#e6c45c" : "#e5705f"; ctx.fillRect(x - w / 2, y + R * 0.2, w * f, 3);
+  }
 }
 
 const YIELD_COLOR = { food: "#7cc35a", production: "#e69a5c", science: "#6cbbec", gold: "#f2d15c", beacon: "#c88df2" };
