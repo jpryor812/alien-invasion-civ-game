@@ -41,6 +41,10 @@ from beacon.view import observe
 SAVE_DIR = Path(__file__).resolve().parent.parent / "runs" / "saves"
 PUBLIC_EVENTS = frozenset(
     {
+        "shard_warning",
+        "shard_landed",
+        "shard_claimed",
+        "shard_faded",
         "turn_started",
         "game_over",
         "barrage_started",
@@ -263,6 +267,7 @@ class Session:
                 "outcome_turn": s.outcome_turn,
                 "mothership_alive": s.aliens.mothership_alive,
                 "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
+                **self._story_view(),
                 "turret_rules": {
                     **cfg.t("turrets"),
                     "costs": {
@@ -401,6 +406,93 @@ class Session:
             "ships": ships,
             "spec": cfg.units[unit.type],
             "promotion": self._promotion_info(unit),
+        }
+
+    def _story_view(self) -> dict[str, Any]:
+        """Events, finds and shards for the client (docs/SPEC_M9.md). Finds show only on explored
+        hexes, and not what they are; shards are public (everyone sees the sky)."""
+        from beacon import starfall, story
+        from beacon.state import bits_get
+
+        s, cfg, me = self.state, self.cfg, self.human
+        bits = bits_get(s.players[me].explored)
+        sf = starfall.settings(cfg)
+
+        def card(event_id: str) -> dict[str, Any]:
+            e = cfg.events[event_id]
+            return {
+                "event": event_id,
+                "title": e["title"],
+                "body": e["body"],
+                "picture": e["picture"],
+                "big": bool(e.get("big")),
+            }
+
+        pending = [
+            {
+                **card(ev.event),
+                "story": ev.id,
+                "tile": ev.tile,
+                "choices": [
+                    {"label": c["label"], "detail": c.get("detail", "")}
+                    for c in cfg.events[ev.event]["choices"]
+                ],
+            }
+            for ev in story.pending(s, me)
+        ]
+        cards = [
+            {
+                **card(e["event"]),
+                "result": e.get("result", []),
+                "tile": e.get("tile"),
+                "key": f"{e.get('turn')}-{e['event']}-{e.get('tile')}",
+            }
+            for e in self.events
+            if e.get("kind") in ("story_event", "story_chosen")
+            and e.get("player") == me
+            and not e.get("pending")
+        ]
+        shards = []
+        for sh in starfall.active(s):
+            row = {
+                "id": sh.id,
+                "center": sh.cone_center,
+                "radius": sh.cone_radius,
+                "impact_turn": sh.impact_turn,
+                "landed": starfall.landed(s, sh),
+                "progress": dict(sh.progress),
+                "needed": sf["mine_turns"],
+                "fades_turn": sh.impact_turn + sf["fade_turns"],
+            }
+            if row["landed"]:
+                row.update(
+                    tile=sh.tile,
+                    kind=sh.kind,
+                    name=sf["kinds"][sh.kind]["name"],
+                    reward=_effect_text(starfall.reward(cfg, sh.kind, s.turn)),
+                )
+            shards.append(row)
+        claimed = [
+            {
+                "key": f"shard-{e['shard']}",
+                "name": e["name"],
+                "by": e["by"],
+                "find": e["find"],
+                "tile": e["tile"],
+                "quote": sf["kinds"][e["find"]]["quote"],
+                "reward": _effect_text(e.get("effects") or {}),
+            }
+            for e in self.events
+            if e.get("kind") == "shard_claimed"
+        ]
+        return {
+            "story_pending": pending,
+            "story_cards": cards,
+            "shards": shards,
+            "shards_claimed": claimed,
+            "sites": [
+                x.tile for x in s.sites.values() if x.found_by is None and (bits >> x.tile) & 1
+            ],
         }
 
     def _promotion_info(self, unit) -> dict[str, Any]:
@@ -1045,3 +1137,12 @@ def _tech_effects(cfg: Config, t: str) -> dict[str, Any]:
         lines.append("Stops alien reinforcements and unlocks the world barrage")
         tags.add("military")
     return {"lines": lines, "tags": sorted(tags)}
+
+
+def _effect_text(effects: dict[str, Any]) -> list[str]:
+    from beacon import techfx
+
+    lines = techfx.describe({k: v for k, v in effects.items() if k != "shard"})
+    if effects.get("unit_strength_pct"):
+        lines.append(f"+{effects['unit_strength_pct']}% strength for all your units")
+    return lines

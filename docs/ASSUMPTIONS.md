@@ -610,3 +610,33 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Batch after the content (10 AI seeds to turn 300)**: 9/10 victories on turns 199-284 (the
   tenth ends with 2 alien cities left), no defeats, no continent fell. Slowest game 130 s.
 
+## M9 steps 1-3: events, exploration finds, Starfall (docs/SPEC_M9.md)
+
+- **Events** live in data/story.yaml (`events`): title, picture key, body, and either outcomes
+  or 1-3 choices. Outcomes: gold, science, a citizen in the nearest city, a unit, a recruit, an
+  alien ambush, a flag. A choice event waits in Needs attention ("An event awaits") until
+  answered; AIs take the data's `ai_choice`. Pictures are placeholder art (a painted-sky gradient
+  and a glyph) until the graphics push.
+- **Exploration finds**: 6 per continent, at least 3 hexes from any city and 4 from each other,
+  seeded. Survivors (choose: +1 citizen in your nearest city, or a free infantry here), banished
+  alien (a recruit), wreckage (+100 science once), supply cache (+60 gold), armoury (a free
+  infantry), ambush (an alien warrior). A find shows as "?" on explored hexes and fires for the
+  first player land unit that steps on it. AI scouts head for finds they have seen.
+- **Starfall**: first warning on turn 20, then every 20-26 turns while no shard is active. The
+  warning marks a 7-hex circle 3 turns ahead; the landed shard's hex is known to all and shines
+  through the fog. An engineer or land scout (any land unit for the aliens) on the hex at the end
+  of a turn mines one turn; 5 turns claims it (whoever gets there first; soldiers guard). Rewards
+  grow by 100% of base per 100 turns: Preserving Compound (+15% growth), Starmetal (+10%
+  production), New Elements (+10% science), Exotic Matter (+2 beacon per city), Living Alloy (+8%
+  unit strength). Aliens claiming one gain 300 tech progress (scaled the same way). An unclaimed
+  shard burns out 25 turns after landing. Claimed shards are permanent player bonuses and count
+  for the MVP score (15 each).
+- **AI**: the aliens send their nearest free unit to mine each landed shard with 2 escorts; AI
+  players within 30 hexes on the same continent send their nearest engineer or scout plus 2
+  guards. AIs do not ship units to shards on other continents yet.
+- **Batch (10 AI seeds to turn 300)**: 5/10 victories (turns 200-279; the rest end with 1-14
+  alien cities left), no defeats, no continent fell; players claimed 3-9 shards per game. In 3
+  games to turn 200, humans won 12 of 17 claimed shards (71%, the designer's 60-70% target) and 4
+  burnt out unclaimed. Victories fell from 9/10: shards the aliens claim speed their tech. Slowest
+  game 167 s.
+

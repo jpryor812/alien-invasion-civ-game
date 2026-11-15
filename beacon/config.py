@@ -123,6 +123,7 @@ TABLES: dict[str, TableSpec] = {
         ("name", "scores", "lifespan", "traits"),
         {"traits": "recruit_traits"},
     ),
+    "events": TableSpec("story", "events", ("title", "picture", "body"), {}),
     "continents": TableSpec(
         "continents",
         "continents",
@@ -144,6 +145,7 @@ FILES = (
     "bots",
     "ai",
     "mvp",
+    "story",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
@@ -250,6 +252,14 @@ class Config:
     def ai(self, path: str) -> Any:
         """A value from data/ai.yaml (cached; read-only)."""
         return self._section("ai", path)
+
+    def story(self, path: str) -> Any:
+        """A value from data/story.yaml (events, exploration finds, Starfall)."""
+        return self._section("story", path)
+
+    @property
+    def events(self) -> dict[str, dict[str, Any]]:
+        return self.tables["events"]
 
     def alien(self, path: str) -> Any:
         """A value from data/aliens.yaml. Treat as read-only (cached)."""

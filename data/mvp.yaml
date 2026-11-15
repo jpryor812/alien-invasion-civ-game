@@ -21,3 +21,4 @@ weights:
   recruits_gained: 6
   espionage_gold_per_10: 1
   barrage_per_10: 4
+  shards_claimed: 15  # Starfall (docs/SPEC_M9.md)

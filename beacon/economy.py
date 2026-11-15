@@ -57,16 +57,16 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
     for b in city.buildings:
         add(f"building:{b}", cfg.buildings[b]["yields"])
     owner = state.players.get(city.owner or "")
-    for t, _ in techfx.lines(cfg, owner, "city_yields"):
-        add(f"tech:{t}", cfg.techs[t]["effects"]["city_yields"])
+    for t, value in techfx.lines(cfg, owner, "city_yields"):
+        add(f"tech:{t}", value)
     subtotal = totals(lines)
     for b in city.buildings:
         for y, pct in cfg.buildings[b]["yield_pct"].items():
             bonus = max(0, subtotal[y]) * pct // 100
             if bonus:
                 lines.append((f"building:{b} +{pct}%", y, bonus))
-    for t, _ in techfx.lines(cfg, owner, "yield_pct"):
-        for y, pct in cfg.techs[t]["effects"]["yield_pct"].items():
+    for t, value in techfx.lines(cfg, owner, "yield_pct"):
+        for y, pct in value.items():
             bonus = max(0, subtotal[y]) * pct // 100
             if bonus:
                 lines.append((f"tech:{t} +{pct}%", y, bonus))

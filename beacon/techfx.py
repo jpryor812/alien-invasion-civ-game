@@ -29,7 +29,8 @@ from beacon.state import Player
 def _effects(cfg: Config, player: Player | None) -> list[dict[str, Any]]:
     if player is None:
         return []
-    return [cfg.techs[t].get("effects") or {} for t in player.techs if t in cfg.techs]
+    techs = [cfg.techs[t].get("effects") or {} for t in player.techs if t in cfg.techs]
+    return techs + list(player.boons)  # Starfall shards claimed (beacon/starfall.py)
 
 
 def total(cfg: Config, player: Player | None, key: str) -> int:
@@ -47,14 +48,16 @@ def by_key(cfg: Config, player: Player | None, key: str) -> dict[str, int]:
 
 
 def lines(cfg: Config, player: Player | None, key: str) -> list[tuple[str, Any]]:
-    """(tech, value) for each known tech with this effect, for breakdowns."""
+    """(source, value) for each known tech or claimed shard with this effect, for breakdowns."""
     if player is None:
         return []
-    return [
+    out = [
         (t, cfg.techs[t]["effects"][key])
         for t in player.techs
         if t in cfg.techs and (cfg.techs[t].get("effects") or {}).get(key)
     ]
+    out += [(f"shard {b['shard']}", b[key]) for b in player.boons if b.get(key)]
+    return out
 
 
 def listed(cfg: Config, player: Player | None, key: str) -> set[str]:

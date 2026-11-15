@@ -33,6 +33,7 @@ CREDIT_KEYS = (
     "unit_turns_abroad",
     "espionage_gold",
     "barrage",
+    "shards_claimed",
 )
 
 

@@ -277,3 +277,14 @@ th.clickable { cursor: pointer; }
 
 .tech .effects { font-size: 10.5px; color: var(--brass-hi); line-height: 1.25; margin-top: 2px; }
 .treecanvas .node .tech { height: 112px; }
+
+.evcard .evart, .wonder .evart { width: 100%; display: block; border-radius: 6px; border: 1px solid var(--brass); }
+.evcard h2 { margin: 10px 0 4px; }
+.evcard .evbody { line-height: 1.45; }
+.evchoices { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.evchoices button { text-align: left; padding: 8px 10px; }
+.evresult { margin: 8px 0; }
+.wonder .wtitle { text-align: center; font: 700 20px var(--heading); color: var(--brass-hi); letter-spacing: 0.08em; margin-bottom: 8px; }
+.wonder .wfoot { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin: 10px 0; }
+.wonder .wquote { font-style: italic; color: var(--muted); line-height: 1.45; }
+.wonder .weffect { border-left: 2px solid var(--brass); padding-left: 10px; }

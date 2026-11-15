@@ -33,6 +33,7 @@ from beacon.commands import (
     BuildImprovement,
     CancelJob,
     ChooseEspionageTech,
+    ChooseStory,
     CityAttack,
     Command,
     CommandError,
@@ -316,6 +317,16 @@ def _assign_best(state: GameState, cfg: Config, cmd: AssignBestCitizen) -> Event
         raise CommandError(f"{city.name} has no grown citizen free for that tile")
     c.job = f"tile:{cmd.tile}"
     return [{"kind": "citizen_job", "citizen": c.id, "job": c.job, "name": c.name}]
+
+
+@handles(ChooseStory)
+def _choose_story(state: GameState, cfg: Config, cmd: ChooseStory) -> Events:
+    from beacon import story  # story imports citizens and units
+
+    problem = story.choice_problem(state, cfg, cmd.player, cmd.story, cmd.choice)
+    if problem:
+        raise CommandError(problem)
+    return story.choose(state, cfg, cmd.player, cmd.story, cmd.choice)
 
 
 @handles(HoldFire)
@@ -682,6 +693,9 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     """What still needs this player this turn (the UI's 'unit needs orders' prompts)."""
     out: list[dict[str, Any]] = []
     player = state.players[pid]
+    for ev in sorted(state.story_events.values(), key=lambda e: e.id):
+        if ev.player == pid:
+            out.append({"kind": "story_choice", "story": ev.id, "event": ev.event})
     if player.research is None and tech.available(cfg, player):
         out.append({"kind": "choose_research"})
     for city in state.cities:
@@ -723,6 +737,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
 
 
 REPLACE_CITIZENS = (
+    ChooseStory,
     Attack,
     MoveUnit,
     SeatRecruit,

@@ -40,6 +40,7 @@ explore:
   status: placeholder
   note: Frontier targets an explorer tries per turn before giving up (bounds pathfinding cost).
   attempts: 3
+  find_radius: 10
 
 recruits:
   status: placeholder
@@ -69,4 +70,11 @@ promotions:
     artillery: [siege_master, barrage]
     naval: [barrage, sea_legs]
     recon: [blitz]
+
+starfall:
+  status: placeholder
+  note: A landed shard within reach hexes of our units (same continent) gets our nearest engineer or
+    scout as miner and our guards nearest soldiers as escort (docs/SPEC_M9.md).
+  reach: 30
+  guards: 2
 

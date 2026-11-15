@@ -26,6 +26,7 @@ from beacon.commands import (
     AcceptOffer,
     Attack,
     BuildImprovement,
+    ChooseStory,
     CityAttack,
     Command,
     CommandError,
@@ -383,6 +384,18 @@ class Bot:
 
     def explorer(self, unit: Unit) -> None:
         cont = self.state.tiles[unit.tile].continent
+        finds = [
+            s.tile
+            for s in self.state.sites.values()
+            if s.found_by is None
+            and self.view.is_explored(s.tile)
+            and self.state.tiles[s.tile].continent == cont
+            and self.dist(unit.tile, s.tile) <= self.param("explore.find_radius")
+        ]
+        if finds:
+            near = min(finds, key=lambda t: (self.dist(unit.tile, t), t))
+            if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=near)):
+                return
         options = sorted(
             (
                 t
@@ -661,7 +674,59 @@ class Bot:
             if cost is not None and self.view.player.gold * 100 >= cost * reserve:
                 self.submit(UpgradeDefence(player=self.pid, unit=gun.id))
 
+    def answer_stories(self) -> None:
+        """Events waiting for a choice: take the data's ai_choice (docs/SPEC_M9.md)."""
+        from beacon import story
+
+        for ev in story.pending(self.state, self.pid):
+            pick = self.cfg.events[ev.event].get("ai_choice", 0)
+            self.submit(ChooseStory(player=self.pid, story=ev.id, choice=pick))
+
+    def starfall_duty(self) -> None:
+        """A landed shard on a continent where we have units: send the nearest engineer or scout
+        to mine it and the nearest soldier to guard it (docs/SPEC_M9.md, Starfall)."""
+        from beacon.starfall import active, can_mine, landed
+
+        for shard in active(self.state):
+            if not landed(self.state, shard):
+                continue
+            cont = self.state.tiles[shard.tile].continent
+            mine = [
+                u
+                for u in self.view.my_units()
+                if self.state.tiles[u.tile].continent == cont and u.id not in self.reserved
+            ]
+            miners = [u for u in mine if can_mine(self.cfg, self.pid, u.type) and u.job is None]
+            reach = self.param("starfall.reach")
+            miners = [u for u in miners if self.dist(u.tile, shard.tile) <= reach]
+            if not miners:
+                continue
+            miner = min(miners, key=lambda u: (self.dist(u.tile, shard.tile), u.id))
+            self.reserved.add(miner.id)
+            if miner.tile != shard.tile and miner.moves_left > 0:
+                self.submit(MoveUnit(player=self.pid, unit=miner.id, target=shard.tile))
+            guards = [
+                u
+                for u in mine
+                if self.cfg.units[u.type]["role"] in ("melee", "ranged")
+                and not self.cfg.units[u.type].get("fixed")
+                and u.id not in self.reserved
+                and self.dist(u.tile, shard.tile) <= reach
+            ]
+            for g in sorted(guards, key=lambda u: (self.dist(u.tile, shard.tile), u.id))[
+                : self.param("starfall.guards")
+            ]:
+                self.reserved.add(g.id)
+                if self.dist(g.tile, shard.tile) > 1 and g.moves_left > 0:
+                    self._approach(g, shard.tile)
+                if self.alive(g) and g.moves_left > 0:
+                    target = self._best_attack(g)
+                    if target is not None:
+                        self.submit(Attack(player=self.pid, unit=g.id, target=target))
+
     def play(self) -> None:
+        self.answer_stories()
+        self.starfall_duty()
         self.promote()
         self.research()
         self.production()

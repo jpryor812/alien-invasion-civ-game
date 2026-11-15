@@ -83,6 +83,9 @@ def unit_strength(
     if defending and spec.get("rough_defence_pct") and not _open_ground(state, unit.tile):
         mods.append(("rough ground", spec["rough_defence_pct"]))
     owner = state.players.get(unit.owner)
+    alloy = techfx.total(cfg, owner, "unit_strength_pct")
+    if alloy:
+        mods.append(("living alloy", alloy))  # a Starfall shard
     if defending and spec.get("class"):
         pct = techfx.by_key(cfg, owner, "class_defence_pct").get(spec["class"], 0)
         if pct:

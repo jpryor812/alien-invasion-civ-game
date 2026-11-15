@@ -18,6 +18,7 @@ from beacon import (
     liberation,
     network,
     recruits,
+    starfall,
 )
 from beacon.config import Config
 from beacon.state import GameState
@@ -113,6 +114,7 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     events.append({"turn": state.turn, "kind": "turn_started", "year": year(cfg, state.turn)})
     events.extend(liberation.update_fallen(state))
     events.extend(contact.check(state, cfg))
+    events.extend(starfall.end_of_turn(state, cfg))
     events.extend(contact.fallen_known(state))
     citizens.assign_all(state, cfg)
     events.extend(endgame.check_outcome(state, cfg))

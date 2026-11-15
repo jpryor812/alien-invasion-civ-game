@@ -496,6 +496,10 @@ class Director:
 
     def order_valid(self, unit: Unit, order: AlienOrder) -> bool:
         tile = self.state.tiles[order.target]
+        if order.kind in ("mine", "escort"):
+            from beacon.starfall import active
+
+            return any(s.tile == order.target for s in active(self.state))
         if order.kind == "siege":
             city = self.state.city_at(order.target)
             return city is not None and city.status == ACTIVE and city.owner in self.state.players
@@ -571,6 +575,18 @@ class Director:
         return bool(moved)
 
     def act(self, unit: Unit) -> None:
+        order = self.state.aliens.orders.get(str(unit.id))
+        if order is not None and order.kind in ("mine", "escort") and self.order_valid(unit, order):
+            if order.kind == "mine" and unit.tile == order.target:
+                return  # digging: stay put
+            target = self.best_attack(unit, allow_city=False)
+            if target is not None:
+                self.attack(unit, target)
+                return
+            stop = 0 if order.kind == "mine" else 1
+            if self.dist(unit.tile, order.target) > stop:
+                self.move_toward(unit, order.target, stop_at=stop)
+            return
         city_here = self.state.city_at(unit.tile)
         is_garrison = (
             city_here is not None
@@ -646,7 +662,40 @@ class Director:
         if not self.move_toward(unit, order.target):
             self.state.aliens.orders.pop(str(unit.id), None)
 
+    def assign_miners(self) -> None:
+        """For every landed shard, the nearest free alien on that continent goes to mine it, with
+        an escort (docs/SPEC_M9.md, Starfall)."""
+        from beacon.starfall import active, landed
+
+        orders = self.state.aliens.orders
+        for shard in active(self.state):
+            if not landed(self.state, shard):
+                continue
+            cont = self.continent(shard.tile)
+            mining = [k for k, o in orders.items() if o.kind == "mine" and o.target == shard.tile]
+            if mining:
+                continue
+            free = [
+                u
+                for u in self.state.units.values()
+                if u.owner == ALIENS
+                and self.cfg.units[u.type]["domain"] == "land"
+                and self.continent(u.tile) == cont
+                and not (
+                    self.state.city_at(u.tile) is not None
+                    and _military_on(self.state, self.cfg, u.tile) is u
+                )
+                and orders.get(str(u.id), AlienOrder("none", 0)).kind not in ("mine", "escort")
+            ]
+            if not free:
+                continue
+            free.sort(key=lambda u: (self.dist(u.tile, shard.tile), u.id))
+            orders[str(free[0].id)] = AlienOrder(kind="mine", target=shard.tile)
+            for u in free[1 : 1 + self.d["shard_escort"]]:
+                orders[str(u.id)] = AlienOrder(kind="escort", target=shard.tile)
+
     def run(self) -> Events:
+        self.assign_miners()
         for unit in [u for u in self.state.sorted_units() if u.owner == ALIENS]:
             if self.alive(unit) and unit.moves_left > 0 and unit.attacks_left > 0:
                 self.act(unit)

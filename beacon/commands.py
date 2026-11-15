@@ -149,6 +149,16 @@ class AssignBestCitizen(Command):
 
 @register
 @dataclass(frozen=True)
+class ChooseStory(Command):
+    """Answer an event waiting for your choice."""
+
+    kind: ClassVar[str] = "choose_story"
+    story: int
+    choice: int
+
+
+@register
+@dataclass(frozen=True)
 class HoldFire(Command):
     """The city will not fire this turn (answers the 'city can attack' alert)."""
 

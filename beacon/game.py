@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from beacon import cities, citizens, fog, hexgrid, improvements, mapgen, network, rng
+from beacon import cities, citizens, fog, hexgrid, improvements, mapgen, network, rng, story
 from beacon.config import Config
 from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, Player
 from beacon.units import place_unit
@@ -90,6 +90,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
             role = "capital" if city.is_capital else "known"
             improvements.auto_improve(state, cfg, city, improved[role], city.owner)
     citizens.assign_all(state, cfg)
+    story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)

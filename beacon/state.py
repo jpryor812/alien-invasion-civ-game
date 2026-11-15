@@ -119,6 +119,8 @@ class Player:
     character: str | None = None  # AI character (data/ai.yaml)
     allies: list[str] = field(default_factory=list)
     met: list[str] = field(default_factory=list)  # players met so far (beacon/contact.py)
+    boons: list[dict[str, Any]] = field(default_factory=list)  # shard effects (like tech effects)
+    flags: list[str] = field(default_factory=list)  # story choices remembered
 
 
 @dataclass
@@ -198,6 +200,43 @@ class Citizen:
 
 
 @dataclass
+class StoryEvent:
+    """An event waiting for its player's choice (docs/SPEC_M9.md)."""
+
+    id: int
+    event: str  # id in data/story.yaml events
+    player: str
+    turn: int
+    tile: int | None = None  # where it happened
+
+
+@dataclass
+class Site:
+    """An exploration find hidden in the fog, collected by the first player unit to reach it."""
+
+    id: int
+    tile: int
+    kind: str  # an event id in data/story.yaml
+    found_by: str | None = None
+
+
+@dataclass
+class Shard:
+    """A deep-space shard: warned, then landed, then mined (Starfall, docs/SPEC_M9.md)."""
+
+    id: int
+    kind: str
+    tile: int
+    warn_turn: int
+    impact_turn: int
+    cone_center: int
+    cone_radius: int
+    progress: dict[str, int] = field(default_factory=dict)  # miner (player id or aliens) -> turns
+    claimed_by: str | None = None
+    claimed_turn: int | None = None
+
+
+@dataclass
 class Offer:
     id: int
     recruit: int
@@ -209,7 +248,7 @@ class Offer:
 
 @dataclass
 class AlienOrder:
-    kind: str  # siege | raid | patrol | hunt
+    kind: str  # siege | raid | patrol | hunt | mine | escort
     target: int  # tile (hunt: the hunted unit's id)
 
 
@@ -260,6 +299,10 @@ class GameState:
     aliens: AlienState = field(default_factory=AlienState)
     recruits: dict[str, Recruit] = field(default_factory=dict)
     citizens: dict[str, Citizen] = field(default_factory=dict)
+    story_events: dict[str, StoryEvent] = field(default_factory=dict)
+    sites: dict[str, Site] = field(default_factory=dict)
+    shards: dict[str, Shard] = field(default_factory=dict)
+    next_shard_turn: int = -1  # -1: not scheduled yet
     offers: dict[str, Offer] = field(default_factory=dict)
     deals: dict[str, Deal] = field(default_factory=dict)
     shipments: dict[str, Shipment] = field(default_factory=dict)

@@ -177,6 +177,11 @@ def _enter(state: GameState, cfg: Config, unit: Unit, tile: int) -> Events:
         from beacon.liberation import reclaim
 
         events.extend(reclaim(state, cfg, city, unit.owner))
+    spec = cfg.units[unit.type]
+    if unit.owner in state.players and spec["domain"] == "land" and not spec.get("fixed"):
+        from beacon.story import explore  # story imports units and citizens
+
+        events.extend(explore(state, cfg, unit.owner, tile))
     return events
 
 

@@ -350,6 +350,7 @@ async function refresh(keepSelection = true) {
   if (newTurn) splash(`Turn ${v.turn} · ${v.year}`);
   S.dirty = true;
   if (window.Advisors) Advisors.check();
+  showNewStory();
 }
 async function reselect() {
   const sel = S.selected;
@@ -454,6 +455,13 @@ function draw(t = performance.now()) {
   drawFog(visible, R, t);
   for (const [i, sx, sy, shown] of visible) {
     if (shown && !S.tilesByIndex.get(i).visible) { hexPath(ctx, sx, sy, R + 0.6); ctx.fillStyle = "rgba(92,105,118,0.45)"; ctx.fill(); }
+  }
+  // 5b. Starfall and exploration finds, drawn over the fog (everyone sees the sky)
+  drawStarfall(R, t);
+  for (const tile of S.view.sites || []) {
+    const [sx, sy] = toScreen(...center(tile));
+    if (sx < -R || sy < -R || sx > W + R || sy > H + R) continue;
+    drawSite(sx, sy, R, t);
   }
   // 6. move and attack highlights
   for (const [i, sx, sy] of visible) {
@@ -763,6 +771,7 @@ function describePending(p) {
     deal_received: "A deal is proposed to you",
     choose_espionage_tech: "Choose your alien technology",
     city_can_attack: `${cityName(p.city)} can attack an enemy`,
+    story_choice: `Event: ${pretty(p.event)}`,
     unit_promotion: `${unitLabel(p.unit)} can be promoted`,
   }[p.kind] || pretty(p.kind);
 }
@@ -773,6 +782,10 @@ async function resolvePending(p) {
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
   if (p.kind === "deal_received") return openScreen("diplomacy");
   if (p.kind === "choose_espionage_tech") return openScreen("projects");
+  if (p.kind === "story_choice") {
+    const ev = S.view.story_pending.find((x) => x.story === p.story);
+    if (ev) return showEventCard(ev);
+  }
   if (p.kind === "unit_promotion") {
     const u = S.view.units.find((x) => x.id === p.unit);
     if (u && S.view.unit_types[u.type]?.fixed) { const c = S.citiesByTile.get(u.tile); if (c) { centerOnTile(u.tile); return selectCity(c.id); } }
@@ -793,6 +806,13 @@ function describeEvent(e) {
     pillaged: () => `Aliens pillaged a ${pretty(e.lost)}.`,
     turret_destroyed: () => "Aliens destroyed one of your turrets.",
     civilians_captured: () => "Aliens captured civilians.",
+    shard_warning: () => `A shard is falling! It lands in ${e.impact_turn - S.view.turn > 0 ? e.impact_turn - S.view.turn : "a few"} turns inside the marked circle.`,
+    shard_landed: () => `The ${e.name} shard has landed. Send an engineer or scout to mine it.`,
+    shard_claimed: () => e.by === S.view.me ? `You claimed the ${e.name} shard!` : e.by === "aliens" ? `The aliens claimed the ${e.name} shard.` : `${pretty(e.by)} claimed the ${e.name} shard.`,
+    shard_faded: () => "An unclaimed shard burnt out.",
+    site_found: () => `Your unit found something: ${pretty(e.find)}.`,
+    story_event: () => e.pending ? `Event: ${pretty(e.event)} (a choice awaits)` : `${pretty(e.event)}: ${(e.result || []).join(", ") || "nothing"}.`,
+    story_chosen: () => `${pretty(e.event)}: ${e.label}. ${(e.result || []).join(", ")}`,
     citizen_grew_up: () => `${e.name} of ${cityName(e.city)} has grown up and can work.`,
     citizen_job: () => "Citizen job changed.",
     unit_promoted: () => `${unitLabel(e.unit)} promoted: ${promoName(e.promotion)}.`,
@@ -956,12 +976,12 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["story_choice", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
   choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
-  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack", unit_promotion: "Promote a unit",
+  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
 function nextAction() {
   if (!S.view) return null;
@@ -1765,6 +1785,7 @@ const SUMMARY_GROUPS = [
   ["Cities", ["citizen_born", "citizen_grew_up", "city_grew", "city_starved", "building_completed", "unit_completed", "production_stalled", "item_dropped"]],
   ["Research", ["tech_learned", "alien_tech"]],
   ["War", ["city_liberated", "city_overrun", "unit_destroyed", "civilians_captured", "pillaged", "turret_destroyed", "mothership_strike", "city_attack", "turret_fired"]],
+  ["Starfall & finds", ["shard_warning", "shard_landed", "shard_claimed", "shard_faded", "site_found", "story_event", "story_chosen"]],
   ["World", ["contact_made", "recruit_arrived", "recruit_betrayed", "recruit_died", "deal_accepted", "shipment_arrived", "unit_landed", "continent_fallen", "continent_revived", "barrage_fired", "reinforcements_stopped"]],
 ];
 function eventItems(events) {
@@ -1801,3 +1822,111 @@ function logScreen() {
   return `<h2>Log</h2><p class="muted">Events of the last turns this session (newest first). Click one to see it on the map.</p><div class="logbody">${turns}</div>`;
 }
 $("open-log").onclick = () => openScreen("log");
+
+// -- story events, exploration finds and Starfall (docs/SPEC_M9.md) ---------------------------
+
+const PICTURE = {
+  survivors: ["#3b4a5c", "#c98b4a", "🔥"], outcast: ["#2a1d3d", "#8f5bd6", "◈"], wreckage: ["#1d2a33", "#6cbbec", "✦"],
+  cache: ["#2b2a1d", "#f2d15c", "▣"], armoury: ["#2a2320", "#c0644a", "⚔"], ambush: ["#2a0d0d", "#e0362c", "!"],
+  preserving_compound: ["#123020", "#93d46b", "✺"], starmetal: ["#1d2128", "#e6c45c", "✦"], new_elements: ["#0f2238", "#6cbbec", "⚛"],
+  exotic_matter: ["#24123a", "#c88df2", "◈"], living_alloy: ["#1f2a2a", "#7fe0c8", "⬢"],
+};
+// Placeholder art until the graphics push: a painted-sky gradient with a glyph.
+function pictureSvg(key, big) {
+  const [bg, glow, glyph] = PICTURE[key] || ["#1d2733", "#d9ae55", "★"];
+  const h = big ? 300 : 150;
+  return `<svg class="evart" viewBox="0 0 600 ${h}" preserveAspectRatio="xMidYMid slice">
+    <defs><radialGradient id="ev-${key}" cx="50%" cy="${big ? 35 : 45}%" r="70%"><stop offset="0" stop-color="${glow}" stop-opacity="0.85"/><stop offset="0.45" stop-color="${bg}"/><stop offset="1" stop-color="#05080b"/></radialGradient></defs>
+    <rect width="600" height="${h}" fill="url(#ev-${key})"/>
+    ${Array.from({ length: 40 }, (_, k) => `<circle cx="${(k * 137) % 600}" cy="${(k * 71) % h}" r="${k % 3 ? 0.8 : 1.4}" fill="#fff" opacity="${0.2 + (k % 5) / 10}"/>`).join("")}
+    <text x="300" y="${h / 2 + (big ? 40 : 22)}" font-size="${big ? 130 : 70}" text-anchor="middle" fill="#fff8e6" opacity="0.92">${glyph}</text></svg>`;
+}
+function showEventCard(ev) {
+  const body = $("modal-body");
+  const choices = ev.choices ? `<div class="evchoices">${ev.choices.map((c, k) => `<button class="${k ? "" : "primary"}" data-choice="${k}"><b>${esc(c.label)}</b>${c.detail ? `<span class="muted"> ${esc(c.detail)}</span>` : ""}</button>`).join("")}</div>` : "";
+  const result = ev.result && ev.result.length ? `<div class="evresult">${ev.result.map((r) => `<span class="tag">${esc(r)}</span>`).join(" ")}</div>` : "";
+  body.innerHTML = `<div class="evcard">${pictureSvg(ev.picture, false)}<h2>${esc(ev.title)}</h2><p class="evbody">${esc(ev.body)}</p>${result}${choices}
+    ${ev.choices ? "" : '<div class="row"><button class="primary" id="ev-ok">Continue</button></div>'}</div>`;
+  document.querySelector(".modal-box").classList.add("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "event";
+  body.querySelectorAll("[data-choice]").forEach((el) => el.onclick = async () => {
+    closeModal(); await send({ kind: "choose_story", story: ev.story, choice: Number(el.dataset.choice) });
+  });
+  if ($("ev-ok")) $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
+}
+// The wonder-style screen for a claimed shard (Civ's wonder splash).
+function showShardScreen(c) {
+  const body = $("modal-body");
+  const mine = c.by === S.view.me;
+  const who = mine ? "Your miners have claimed it." : c.by === "aliens" ? "The aliens got there first." : `${esc(pretty(c.by))} claimed it.`;
+  body.innerHTML = `<div class="wonder"><div class="wtitle">${esc(c.name)}</div>${pictureSvg(c.find, true)}
+    <div class="wfoot"><div class="wquote">"${esc(c.quote)}"</div>
+    <div class="weffect"><b>${esc(c.name)}</b><div class="muted">${who}</div>${mine ? c.reward.map((r) => `<div>• ${esc(r)}</div>`).join("") : ""}</div></div>
+    <div class="row center"><button class="primary" id="ev-ok">Continue</button></div></div>`;
+  document.querySelector(".modal-box").classList.remove("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "wonder";
+  $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
+}
+// Show each new event card or shard screen once (claims by others are just a toast).
+function showNewStory() {
+  if (!S.view || !$("modal").classList.contains("hidden")) return;
+  S.seenStory = S.seenStory || new Set();
+  for (const c of S.view.shards_claimed || []) {
+    if (S.seenStory.has(c.key)) continue;
+    S.seenStory.add(c.key);
+    if (c.by === S.view.me) return showShardScreen(c);
+    toast(c.by === "aliens" ? `The aliens claimed the ${c.name} shard.` : `${pretty(c.by)} claimed the ${c.name} shard.`);
+  }
+  for (const c of S.view.story_cards || []) {
+    if (S.seenStory.has(c.key)) continue;
+    S.seenStory.add(c.key);
+    return showEventCard(c);
+  }
+}
+function drawSite(sx, sy, R, t) {
+  const r = Math.max(6, R * 0.28), y = sy - R * 0.1;
+  ctx.fillStyle = "rgba(20,16,8,0.75)"; ctx.beginPath(); ctx.arc(sx, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(242,211,138,${0.6 + 0.4 * Math.sin(t / 300)})`; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = "#f2d38a"; ctx.font = `700 ${Math.round(r * 1.2)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", sx, y + 1);
+}
+function drawStarfall(R, t) {
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  for (const sh of S.view.shards || []) {
+    if (!sh.landed) {
+      // the warned landing circle and a falling streak
+      const [cx, cy] = toScreen(...center(sh.center));
+      const rad = sh.radius * R * 1.75;
+      ctx.save(); ctx.setLineDash([R * 0.4, R * 0.3]); ctx.lineWidth = 3;
+      ctx.strokeStyle = `rgba(200,141,242,${0.55 + 0.35 * Math.sin(t / 250)})`;
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = "rgba(200,141,242,0.07)"; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
+      const k = (t / 1600) % 1, x0 = cx - rad * 1.6, y0 = cy - rad * 1.6;
+      const hx = x0 + (cx - x0) * k, hy = y0 + (cy - y0) * k;
+      const g = ctx.createLinearGradient(x0, y0, hx, hy); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(255,236,190,0.95)");
+      ctx.strokeStyle = g; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.font = `700 ${Math.max(11, R * 0.35)}px Roboto Mono, monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const wl = `✦ Shard lands in ${Math.max(0, sh.impact_turn - S.view.turn)} turns`, ww = ctx.measureText(wl).width + 16;
+      ctx.fillStyle = "rgba(22,12,36,0.88)"; roundRect(cx - ww / 2, cy - rad - 26, ww, 22, 11); ctx.fill();
+      ctx.fillStyle = "#fff4d6"; ctx.fillText(wl, cx, cy - rad - 15);
+      continue;
+    }
+    const [sx, sy] = toScreen(...center(sh.tile));
+    if (sx < -R * 4 || sy < -R * 4 || sx > W + R * 4 || sy > H + R * 4) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(t / 200), gr = Math.max(28, R * 2);
+    // a beam of light to the sky, visible through the fog
+    const beam = ctx.createLinearGradient(sx, sy - gr * 4, sx, sy);
+    beam.addColorStop(0, "rgba(200,141,242,0)"); beam.addColorStop(1, `rgba(220,170,255,${0.45 + 0.25 * pulse})`);
+    ctx.fillStyle = beam; ctx.fillRect(sx - gr * 0.18, sy - gr * 4, gr * 0.36, gr * 4);
+    const rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, gr);
+    rg.addColorStop(0, `rgba(255,240,200,${0.85 + 0.15 * pulse})`); rg.addColorStop(0.35, "rgba(170,90,240,0.7)"); rg.addColorStop(1, "rgba(120,60,200,0)");
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(sx, sy, gr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(14, R * 0.6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✦", sx, sy);
+    const best = Object.entries(sh.progress).sort((a, b) => b[1] - a[1]);
+    const label = `✦ ${sh.name}${best.length ? ` · ${best.map(([k, v]) => `${k === S.view.me ? "you" : pretty(k)} ${v}/${sh.needed}`).join(", ")}` : " · unclaimed"}`;
+    ctx.font = `600 ${Math.max(11, R * 0.3)}px Roboto, sans-serif`;
+    const tw = ctx.measureText(label).width + 14, ly = sy + gr + 4;
+    ctx.fillStyle = "rgba(22,12,36,0.88)"; roundRect(sx - tw / 2, ly, tw, 20, 10); ctx.fill();
+    ctx.strokeStyle = "#c88df2"; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = "#f6efdc"; ctx.fillText(label, sx, ly + 10.5);
+  }
+}

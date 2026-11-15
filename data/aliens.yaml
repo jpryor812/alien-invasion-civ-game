@@ -88,8 +88,11 @@ director:
     onto the same city; sieges favour weak cities (defence_per_strength). Raids (weight raised
     from 2 to 4) skip land within raid_safe_radius of a player city and treat each turret level
     as turret_penalty extra hexes away; a turret must be destroyed before its tile is pillaged.
+    When a Starfall shard lands, the nearest free alien on that continent goes to mine it with
+    shard_escort escorts (docs/SPEC_M9.md).
   weights: {siege: 6, raid: 4, patrol: 3, hunt: 3}
   raid_safe_radius: 2
+  shard_escort: 2
   turret_penalty: 3
   grace_turns: 8
   city_grace_turns: 25
