@@ -865,6 +865,18 @@ function draw(t = performance.now()) {
   // 7. cities, units, then banners on top
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawOutskirts(c, i, sx, sy, R); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawCity(c, sx, sy, R, i); }
+  // the selected unit stands in a glowing gold ring on the ground
+  if (S.selected && S.selected.kind === "unit") {
+    const su = S.view.units.find((x) => x.id === S.selected.id);
+    if (su && !S.citiesByTile.has(su.tile)) {
+      const [gx, gy] = toScreen(...center(su.tile)), p = 0.5 + 0.5 * Math.sin(t / 300), y0 = gy + R * 0.3;
+      const rg = ctx.createRadialGradient(gx, y0, R * 0.2, gx, y0, R * 0.75);
+      rg.addColorStop(0, "rgba(255,220,120,0)"); rg.addColorStop(0.7, `rgba(255,215,106,${0.25 + 0.2 * p})`); rg.addColorStop(1, "rgba(255,215,106,0)");
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.ellipse(gx, y0, R * 0.75, R * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,228,150,${0.7 + 0.3 * p})`; ctx.lineWidth = Math.max(1.5, R * 0.04);
+      ctx.beginPath(); ctx.ellipse(gx, y0, R * 0.62, R * 0.28, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   for (const [i, sx, sy] of visible) { const us = S.unitsByTile.get(i); if (us) drawUnits(us, sx, sy, R, S.citiesByTile.has(i)); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawBanner(c, sx, sy, R); }
   // 8. selection pulse
@@ -1549,11 +1561,21 @@ function isCivilian(type) { const t = S.view.unit_types[type]; return t && t.rol
 // squad of three. Figures stand on a team-coloured base with a small flag badge; at far zoom, or
 // before the art loads, the badge alone is drawn.
 const UNIT_MODELS = {
-  // model: [size in hex radii, figures in the squad]
-  infantry: [0.7, 3], engineer: [0.66, 1], tank: [1.0, 1], artillery: [0.95, 1], walker: [0.95, 1],
-  drone: [0.5, 2, 0.35], destroyer: [1.25, 1], hover_tank: [1.0, 1], patrol_boat: [0.95, 1], submarine: [1.2, 1],
-  alien_small: [0.55, 3], alien_warrior: [0.72, 2], alien_spitter: [0.8, 1], alien_brute: [0.95, 1], alien_titan: [1.25, 1],
+  // model: [figure size in hex radii, figures in the formation, lift]; formations as in Civ (round 2)
+  infantry: [0.44, 8], engineer: [0.6, 1], tank: [0.62, 3], artillery: [0.6, 3], walker: [0.72, 2],
+  drone: [0.38, 4, 0.35], destroyer: [1.25, 1], hover_tank: [0.64, 3], patrol_boat: [0.95, 1], submarine: [1.2, 1],
+  alien_small: [0.38, 6], alien_warrior: [0.5, 5], alien_spitter: [0.56, 3], alien_brute: [0.7, 2], alien_titan: [1.25, 1],
 };
+// staggered ranks for n figures, figure spacing sp (in hex radii), back rank first
+function formation(n, sp) {
+  if (n <= 1) return [[0, 0]];
+  const cols = n <= 3 ? n : Math.ceil(Math.sqrt(n * 2)), rows = Math.ceil(n / cols), out = [];
+  for (let r = 0; r < rows; r++) {
+    const inRow = Math.min(cols, n - r * cols), off = r % 2 ? sp * 0.3 : 0;
+    for (let c = 0; c < inRow; c++) out.push([(c - (inRow - 1) / 2) * sp + off, (r - (rows - 1) / 2) * sp * 0.55]);
+  }
+  return out;
+}
 const UNIT_ART = {
   infantry: "infantry", militia: "infantry", marines: "infantry", home_guard: "infantry", recon_team: "infantry",
   anti_tank_team: "infantry", exo_infantry: "walker", xeno_trooper: "infantry", plasma_lancer: "infantry",
@@ -1616,10 +1638,11 @@ function drawFigures(u, x, y, R, scale = 1) {
   const [sp, [size, n, lift = 0]] = art, model = UNIT_ART[u.type], side = R * size * 2 * scale / 2;  // sprites are rendered at 2x
   const owner = u.owner === "aliens" ? "#c2362b" : OWNER[u.owner] || "#999";
   // team-coloured base under the squad
-  const bw = R * (n > 1 ? 0.5 : Math.min(0.5, size * 0.45)) * scale, bh = bw * 0.4;
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(x, y, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = owner; ctx.lineWidth = Math.max(1.2, R * 0.03 * scale); ctx.globalAlpha = 0.8; ctx.stroke(); ctx.globalAlpha = 1;
-  const spots = n === 3 ? [[-0.3, -0.1], [0.3, -0.1], [0, 0.12]] : n === 2 ? [[-0.2, 0], [0.2, 0.04]] : [[0, 0]];
+  const spacing = size * (n > 4 ? 0.55 : 0.75), spots = formation(n, spacing);
+  const half = Math.max(...spots.map((p) => Math.abs(p[0]))) + size * 0.35;
+  const bw = R * Math.min(0.62, Math.max(0.3, half)) * scale, bh = bw * 0.42;
+  ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.ellipse(x, y, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = owner; ctx.lineWidth = Math.max(1.2, R * 0.025 * scale); ctx.globalAlpha = 0.65; ctx.stroke(); ctx.globalAlpha = 1;
   for (const [dx, dy] of spots) {
     // idle motion: drones and hover tanks bob, ships rock on the swell (drones hover over their base)
     const ph = performance.now() / 650 + (u.id || 0) * 1.7 + dx * 3;
@@ -1636,20 +1659,30 @@ function drawUnits(us, sx, sy, R, inCity = false) {
   if (military.length) {
     const m = military[0];
     if (inCity) {
-      if (drawFigures(m, sx - 0.42 * R, sy + 0.62 * R, R, 0.7)) drawBadge(m, sx - 0.78 * R, sy + 0.2 * R, 0.2 * R, R);
+      if (drawFigures(m, sx - 0.42 * R, sy + 0.62 * R, R, 0.7)) drawBadge(m, sx - 0.78 * R, sy + 0.2 * R, 0.2 * R, R, true);
       else drawBadge(m, sx - 0.42 * R, sy + 0.5 * R, 0.33 * R, R);
-    } else if (drawFigures(m, sx, sy + 0.3 * R, R)) drawBadge(m, sx - 0.55 * R, sy - 0.42 * R, 0.22 * R, R);
+    } else if (drawFigures(m, sx, sy + 0.3 * R, R)) drawBadge(m, sx, sy - 0.5 * R, 0.21 * R, R, true);
     else drawBadge(m, sx, sy + 0.05 * R, 0.43 * R, R);
   }
   if (civil.length) {
     const c = civil[0];
-    if (drawFigures(c, sx + 0.45 * R, sy + 0.55 * R, R, 0.8)) drawBadge(c, sx + 0.72 * R, sy + 0.05 * R, 0.17 * R, R);
+    if (drawFigures(c, sx + 0.45 * R, sy + 0.55 * R, R, 0.8)) drawBadge(c, sx + 0.72 * R, sy + 0.05 * R, 0.17 * R, R, true);
     else drawBadge(c, sx + 0.45 * R, sy + 0.42 * R, 0.27 * R, R);
   }
 }
-function drawBadge(u, x, y, r, R) {
+function drawBadge(u, x, y, r, R, flag = false) {
   const owner = OWNER[u.owner] || "#999";
   const alien = u.owner === "aliens";
+  if (flag) {  // Civ's unit flag: a disc in the owner's colour, a dark rim, a white class icon
+    const col = alien ? "#b8322a" : owner;
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.arc(x + 1, y + 1.5, r * 1.08, 0, Math.PI * 2); ctx.fill();
+    const fg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    fg.addColorStop(0, shade(col, 0.3)); fg.addColorStop(1, shade(col, -0.35));
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(12,14,18,0.9)"; ctx.lineWidth = Math.max(1.5, r * 0.14); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,245,215,0.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r * 0.84, 0, Math.PI * 2); ctx.stroke();
+    drawUnitIcon(u, x, y, r * 0.6, "#ffffff");
+  } else {
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x + 1, y + r * 0.95, r * 0.9, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
   g.addColorStop(0, alien ? "#4c1611" : "#2c3a48"); g.addColorStop(1, alien ? "#1f0705" : "#10171e");
@@ -1657,6 +1690,7 @@ function drawBadge(u, x, y, r, R) {
   ctx.strokeStyle = owner; ctx.lineWidth = Math.max(2, r * 0.18); ctx.stroke();
   if (alien) { ctx.strokeStyle = "rgba(255,170,120,0.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r + 1.5, 0, Math.PI * 2); ctx.stroke(); }
   drawUnitIcon(u, x, y, r * 0.62, alien ? "#ffb3a6" : shade(owner, 0.35));
+  }
   if (u.count > 1) {
     ctx.fillStyle = "#f2d38a"; ctx.beginPath(); ctx.arc(x + r * 0.82, y - r * 0.82, r * 0.38, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#1a1408"; ctx.font = `700 ${Math.max(7, Math.round(r * 0.45))}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("2", x + r * 0.82, y - r * 0.8);
