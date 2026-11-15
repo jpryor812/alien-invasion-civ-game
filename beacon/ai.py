@@ -76,7 +76,9 @@ class AIPlayer(Bot):
     # -- proposing ---------------------------------------------------------------------------
 
     def others(self) -> list[str]:
-        return [p for p in self.state.player_ids() if p != self.pid]
+        """Players this AI has met (diplomacy needs contact, designer 2026-11-14)."""
+        met = self.state.players[self.pid].met
+        return [p for p in self.state.player_ids() if p != self.pid and p in met]
 
     def propose(self, to: str, give: dict, take: dict, duration: int = 0) -> bool:
         duration = duration or self.cfg.t("trade.deals.durations")[0]
@@ -102,6 +104,8 @@ class AIPlayer(Bot):
         if not interval or self.state.turn % interval:
             return
         others = self.others()
+        if not others:
+            return  # nobody met yet
         partner = others[(self.state.turn // interval) % len(others)]
         me, them = self.view.player, self.state.players[partner]
         mine = [t for t in me.techs if t in tech.available(self.cfg, them)]
@@ -139,6 +143,8 @@ class AIPlayer(Bot):
             held = sum(1 for c in self.state.cities if c.owner == pid and c.status == ACTIVE)
             return (0 if p.fallen else 1, held, pid)
 
+        if not self.others():
+            return  # nobody met yet
         target = min(self.others(), key=need)
         standing, held, _ = need(target)
         if standing == 1 and held * 100 > mine * self.cfg.ai("aid.need_pct"):

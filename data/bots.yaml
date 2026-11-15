@@ -10,6 +10,7 @@ production:
   min_military: 4
   engineers: 2
   recon: 2
+  scout_boats: 1
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
                       research_lab, defence_perimeter, vertical_farm, financial_center, hospital,
                       radio_tower, fusion_plant]

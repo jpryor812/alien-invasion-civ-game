@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from beacon import cities, citizens, fog, hexgrid, improvements, mapgen, network, rng
 from beacon.config import Config
-from beacon.state import ACTIVE, ALIENS, OVERRUN, CityMemory, GameState, Player
+from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, Player
 from beacon.units import place_unit
 
 
@@ -81,14 +81,8 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
                     raise ValueError(f"no room for {unit_type} in {city.name}")
     state.aliens.start_cities = sum(1 for c in state.cities if c.status == OVERRUN)
     assign_characters(cfg, state)
-    # Modern nations are in contact: each knows where the others' cities are (docs/SPEC_M6.md).
-    for pid in state.player_ids():
-        player = state.players[pid]
-        for city in state.cities:
-            if city.status == ACTIVE and str(city.id) not in player.known_cities:
-                player.known_cities[str(city.id)] = CityMemory(
-                    status=city.status, owner=city.owner, pop=city.pop, turn_seen=0
-                )
+    # Nobody knows the other continents at the start: they meet by exploring (beacon/contact.py,
+    # designer 2026-11-14; replaces the M6 rule that everyone knew everyone's cities).
     # Only improved tiles can be worked (designer 2026-11-14): known cities start with farmland.
     improved = cfg.t("cities.start_improved")
     for city in state.cities:

@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: capital starts with 5 citizens; one hive guard per alien city (designer).
-GOLDEN_MAP_SEED_1 = "35e6c2974decbb97bad22e2ad75a78baee541c39f63358581d77d5162114ef77"
+# Last change: continent positions shuffled per game (designer).
+GOLDEN_MAP_SEED_1 = "44599c55bc91d93163428eb76af4d0e34a8201296aee323fc130839d0f390cb8"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
@@ -155,15 +155,14 @@ def test_view_hides_unexplored_tiles_and_unseen_units(cfg, world):
 
 
 def test_lost_cities_unknown_until_seen(cfg, world):
-    """Players know every active city from the start (nations in contact, M6) but lost cities on
-    other continents only once seen."""
+    """At the start a player knows only its own continent's cities it holds; other continents are
+    unknown until met (designer 2026-11-14; in M6 everyone knew every active city)."""
     pid = "asia"
     player = world.players[pid]
+    assert player.met == []
     for city in world.cities:
         known = str(city.id) in player.known_cities
-        if city.status == ACTIVE:
-            assert known
-        elif city.continent != pid:
+        if city.continent != pid:
             assert not known
 
 

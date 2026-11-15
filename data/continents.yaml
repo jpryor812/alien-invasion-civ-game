@@ -5,9 +5,9 @@
 #
 # All coordinates are whole degrees, [longitude, latitude] (east and north positive).
 # geo:
-#   box: [col0, row0, col1, row1], the continent's rectangle of the map (half-open; boxes do not
-#     overlap), laid out like a world map: Americas left, Europe and Africa centre, Asia and
-#     Oceania right.
+#   size: [cols, rows] of the continent's box. Where the boxes sit is shuffled every game
+#     (designer 2026-11-14): two rows of three in seeded order with seeded ocean gaps, so knowing
+#     a friend's continent does not tell you where it is.
 #   x_scale_pct: cosine of the mid-latitude in percent, so shapes are not stretched east-west.
 #   size_pct: fitted size in percent of the largest that fits the box (evens out land).
 #   outline: the main landmass. islands: other landmasses, each joined to the main one by the
@@ -27,7 +27,7 @@ continents:
     order: 0
     resources: {wheat: 15, cattle: 15, fish: 10, timber: 10, gold_ore: 5, coffee: 3, oil: 12, aluminum: 8, uranium: 5, rare_earths: 4}
     geo:
-      box: [0, 0, 66, 54]
+      size: [66, 54]
       x_scale_pct: 66
       size_pct: 100
       outline: [[-166, 66], [-162, 70], [-156, 71], [-148, 70], [-141, 70], [-130, 70],
@@ -85,7 +85,7 @@ continents:
     order: 1
     resources: {wheat: 8, cattle: 14, fish: 10, timber: 12, gold_ore: 8, coffee: 12, oil: 10, aluminum: 6, uranium: 3, rare_earths: 5}
     geo:
-      box: [6, 54, 66, 116]
+      size: [60, 62]
       x_scale_pct: 94
       size_pct: 100
       outline: [[-77, 8], [-76, 10], [-75, 11], [-72, 12], [-71, 11], [-68, 11], [-64, 11],
@@ -133,7 +133,7 @@ continents:
     order: 2
     resources: {wheat: 16, cattle: 14, fish: 12, timber: 10, gold_ore: 4, coffee: 0, oil: 6, aluminum: 8, uranium: 6, rare_earths: 3}
     geo:
-      box: [66, 0, 116, 48]
+      size: [50, 48]
       x_scale_pct: 60
       size_pct: 100
       outline: [[-6, 36], [-2, 37], [0, 39], [0, 40], [1, 41], [3, 42], [3, 43], [5, 43], [8, 44],
@@ -198,7 +198,7 @@ continents:
     order: 3
     resources: {wheat: 14, cattle: 8, fish: 12, timber: 8, gold_ore: 5, coffee: 4, oil: 14, aluminum: 6, uranium: 5, rare_earths: 10}
     geo:
-      box: [116, 0, 192, 58]
+      size: [76, 58]
       x_scale_pct: 70
       size_pct: 79
       outline: [[26, 40], [27, 38], [28, 37], [31, 36], [33, 36], [36, 37], [36, 35], [35, 33],
@@ -269,7 +269,7 @@ continents:
       - {name: Ulaanbaatar, lon: 107, lat: 48}
       - {name: Novosibirsk, lon: 83, lat: 55}
       - {name: Yakutsk, lon: 130, lat: 62}
-      - {name: Vladivostok, lon: 132, lat: 43}
+      - {name: Khabarovsk, lon: 135, lat: 48}
 
   africa:
     status: placeholder
@@ -278,7 +278,7 @@ continents:
     order: 4
     resources: {wheat: 6, cattle: 12, fish: 10, timber: 8, gold_ore: 12, coffee: 10, oil: 12, aluminum: 6, uranium: 8, rare_earths: 8}
     geo:
-      box: [66, 48, 122, 116]
+      size: [56, 68]
       x_scale_pct: 98
       size_pct: 75
       outline: [[-6, 36], [-2, 35], [0, 36], [3, 37], [8, 37], [10, 37], [11, 37], [10, 36],
@@ -336,7 +336,7 @@ continents:
     order: 5
     resources: {wheat: 10, cattle: 14, fish: 16, timber: 6, gold_ore: 10, coffee: 4, oil: 6, aluminum: 10, uranium: 8, rare_earths: 6}
     geo:
-      box: [122, 58, 192, 116]
+      size: [70, 58]
       x_scale_pct: 90
       size_pct: 100
       outline: [[114, -22], [116, -21], [119, -20], [121, -19], [122, -18], [124, -16],
@@ -378,5 +378,5 @@ continents:
       - {name: Broome, lon: 122, lat: -18}
       - {name: Kalgoorlie, lon: 121, lat: -31}
       - {name: Mount Isa, lon: 139, lat: -21}
-      - {name: Port Hedland, lon: 119, lat: -20}
+      - {name: Exmouth, lon: 114, lat: -22}
       - {name: Jayapura, lon: 141, lat: -3}

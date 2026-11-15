@@ -251,3 +251,26 @@ button.link:hover { color: var(--brass-hi); background: none; }
 .cdmg { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; }
 
 .autotag { font: 500 9px var(--body, sans-serif); padding: 0 4px; border-radius: 6px; background: #2a3846; color: var(--muted); vertical-align: middle; }
+
+table.overview { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.overview th { text-align: left; font: 500 11px var(--heading); color: var(--brass); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.overview td { padding: 5px 6px; border-bottom: 1px solid #1d2935; }
+table.overview tr.clickable:hover td { background: #1b2733; cursor: pointer; }
+table.overview tr.total td { border-top: 2px solid var(--line); font-weight: 600; }
+table.overview td.y-food b { color: var(--food); } table.overview td.y-production b { color: var(--production); }
+table.overview td.y-science b { color: var(--science); } table.overview td.y-gold b { color: var(--gold); } table.overview td.y-beacon b { color: var(--beacon); }
+th.clickable { cursor: pointer; }
+.bar.small { height: 4px; width: 60px; display: inline-block; vertical-align: middle; margin-right: 4px; }
+#log li.clickable, .sumgroup li.clickable, .logbody li.clickable { cursor: pointer; }
+#log li.clickable:hover, .sumgroup li.clickable:hover, .logbody li.clickable:hover { color: var(--brass-hi); }
+.sumgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.sumgroup { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; background: #121b24; }
+.sumgroup h3 { margin-top: 2px; }
+.sumgroup ul, .logbody ul { margin: 0; padding-left: 16px; font-size: 13px; }
+.logbody { max-height: 60vh; overflow-y: auto; }
+/* the nav grew (Cities, Units, Population): keep the bar on one line on laptop widths */
+#topbar { gap: 12px; }
+#topbar nav button { padding: 3px 8px; font-size: 12px; }
+#topbar .stat { font-size: 13px; }
+@media (max-width: 1500px) { #topbar .brand { display: none; } #topbar nav button { padding: 3px 6px; } }
+@media (max-width: 1250px) { #threat { display: none; } #topbar { gap: 8px; } }

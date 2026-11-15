@@ -50,6 +50,8 @@ class App:
             "techs": s.techs,
             "council": s.council,
             "population": s.population,
+            "cities": s.cities_overview,
+            "units": s.units_overview,
             "diplomacy": s.diplomacy,
             "projects": s.projects,
             "scores": s.scores,

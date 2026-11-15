@@ -65,6 +65,8 @@
       <div id="threat" class="stat" title="The mothership and the alien cities you know of"></div>
       <nav>
         <button data-screen="techs" title="Tech tree (T)">Tech</button>
+        <button data-screen="cities" title="All your cities on one page">Cities</button>
+        <button data-screen="units" title="All your units on one page">Units</button>
         <button data-screen="population" title="Every city's citizens: who works tiles, who sits on the council">Population</button>
         <button data-screen="council" title="Recruits and councils (C)">Council</button>
         <button data-screen="diplomacy" title="Deals, aid and alliances (D)">Diplomacy</button>
@@ -80,7 +82,7 @@
       <aside id="right" class="panel">
         <h3>Needs attention</h3>
         <ul id="pending"></ul>
-        <h3>This turn</h3>
+        <h3>This turn <button class="small" id="open-log" title="Every event of the last turns">Log</button></h3>
         <ul id="log"></ul>
       </aside>
       <div id="tooltip" class="hidden"></div>

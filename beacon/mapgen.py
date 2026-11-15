@@ -42,6 +42,44 @@ _HALF = 1000
 _ROW = 1732
 
 
+def layout(cfg: Config, seed: int, continents: list[str]) -> dict[str, list[int]]:
+    """Where each continent's box sits this game (designer 2026-11-14): a seeded shuffle into two
+    rows of three, each row in seeded order with seeded ocean gaps and a seeded vertical offset.
+    Returns cid -> [col0, row0, col1, row1]."""
+    r = rng.stream(seed, "map", "layout")
+    width, height = cfg.t("map.width"), cfg.t("map.height")
+    gap = cfg.t("map.layout_gap_min")
+    size = {c: cfg.continents[c]["geo"]["size"] for c in continents}
+    order = sorted(continents)
+    for _ in range(200):
+        r.shuffle(order)
+        rows = [order[: (len(order) + 1) // 2], order[(len(order) + 1) // 2 :]]
+        fits = all(sum(size[c][0] for c in row) + gap * (len(row) - 1) <= width for row in rows)
+        if fits and sum(max((size[c][1] for c in row), default=0) for row in rows) <= height:
+            break
+    else:
+        raise ValueError("continents do not fit the map; widen map.width or map.height")
+    boxes: dict[str, list[int]] = {}
+    top = 0
+    band_spare = height - sum(max(size[c][1] for c in row) for row in rows if row)
+    for row in rows:
+        if not row:
+            continue
+        band = max(size[c][1] for c in row) + band_spare // len(rows)
+        spare = width - sum(size[c][0] for c in row) - gap * (len(row) - 1)
+        # split the spare columns into len(row)+1 seeded pieces (left edge, gaps, right edge)
+        cuts = sorted(r.randint(0, spare) for _ in range(len(row)))
+        pieces = [b - a for a, b in zip([0, *cuts], [*cuts, spare], strict=True)]
+        x = pieces[0]
+        for k, c in enumerate(row):
+            w, h = size[c]
+            y = top + r.randint(0, band - h)
+            boxes[c] = [x, y, x + w, y + h]
+            x += w + gap + pieces[k + 1]
+        top += band
+    return boxes
+
+
 def _region(cfg: Config, box: list[int]) -> tuple[int, int, int, int]:
     """Interior bounds (col0, col1, row0, row1), half-open, of a continent's box."""
     col0, row0, col1, row1 = box
@@ -59,7 +97,7 @@ def _centre(i: int, width: int) -> tuple[int, int]:
 class _Projection:
     """Fits a continent's lon/lat shapes into its region, keeping proportions."""
 
-    def __init__(self, cfg: Config, cid: str):
+    def __init__(self, cfg: Config, cid: str, box: list[int]):
         geo = cfg.continents[cid]["geo"]
         self.xs = geo["x_scale_pct"]
         pts = [p for shape in [geo["outline"], *geo["islands"]] for p in shape]
@@ -68,13 +106,14 @@ class _Projection:
         y0 = min(p[1] for p in pts) * 100
         self.y1 = max(p[1] for p in pts) * 100
         span_x, span_y = max(1, x1 - self.x0), max(1, self.y1 - y0)
-        col0, col1, row0, row1 = _region(cfg, geo["box"])
+        col0, col1, row0, row1 = _region(cfg, box)
         room_x, room_y = (col1 - col0 - 1) * _COL, (row1 - row0 - 1) * _ROW
         if room_x * span_y <= room_y * span_x:
             num, den = room_x, span_x
         else:
             num, den = room_y, span_y
         self.num, self.den = num * geo["size_pct"], den * 100
+        self.box = box
         self.ox = col0 * _COL + (room_x - span_x * self.num // self.den) // 2
         self.oy = row0 * _ROW + (room_y - span_y * self.num // self.den) // 2
 
@@ -162,7 +201,7 @@ def _causeway(w: World, island: list[int], main: set[int], allowed: set[int]) ->
 def _draw_land(w: World, cid: str, proj: _Projection) -> list[int]:
     cfg = w.cfg
     geo = cfg.continents[cid]["geo"]
-    col0, col1, row0, row1 = _region(cfg, geo["box"])
+    col0, col1, row0, row1 = _region(cfg, proj.box)
     area = [hexgrid.index(c, r, w.width) for r in range(row0, row1) for c in range(col0, col1)]
     shapes = [proj.shape(geo["outline"]), *(proj.shape(p) for p in geo["islands"])]
     lakes = [proj.shape(p) for p in geo["lakes"]]
@@ -396,9 +435,10 @@ def generate(cfg: Config, seed: int, continents: list[str]) -> tuple[list[Tile],
     w = World(cfg, seed)
     ordered = sorted(continents, key=lambda c: cfg.continents[c]["order"])
     lands, sites = {}, {}
+    boxes = layout(cfg, seed, ordered)
     for cid in ordered:
         r = rng.stream(seed, "map", cid)
-        proj = _Projection(cfg, cid)
+        proj = _Projection(cfg, cid, boxes[cid])
         land = _draw_land(w, cid, proj)
         _paint_biomes(w, cid, land, proj, r)
         sites[cid] = _city_sites(w, cid, land, proj)

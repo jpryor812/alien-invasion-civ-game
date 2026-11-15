@@ -39,13 +39,15 @@ EU, NA = "europe", "north_america"
 
 def arena(cfg) -> GameState:
     tiles = [Tile(terrain="grassland", continent=EU) for _ in range(W * H)]
+    players = new_players(cfg, [EU, NA])
+    players[EU].met, players[NA].met = [NA], [EU]  # the arena's two players have met
     return GameState(
         seed=5,
         config_digest=cfg.digest,
         width=W,
         height=H,
         tiles=tiles,
-        players=new_players(cfg, [EU, NA]),
+        players=players,
     )
 
 

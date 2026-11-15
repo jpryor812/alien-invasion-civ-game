@@ -25,7 +25,7 @@ const pretty = (id) => String(id).replace(/_/g, " ").replace(/\b\w/g, (c) => c.t
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const code = (type) => {
   const special = { infantry: "INF", artillery: "ART", recon_team: "RCN", engineers: "ENG", restoration_team: "RST",
-    tank: "TNK", mech_infantry: "MEC", trade_convoy: "CVY", destroyer: "DD", city_artillery: "GUN", home_guard: "GRD" };
+    tank: "TNK", mech_infantry: "MEC", trade_convoy: "CVY", destroyer: "DD", scout_boat: "BOT", city_artillery: "GUN", home_guard: "GRD" };
   if (special[type]) return special[type];
   const words = type.replace(/^alien_/, "").split("_");
   return (words.length > 1 ? words.map((w) => w[0]).join("") : words[0].slice(0, 3)).toUpperCase().slice(0, 3);
@@ -323,6 +323,11 @@ function drawFog(visible, R, t) {
 async function refresh(keepSelection = true) {
   const v = await api("/api/view");
   const newTurn = S.view && v.turn !== S.view.turn;
+  // keep a log of past turns' events in this browser session (the server sends the latest)
+  S.history = S.history || [];
+  if (newTurn || !S.history.length) S.history.push({ turn: v.turn, events: v.events });
+  else S.history[S.history.length - 1].events = v.events;
+  if (S.history.length > 40) S.history.shift();
   S.view = v;
   S.explored = new Set(v.explored);
   S.tilesByIndex = new Map(Object.entries(v.tiles).map(([k, t]) => [Number(k), t]));
@@ -455,6 +460,9 @@ function draw(t = performance.now()) {
     if (reach.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.stroke(); }
     if (attackable.has(i) || bombard.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(220,60,50,0.28)"; ctx.fill(); ctx.strokeStyle = "#ff6b5a"; ctx.lineWidth = 2.2; ctx.stroke(); }
     if (cityTiles.has(i)) drawCityTile(cityTiles.get(i), i, sx, sy, R);
+    if (S.flash && S.flash.tile === i && performance.now() < S.flash.until) {
+      hexPath(ctx, sx, sy, R - 1); ctx.strokeStyle = `rgba(242,211,138,${0.5 + 0.5 * Math.sin(performance.now() / 120)})`; ctx.lineWidth = 4; ctx.stroke(); S.dirty = true;
+    }
     if (S.hover === i) { hexPath(ctx, sx, sy, R - 1); ctx.strokeStyle = "rgba(255,244,214,0.85)"; ctx.lineWidth = 1.6; ctx.stroke(); }
   }
   // 7. cities, units, then banners on top
@@ -728,7 +736,12 @@ function renderChrome() {
   if (!v.pending.length) { const li = document.createElement("li"); li.className = "muted"; li.textContent = "Nothing. Ready for the next turn."; ul.appendChild(li); }
   const log = $("log");
   log.innerHTML = "";
-  for (const ev of v.events.slice(-40).reverse()) { const li = document.createElement("li"); li.textContent = describeEvent(ev); log.appendChild(li); }
+  for (const ev of v.events.slice(-40).reverse()) {
+    const li = document.createElement("li"); li.textContent = describeEvent(ev);
+    const t = eventTile(ev);
+    if (t != null) { li.classList.add("clickable"); li.title = "Show on the map"; li.onclick = () => goToEvent(ev); }
+    log.appendChild(li);
+  }
   const btn = $("endturn");
   const next = nextAction();
   btn.textContent = v.outcome ? pretty(v.outcome) : next ? ACTION_LABEL[next.kind] : "Next turn";
@@ -775,6 +788,11 @@ function describeEvent(e) {
     turn_started: () => `Turn ${e.turn} begins (${e.year}).`,
     city_grew: () => `${cityName(e.city)} grew to ${e.pop}.`,
     citizen_born: () => `${e.name} was born in ${cityName(e.city)} (${statText(e.stats)}${e.traits.length ? `, ${e.traits.map(pretty).join(", ")}` : ""}).`,
+    contact_made: () => e.how === "distress" ? `${pretty(e.other === S.view.me ? e.player : e.other)} has fallen: its position is now known to all.` : `First contact: ${pretty(e.other === S.view.me ? e.player : e.other)}! You can now trade and ally.`,
+    alien_tech: () => `The aliens developed ${pretty(e.tech)}.`,
+    pillaged: () => `Aliens pillaged a ${pretty(e.lost)}.`,
+    turret_destroyed: () => "Aliens destroyed one of your turrets.",
+    civilians_captured: () => "Aliens captured civilians.",
     citizen_grew_up: () => `${e.name} of ${cityName(e.city)} has grown up and can work.`,
     citizen_job: () => "Citizen job changed.",
     unit_promoted: () => `${unitLabel(e.unit)} promoted: ${promoName(e.promotion)}.`,
@@ -962,6 +980,7 @@ async function mainButton(force = false) {
   try { await api("/api/end_turn", {}); } catch (err) { toast(err.message); }
   S.busy = false;
   await refresh(true);
+  if (!summaryOff() && !S.view.outcome) openScreen("summary");
 }
 $("endturn").onclick = (e) => mainButton(e.shiftKey);
 
@@ -1173,6 +1192,10 @@ async function openScreen(name, arg = null) {
     if (name === "techs") body.innerHTML = techScreen(await api("/api/techs"));
     else if (name === "council") { S.councilData = await api("/api/council"); body.innerHTML = councilScreen(S.councilData); }
     else if (name === "population") body.innerHTML = populationScreen(await api("/api/population"), arg);
+    else if (name === "cities") body.innerHTML = citiesScreen(await api("/api/cities"));
+    else if (name === "units") body.innerHTML = unitsScreen(await api("/api/units"), arg);
+    else if (name === "summary") body.innerHTML = summaryScreen();
+    else if (name === "log") body.innerHTML = logScreen();
     else if (name === "diplomacy") body.innerHTML = diplomacyScreen(await api("/api/diplomacy"));
     else if (name === "projects") body.innerHTML = projectsScreen(await api("/api/projects"));
     else if (name === "scores") body.innerHTML = scoresScreen(await api("/api/scores"));
@@ -1330,7 +1353,8 @@ function termsText(t) {
   return parts.join(", ") || "nothing";
 }
 function diplomacyScreen(d) {
-  const rows = d.players.map((p) => `<tr>
+  const unmet = d.players.filter((p) => !p.met);
+  const rows = d.players.filter((p) => p.met).map((p) => `<tr>
       <td><b style="color:${OWNER[p.id]}">${esc(p.name)}</b><br><span class="muted">${pretty(p.character || "")}</span></td>
       <td>${p.cities} cities${p.fallen ? ' · <span class="bad">fallen</span>' : ""}${p.allied ? ' · <span class="good">allied</span>' : ""}</td>
       <td><div class="actions">
@@ -1343,7 +1367,8 @@ function diplomacyScreen(d) {
   const active = d.active.map((x) => `<div class="row muted">${pretty(x.proposer)} ↔ ${pretty(x.receiver)}: ${termsText(x.give)} for ${termsText(x.take)} (until turn ${x.ends_turn})</div>`).join("");
   return `<h2>Diplomacy</h2>
     ${incoming ? `<h3>Proposals to you</h3>${incoming}` : ""}
-    <table><tr><th>Continent</th><th>Status</th><th>Actions</th></tr>${rows}</table>
+    ${rows ? `<table><tr><th>Continent</th><th>Status</th><th>Actions</th></tr>${rows}</table>` : '<p>You have not met any other continent yet.</p>'}
+    ${unmet.length ? `<h3>Not yet met</h3><p class="muted">${unmet.map((p) => esc(p.name)).join(", ")}: somewhere across the ocean, and the map is different every game. Build a <b>scout boat</b> in a coastal city and sail out to find them; once you sight their land or units you can trade, ally, give aid and ship troops.</p>` : ""}
     ${active ? `<h3>Active deals</h3>${active}` : ""}
     <p class="muted">Nobody fights anybody: gifts count toward your MVP score. Techs and recruits travel by sea from your ports.</p>`;
 }
@@ -1412,6 +1437,24 @@ function wireScreen(name) {
   const body = $("modal-body");
   const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => el.onclick = () => fn(el));
   if (name === "techs") on(".tech.available", (el) => act({ kind: "set_research", tech: el.dataset.tech }, null).then(closeModal));
+  if (name === "cities") {
+    body.querySelectorAll("[data-gocity]").forEach((el) => el.onclick = () => { closeModal(); selectCity(Number(el.dataset.gocity), true); });
+    body.querySelectorAll("[data-sort]").forEach((el) => el.onclick = () => { S.citySort = el.dataset.sort; openScreen("cities"); });
+  }
+  if (name === "units") {
+    body.querySelectorAll("[data-gounit]").forEach((el) => el.onclick = () => {
+      closeModal(); const id = Number(el.dataset.gounit), tile = Number(el.dataset.tile);
+      const u = S.view.units.find((x) => x.id === id);
+      if (u && S.view.unit_types[u.type]?.fixed) { const c = S.citiesByTile.get(tile); if (c) return selectCity(c.id, true); }
+      centerOnTile(tile); selectUnit(id);
+    });
+    body.querySelectorAll("[data-ufilter]").forEach((el) => el.onclick = () => openScreen("units", el.dataset.ufilter));
+  }
+  if (name === "summary" || name === "log") {
+    body.querySelectorAll("[data-ev]").forEach((el) => el.onclick = () => { closeModal(); goToEvent(S.evIndex[Number(el.dataset.ev)]); });
+    if ($("sum-off")) $("sum-off").onchange = (e) => { try { localStorage.setItem("beacon.summary.off", e.target.checked ? "1" : "0"); } catch (err) { /* ignore */ } };
+    if ($("sum-log")) $("sum-log").onclick = () => openScreen("log");
+  }
   if (name === "population") {
     body.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => act({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }, null).then(() => openScreen("population", S.screenArg)));
     if ($("pop-all")) $("pop-all").onclick = () => openScreen("population");
@@ -1654,3 +1697,102 @@ function drawCityTile(w, i, sx, sy, R) {
   if (worker && S.cam.zoom > 0.8) { ctx.font = `600 ${Math.max(9, Math.round(R * 0.2))}px Roboto, sans-serif`; ctx.fillStyle = "#e9ffe6"; ctx.fillText(worker.name, sx, sy - R * 0.78); }
 }
 function toastJob() { toast("Assigned the best citizen to that tile."); }
+
+// -- information screens (designer 2026-11-14): cities, units, turn summary, log -------------
+
+function summaryOff() { try { return localStorage.getItem("beacon.summary.off") === "1"; } catch (e) { return false; } }
+function eventTile(e) {
+  if (e.tile != null) return e.tile;
+  if (e.city != null && S.view.cities[e.city]) return S.view.cities[e.city].tile;
+  if (e.target != null && typeof e.target === "number") return e.target;
+  if (e.to != null) return e.to;
+  const u = e.unit != null && S.view.units.find((x) => x.id === e.unit);
+  return u ? u.tile : null;
+}
+function goToEvent(e) {
+  const t = eventTile(e);
+  if (t == null) return;
+  centerOnTile(t);
+  const c = S.citiesByTile.get(t);
+  if (c && c.owner === S.view.me) selectCity(c.id);
+  S.flash = { tile: t, until: performance.now() + 1600 }; S.dirty = true;
+}
+const YIELD_ICON = { food: "🌾", production: "⚙", science: "⚗", gold: "●", beacon: "◈" };
+function citiesScreen(d) {
+  const key = S.citySort || "name";
+  const val = (c) => key === "name" ? c.name : key === "pop" ? -c.pop : -(c.yields[key] ?? 0);
+  const rows = [...d.cities].sort((a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0)).map((c) => {
+    const notes = [!c.connected && '<span class="bad">not connected</span>', c.threatened && '<span class="bad">aliens near</span>',
+      c.idle && `<span class="bad">${c.idle} idle</span>`, c.children && `${c.children} growing up`, c.hp < c.max_hp && `HP ${c.hp}/${c.max_hp}`].filter(Boolean).join(" · ");
+    return `<tr class="clickable" data-gocity="${c.id}">
+      <td><b>${c.capital ? "★ " : ""}${esc(c.name)}</b></td>
+      <td>${c.pop}<span class="muted small">${c.grows_in != null ? ` (+1 in ${c.grows_in})` : c.food < 0 ? ' <span class="bad">starving</span>' : ""}</span></td>
+      ${YIELD_KEYS.map((k) => `<td class="y-${k}"><b>${k === "food" ? (c.food >= 0 ? "+" : "") + c.food : c.yields[k]}</b></td>`).join("")}
+      <td>${c.building ? `${esc(pretty(c.building.split(":")[1]))} <span class="muted">${c.turns != null ? `${c.turns}t` : ""}</span>` : '<span class="bad">nothing</span>'}</td>
+      <td class="small">${notes}</td></tr>`;
+  }).join("");
+  const head = (k, label) => `<th class="clickable" data-sort="${k}" title="Sort">${label}${key === k ? " ▾" : ""}</th>`;
+  const tot = (k) => d.cities.reduce((a, c) => a + (k === "food" ? c.food : c.yields[k]), 0);
+  return `<h2>Cities</h2><p class="muted">Click a city to go to it; click a heading to sort. Food is the surplus per turn.</p>
+    <table class="overview"><tr>${head("name", "City")}${head("pop", "Pop")}${YIELD_KEYS.map((k) => head(k, `${YIELD_ICON[k]} ${pretty(k)}`)).join("")}<th>Building</th><th>Notes</th></tr>${rows}
+    <tr class="total"><td>Total</td><td>${d.cities.reduce((a, c) => a + c.pop, 0)}</td>${YIELD_KEYS.map((k) => `<td class="y-${k}"><b>${tot(k)}</b></td>`).join("")}<td></td><td></td></tr></table>`;
+}
+function unitsScreen(d, filter) {
+  const f = filter || "all";
+  const keep = (u) => f === "all" || (f === "military" && ["melee", "ranged"].includes(u.role)) || (f === "civilian" && ["civilian", "recon"].includes(u.role))
+    || (f === "defence" && u.role === "defence") || (f === "orders" && u.doing === "needs orders") || (f === "promote" && u.due > 0) || (f === "abroad" && u.abroad);
+  const list = d.units.filter(keep);
+  const btn = (k, label, n) => `<button class="small ${f === k ? "primary" : ""}" data-ufilter="${k}">${label} (${n})</button>`;
+  const count = (k) => d.units.filter((u) => k === "all" || (k === "military" && ["melee", "ranged"].includes(u.role)) || (k === "civilian" && ["civilian", "recon"].includes(u.role)) || (k === "defence" && u.role === "defence") || (k === "orders" && u.doing === "needs orders") || (k === "promote" && u.due > 0) || (k === "abroad" && u.abroad)).length;
+  const rows = list.map((u) => `<tr class="clickable" data-gounit="${u.id}" data-tile="${u.tile}">
+      <td><b>${esc(pretty(u.type))}</b>${u.count > 1 ? " ×2" : ""}${u.promotions.filter((p) => p !== "gold_upgrade").length ? ` <span class="good">${"★".repeat(Math.min(3, u.promotions.length))}</span>` : ""}</td>
+      <td>${esc(u.where)}${u.abroad ? ' <span class="muted">(abroad)</span>' : ""}</td>
+      <td><div class="bar small"><i style="width:${Math.round(100 * u.hp / u.max_hp)}%"></i></div><span class="small">${u.hp}/${u.max_hp}</span></td>
+      <td>${u.role === "defence" ? "—" : `${u.moves}/${u.full_moves}`}</td>
+      <td>${u.role === "defence" || u.role === "civilian" ? "—" : `${u.xp}${u.due ? ' <span class="good">promote!</span>' : ""}`}</td>
+      <td class="${u.doing === "needs orders" ? "bad" : "muted"}">${esc(u.doing)}</td></tr>`).join("");
+  return `<h2>Units</h2>
+    <div class="row">${btn("all", "All", count("all"))}${btn("military", "Military", count("military"))}${btn("civilian", "Scouts & civilians", count("civilian"))}${btn("defence", "City defences", count("defence"))}${btn("orders", "Need orders", count("orders"))}${btn("promote", "Promotion due", count("promote"))}${btn("abroad", "Abroad", count("abroad"))}</div>
+    <table class="overview"><tr><th>Unit</th><th>Where</th><th>HP</th><th>Moves</th><th>XP</th><th>Doing</th></tr>${rows || '<tr><td colspan="6" class="muted">None.</td></tr>'}</table>`;
+}
+// Group a turn's events for the summary and the log.
+const SUMMARY_GROUPS = [
+  ["Cities", ["citizen_born", "citizen_grew_up", "city_grew", "city_starved", "building_completed", "unit_completed", "production_stalled", "item_dropped"]],
+  ["Research", ["tech_learned", "alien_tech"]],
+  ["War", ["city_liberated", "city_overrun", "unit_destroyed", "civilians_captured", "pillaged", "turret_destroyed", "mothership_strike", "city_attack", "turret_fired"]],
+  ["World", ["contact_made", "recruit_arrived", "recruit_betrayed", "recruit_died", "deal_accepted", "shipment_arrived", "unit_landed", "continent_fallen", "continent_revived", "barrage_fired", "reinforcements_stopped"]],
+];
+function eventItems(events) {
+  S.evIndex = S.evIndex || [];
+  return (e) => { S.evIndex.push(e); const i = S.evIndex.length - 1;
+    return `<li class="${eventTile(e) != null ? "clickable" : ""}" data-ev="${i}">${esc(describeEvent(e))}</li>`; };
+}
+function summaryBody(events) {
+  S.evIndex = [];
+  const item = eventItems(events);
+  const used = new Set();
+  const groups = SUMMARY_GROUPS.map(([title, kinds]) => {
+    const evs = events.filter((e) => kinds.includes(e.kind));
+    evs.forEach((e) => used.add(e));
+    if (!evs.length) return "";
+    return `<div class="sumgroup"><h3>${title}</h3><ul>${evs.slice(0, 25).map(item).join("")}${evs.length > 25 ? `<li class="muted">…and ${evs.length - 25} more</li>` : ""}</ul></div>`;
+  }).join("");
+  const attacks = events.filter((e) => e.kind === "attack");
+  const fights = attacks.length ? `<div class="sumgroup"><h3>Battles</h3><ul><li>${attacks.length} attacks this turn; ${events.filter((e) => e.kind === "unit_destroyed" && e.owner === S.view.me).length} of your units lost.</li></ul></div>` : "";
+  return groups + fights || '<p class="muted">A quiet turn.</p>';
+}
+function summaryScreen() {
+  const v = S.view;
+  return `<h2>Turn ${v.turn} · ${v.year}</h2>
+    <p class="muted">What happened since your last turn. Click an entry to see it on the map.</p>
+    <div class="sumgrid">${summaryBody(v.events)}</div>
+    <div class="row"><label><input type="checkbox" id="sum-off" ${summaryOff() ? "checked" : ""}> Don't show this at the start of each turn</label>
+    <button class="small" id="sum-log">Full log</button></div>`;
+}
+function logScreen() {
+  S.evIndex = [];
+  const item = eventItems();
+  const turns = [...(S.history || [])].reverse().map((h) => `<h3>Turn ${h.turn}</h3><ul>${h.events.filter((e) => e.kind !== "turn_started").map(item).join("") || '<li class="muted">Nothing.</li>'}</ul>`).join("");
+  return `<h2>Log</h2><p class="muted">Events of the last turns this session (newest first). Click one to see it on the map.</p><div class="logbody">${turns}</div>`;
+}
+$("open-log").onclick = () => openScreen("log");

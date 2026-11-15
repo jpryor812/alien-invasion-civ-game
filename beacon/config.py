@@ -379,7 +379,7 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
             raise ConfigError(f"legendary_recruits.{entry_id}: scores must be domains")
     for cid, cont in tables["continents"].items():
         geo = cont["geo"]
-        for key in ("box", "x_scale_pct", "size_pct", "outline", "islands", "lakes"):
+        for key in ("size", "x_scale_pct", "size_pct", "outline", "islands", "lakes"):
             if key not in geo:
                 raise ConfigError(f"continents.{cid}.geo: missing {key}")
         for biome, *_ in geo["biome_seeds"]:

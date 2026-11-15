@@ -549,3 +549,37 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   turn 300: victories on turns 236 and 264, the other four with 1-7 alien cities left; players
   lost 7-16 cities along the way. Games take 70-140 s to 300 turns.
 
+## Discovery: shuffled continents and contact (designer, 2026-11-14)
+
+- **Shuffled world**: each continent keeps its real shape, cities and size (its box `size`), but
+  where the boxes sit changes every game: a seeded shuffle into two rows of three, seeded order,
+  seeded ocean gaps (at least 3 columns) and seeded vertical offsets. The map is 216 x 128 (was
+  192 x 116) so any three continents fit in a row. Port Hedland and Vladivostok were replaced by
+  Exmouth and Khabarovsk so cities stay 5 hexes apart whatever the row parity.
+- **Contact**: nobody knows the other continents at the start (the M6 rule that every nation
+  knew every active city is gone). Two players meet when one sees the other's land (its
+  continent's hexes, coasts included) or units; checked after every move and at the end of each
+  turn. Meeting is mutual and swaps the locations of both players' cities. A fallen continent
+  becomes known to everyone ("distress"), so it can still be rescued.
+- **Gated by contact**: proposing deals (trade, aid, alliances), offering recruits and shipping
+  troops to another continent's cities. World projects (the barrage, espionage) are not gated.
+- **Scout boat**: a cheap (40), fast (5 moves, sight 2) unarmed sea scout, available from the
+  start in coastal cities. Bots and AIs build one once they have 2 military units and still have
+  someone to meet; it sails to the nearest open-ocean edge of the known world.
+- **Batch after discovery (10 AI seeds to turn 300)**: 10/10 victories on turns 219-299, no
+  defeats, no continent fell; 26-72 deals, 9-24 units shipped and 6-12 alliances per game once
+  contact was made. Slowest game 114 s.
+
+## Information screens (designer, 2026-11-14)
+
+- **Cities**: every city on one page (population and turns to grow, food surplus, production,
+  science, gold, beacon, what it builds and when, notes such as not connected, aliens near, idle
+  citizens), sortable, with totals; click a row to go to the city.
+- **Units**: every unit with where it is, HP, moves, experience and what it is doing, filtered by
+  military, scouts and civilians, city defences, needing orders, promotion due or abroad; click a
+  row to select it.
+- **Turn summary**: after each turn, what happened, grouped (cities, research, war, world), each
+  entry clickable; it can be switched off.
+- **Log**: the events of the last 40 turns of this browser session; entries in the side panel and
+  the log jump to the place on the map (a flashing hex).
+

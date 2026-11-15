@@ -117,6 +117,7 @@ class Player:
     controller: str = "ai"  # ai | human
     character: str | None = None  # AI character (data/ai.yaml)
     allies: list[str] = field(default_factory=list)
+    met: list[str] = field(default_factory=list)  # players met so far (beacon/contact.py)
 
 
 @dataclass

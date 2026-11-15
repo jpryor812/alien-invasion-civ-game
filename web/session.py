@@ -312,9 +312,23 @@ class Session:
     def _player_row(self, pid: str) -> dict[str, Any]:
         s = self.state
         p = s.players[pid]
+        met = pid == self.human or pid in s.players[self.human].met
+        if not met:  # an unmet continent: only that it exists (designer 2026-11-14)
+            return {
+                "id": pid,
+                "name": p.name,
+                "met": False,
+                "fallen": False,
+                "allied": False,
+                "character": None,
+                "controller": None,
+                "cities": None,
+                "gold": None,
+            }
         return {
             "id": pid,
             "name": p.name,
+            "met": True,
             "character": p.character,
             "controller": p.controller,
             "cities": sum(1 for c in s.cities if c.owner == pid and c.status == ACTIVE),
@@ -641,6 +655,98 @@ class Session:
                 }
             )
         return out
+
+    def cities_overview(self) -> dict[str, Any]:
+        """Every city of yours on one page (Civ's city list)."""
+        s, cfg, me = self.state, self.cfg, self.human
+        seen = fog.visible_tiles(s, cfg, me)
+        aliens_seen = [u.tile for u in s.units.values() if u.owner == ALIENS and u.tile in seen]
+        rows = []
+        for c in s.cities:
+            if c.owner != me or c.status != ACTIVE:
+                continue
+            cy = economy.city_yields(s, cfg, c)
+            prod = cy.totals["production"] if c.connected else 0
+            head = c.queue[0] if c.queue else None
+            turns = None
+            if head and not head.startswith("project:") and prod > 0:
+                turns = max(0, -(-(economy.item_cost(cfg, head) - c.production_store) // prod))
+            surplus = cy.surplus_food
+            need = economy.growth_threshold(cfg, c.pop) - c.food_store
+            people = citizens.of_city(s, c.id)
+            defences = [u for u in s.units_at(c.tile) if cfg.units[u.type].get("fixed")]
+            rows.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "capital": c.is_capital,
+                    "pop": c.pop,
+                    "grows_in": -(-need // surplus) if surplus > 0 else None,
+                    "food": surplus,
+                    "yields": cy.totals if c.connected else dict.fromkeys(cy.totals, 0),
+                    "connected": c.connected,
+                    "building": head,
+                    "turns": turns,
+                    "hp": c.hp,
+                    "max_hp": _city_max_hp(s, cfg, c),
+                    "idle": sum(1 for x in people if x.adult and x.tile is None and not x.seats),
+                    "children": sum(1 for x in people if not x.adult),
+                    "defences": len(defences),
+                    "threatened": any(
+                        hexgrid.distance(t, c.tile, s.width) <= 3 for t in aliens_seen
+                    ),
+                }
+            )
+        return {"cities": rows}
+
+    def units_overview(self) -> dict[str, Any]:
+        """Every unit of yours on one page, with where it is and what it is doing."""
+        from beacon import promotions
+
+        s, cfg, me = self.state, self.cfg, self.human
+        mine = [c for c in s.cities if c.owner == me and c.status == ACTIVE]
+        rows = []
+        for u in s.sorted_units():
+            if u.owner != me:
+                continue
+            spec = cfg.units[u.type]
+            here = s.city_at(u.tile)
+            near = min(mine, key=lambda c: hexgrid.distance(c.tile, u.tile, s.width), default=None)
+            where = (
+                f"in {here.name}"
+                if here is not None
+                else f"{hexgrid.distance(near.tile, u.tile, s.width)} from {near.name}"
+                if near is not None
+                else "abroad"
+            )
+            doing = (
+                f"building {u.job.improvement} ({u.job.turns_left})"
+                if u.job
+                else {"fortify": "fortified", "skip": "waiting", "work": "working"}.get(
+                    u.order, "needs orders" if u.moves_left > 0 else "done"
+                )
+            )
+            rows.append(
+                {
+                    "id": u.id,
+                    "type": u.type,
+                    "role": "defence" if spec.get("fixed") else spec["role"],
+                    "domain": spec["domain"],
+                    "count": u.count,
+                    "hp": u.hp,
+                    "max_hp": cfg.t("combat.unit_max_hp") * u.count,
+                    "moves": u.moves_left // cfg.t("movement.scale"),
+                    "full_moves": spec["moves"],
+                    "xp": u.xp,
+                    "promotions": list(u.promotions),
+                    "due": promotions.due(cfg, u),
+                    "where": where,
+                    "abroad": s.tiles[u.tile].continent != me,
+                    "doing": doing,
+                    "tile": u.tile,
+                }
+            )
+        return {"units": rows}
 
     def population(self) -> dict[str, Any]:
         """Every city's citizens and what they do (the Population screen)."""

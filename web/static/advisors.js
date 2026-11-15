@@ -49,6 +49,12 @@
     city_attack: { who: "military", title: "Enemy at the gates",
       body: "An enemy is within two hexes of one of your cities. Your city can fire on it once a turn: the big button takes you there. Click a red hex to fire, or Hold fire.",
       more: "City guns (artillery) also fire on their own at the end of every turn." },
+    explore_sea: { who: "economic", title: "Other continents",
+      body: "You do not know where the other continents are: the world is laid out differently every game. Build a <b>scout boat</b> in a coastal city and sail into the fog to find them.",
+      more: "Once one of your units sights another continent's land or units you have met: you can trade, form alliances, send aid and ship troops. A continent that falls becomes known to everyone." },
+    contact: { who: "economic", title: "First contact",
+      body: "You have met another continent. Open Diplomacy to propose trades, send aid or, once you both know International Accords, an alliance.",
+      more: "You also learn where its cities are, so you can ship troops to help it." },
     beacon: { who: "beacon", title: "Beacons",
       body: "Beacons call aliens from other worlds to your side. Build a Beacon in a city to earn beacon points; when you have enough, a recruit arrives.",
       more: "Two levers: more and bigger Beacon buildings bring recruits faster; beacon-tree research brings rarer, stronger ones, even legends." },
@@ -148,8 +154,10 @@
     if (v.pending.some((p) => p.kind === "choose_espionage_tech")) trigger("espionage");
     if (v.pending.some((p) => p.kind === "city_can_attack")) trigger("city_attack");
     if (v.turn >= 1) trigger("citizens");
+    if (v.turn >= 3) trigger("explore_sea");
     for (const e of v.events) {
       if (e.kind === "recruit_arrived") trigger("recruit");
+      if (e.kind === "contact_made") trigger("contact");
       if (e.kind === "city_overrun") trigger("city_lost");
       if (e.kind === "mothership_strike" || e.kind === "reinforcements_stopped") trigger("mothership");
     }

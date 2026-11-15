@@ -350,3 +350,40 @@ def test_assign_best_citizen_and_no_fortify_after_attack(cfg):
     apply_command(s, cfg, Attack(player=EU, unit=inf.id, target=east(a)))
     with pytest.raises(CommandError, match="attacked this turn"):
         apply_command(s, cfg, Fortify(player=EU, unit=inf.id))
+
+
+# -- shuffled layout and contact (designer, 2026-11-14) ------------------------------------------
+
+
+def test_layout_is_shuffled_by_seed(cfg):
+    from beacon import mapgen
+
+    a = mapgen.layout(cfg, 1, cfg.continent_ids())
+    b = mapgen.layout(cfg, 2, cfg.continent_ids())
+    assert a != b and a == mapgen.layout(cfg, 1, cfg.continent_ids())
+    for boxes in (a, b):  # boxes never overlap and fit the map
+        items = list(boxes.values())
+        for i, (c0, r0, c1, r1) in enumerate(items):
+            assert 0 <= c0 < c1 <= cfg.t("map.width") and 0 <= r0 < r1 <= cfg.t("map.height")
+            for d0, s0, d1, s1 in items[i + 1 :]:
+                assert c1 <= d0 or d1 <= c0 or r1 <= s0 or s1 <= r0
+
+
+def test_contact_gates_diplomacy_and_is_made_by_sighting(cfg):
+    from test_m3_units_combat import NA
+
+    from beacon import contact
+    from beacon.commands import ProposeDeal
+
+    s = arena(cfg)
+    s.players[EU].met, s.players[NA].met = [], []
+    with pytest.raises(CommandError, match="not met"):
+        apply_command(
+            s, cfg, ProposeDeal(player=EU, to_player=NA, give={"gold": 10}, take={}, duration=0)
+        )
+    for t in range(s.width * 3):  # NA's land in sight of an EU unit
+        s.tiles[t].continent = NA
+    create_unit(s, cfg, "infantry", EU, at(2, 3))  # sees row 2
+    events = contact.check(s, cfg)
+    assert [e["kind"] for e in events] == ["contact_made"]
+    assert contact.met(s, EU, NA) and contact.met(s, NA, EU)

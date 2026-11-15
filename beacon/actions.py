@@ -12,6 +12,7 @@ from typing import Any
 from beacon import (
     citizens,
     combat,
+    contact,
     diplomacy,
     economy,
     endgame,
@@ -89,6 +90,8 @@ def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
     if handler is None:
         raise CommandError(f"no handler for {cmd.kind}")
     events = handler(state, cfg, cmd)
+    if isinstance(cmd, MoveUnit):
+        events.extend(contact.check(state, cfg, only=cmd.player))  # a scout may sight someone
     if isinstance(cmd, REPLACE_CITIZENS):
         citizens.assign_all(state, cfg)  # cities, seats or tiles changed: re-place everyone
     for e in events:
@@ -422,6 +425,8 @@ def _offer(state: GameState, cfg: Config, cmd: OfferRecruit) -> Events:
     rec = own_recruit(state, cmd.player, cmd.recruit)
     if cmd.to_player not in state.players or cmd.to_player == cmd.player:
         raise CommandError(f"cannot offer to {cmd.to_player!r}")
+    if not contact.met(state, cmd.player, cmd.to_player):
+        raise CommandError(f"you have not met {cmd.to_player} yet")
     if cmd.price < 0:
         raise CommandError("price cannot be negative")
     if any(o.recruit == rec.id for o in state.offers.values()):
@@ -471,6 +476,8 @@ def _decline(state: GameState, cfg: Config, cmd: DeclineOffer) -> Events:
 def _propose(state: GameState, cfg: Config, cmd: ProposeDeal) -> Events:
     if cmd.to_player not in state.players:
         raise CommandError(f"unknown player {cmd.to_player!r}")
+    if not contact.met(state, cmd.player, cmd.to_player):
+        raise CommandError(f"you have not met {cmd.to_player} yet")
     try:
         give, take = diplomacy.terms_from(dict(cmd.give)), diplomacy.terms_from(dict(cmd.take))
     except (ValueError, TypeError) as err:
@@ -518,6 +525,9 @@ def _decline_deal(state: GameState, cfg: Config, cmd: DeclineDeal) -> Events:
 def _ship(state: GameState, cfg: Config, cmd: ShipUnit) -> Events:
     unit = own_unit(state, cmd.player, cmd.unit)
     known = {int(k) for k in state.players[cmd.player].known_cities}
+    dest = state.cities[cmd.city] if 0 <= cmd.city < len(state.cities) else None
+    if dest is not None and not contact.met(state, cmd.player, dest.continent):
+        raise CommandError(f"you have not met {dest.continent} yet")
     problem = diplomacy.ship_problem(state, cfg, unit, cmd.city, known)
     if problem:
         raise CommandError(problem)

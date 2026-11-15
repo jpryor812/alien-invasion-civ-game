@@ -45,7 +45,7 @@ from beacon.commands import (
 from beacon.config import Config
 from beacon.paths import reachable, shortest_path
 from beacon.state import ALIENS, DORMANT, EMPTY, OVERRUN, GameState, Tile, Unit
-from beacon.tiles import is_passable_land
+from beacon.tiles import is_passable_land, is_water
 from beacon.units import can_stand, is_civilian, max_hp, occupancy
 from beacon.view import PlayerView
 
@@ -58,6 +58,7 @@ class Bot:
         self.view = PlayerView(state, cfg, pid)
         self.w, self.h = state.width, state.height
         self._frontier_cache: list[int] | None = None
+        self._sea_frontier_cache: list[int] | None = None
         self.reserved: set[int] = set()  # units given other orders this turn (AI expeditions)
 
     # -- helpers ---------------------------------------------------------------------------
@@ -115,13 +116,15 @@ class Bot:
                 self.submit(SetResearch(player=self.pid, tech=best))
 
     def _counts(self) -> dict[str, int]:
-        counts = {"military": 0, "engineers": 0, "restoration": 0, "recon": 0}
+        counts = {"military": 0, "engineers": 0, "restoration": 0, "recon": 0, "boats": 0}
         for u in self.view.my_units():
             spec = self.cfg.units[u.type]
             if spec.get("can_build"):
                 counts["engineers"] += 1
             elif spec.get("can_refound"):
                 counts["restoration"] += 1
+            elif spec["role"] == "recon" and spec["domain"] == "sea":
+                counts["boats"] += 1
             elif spec["role"] == "recon":
                 counts["recon"] += 1
             elif spec["role"] in ("melee", "ranged") and not spec.get("fixed"):
@@ -159,6 +162,7 @@ class Bot:
                 "capital_priority",
                 "military_per_city_pct",
                 "min_military",
+                "scout_boats",
                 "engineers",
                 "recon",
                 "building_priority",
@@ -174,6 +178,7 @@ class Bot:
             if self.state.cities[int(k)].continent == self.pid
         )
         searching = found < len(self.cfg.continents[self.pid]["cities"])
+        unmet = len(self.state.players[self.pid].met) < len(self.state.player_ids()) - 1
         for city in cities:
             head = city.queue[0] if city.queue else ""
             starved = head.startswith("unit:") and not economy.resource_available(
@@ -197,6 +202,13 @@ class Bot:
                 )
             if item is not None:
                 pass
+            elif (
+                unmet
+                and counts["boats"] < bot["scout_boats"]
+                and counts["military"] >= 2
+                and "unit:scout_boat" in options
+            ):
+                item = "unit:scout_boat"  # other continents are found by sea
             elif (
                 searching
                 and counts["recon"] < bot["recon"]
@@ -232,6 +244,8 @@ class Bot:
                     counts["restoration"] += 1
                 elif kind == "recon_team":
                     counts["recon"] += 1
+                elif kind == "scout_boat":
+                    counts["boats"] += 1
                 elif item.startswith("unit:"):
                     counts["military"] += 1
 
@@ -345,6 +359,27 @@ class Bot:
                     out.append(t)
             self._frontier_cache = out
         return self._frontier_cache
+
+    def sea_explorer(self, unit: Unit) -> None:
+        """Scout boats head for the nearest open-ocean edge of the known world (then coasts),
+        to find the other continents."""
+        if self._sea_frontier_cache is None:
+            out = []
+            for t in self.view.explored_tiles():
+                if is_water(self.cfg, self.state.tiles[t]) and any(
+                    not self.view.is_explored(n) for n in hexgrid.neighbours(t, self.w, self.h)
+                ):
+                    out.append(t)
+            self._sea_frontier_cache = out
+        home = self.pid
+        options = sorted(
+            (t for t in self._sea_frontier_cache if t != unit.tile),
+            key=lambda t: (self.state.tiles[t].continent == home, self.dist(unit.tile, t), t),
+        )
+        for t in options[: self.param("explore.attempts")]:
+            if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
+                return
+        self.submit(SkipUnit(player=self.pid, unit=unit.id))
 
     def explorer(self, unit: Unit) -> None:
         cont = self.state.tiles[unit.tile].continent
@@ -653,6 +688,8 @@ class Bot:
                 self.engineer(unit, net, claimed)
             elif spec.get("can_refound"):
                 self.restorer(unit)
+            elif spec["role"] == "recon" and spec["domain"] == "sea":
+                self.sea_explorer(unit)
             elif spec["role"] == "recon":
                 self.explorer(unit)
             elif unit.id in garrisons:

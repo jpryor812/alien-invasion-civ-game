@@ -14,15 +14,20 @@ time:
 
 map:
   width:
-    value: 192
+    value: 216
     status: placeholder
-    note: Map columns. 192 x 116 = 22272 tiles (designer 2026-11-14 - continents about twice as
+    note: Map columns (216 x 128 from 2026-11-14, room to shuffle the continents; was 192 x 116).
+      Earlier - 192 x 116 = 22272 tiles (designer 2026-11-14 - continents about twice as
       big, about 1000 land hexes each, for 15 well-spaced real cities). Each continent's box is
       in data/continents.yaml.
   height:
-    value: 116
+    value: 128
     status: placeholder
     note: Map rows.
+  layout_gap_min:
+    value: 3
+    status: placeholder
+    note: Fewest ocean columns between two continents in a row when the layout is shuffled.
   ocean_margin:
     value: 2
     status: placeholder
