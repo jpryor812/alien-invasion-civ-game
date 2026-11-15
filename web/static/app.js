@@ -248,6 +248,113 @@ function drawTrees(g, cx, cy, R, rnd, kind) {
 }
 
 // =============================================================================================
+// ground chunks: terrain and coasts rendered once per 16x16 block of hexes at a few zoom steps,
+// redrawn only when a tile in the block changes. Keeps the frame cheap however rich the art.
+
+const CHUNK = 16;
+const ZOOM_STEPS = [6, 9, 13, 18, 24, 32, 44, 58];
+const CHUNKS = new Map();      // `${cx},${cy}|${Rb}` -> canvas
+const CHUNK_VER = new Map();   // `${cx},${cy}` -> version, bumped when a tile changes
+let TILE_SIG = new Map();      // tile index -> signature of what the ground shows
+function zoomStep(R) { return ZOOM_STEPS.find((b) => b >= R) || ZOOM_STEPS[ZOOM_STEPS.length - 1]; }
+function tileSig(t) { return `${t.terrain}|${t.elevation}|${t.feature || ""}`; }
+// After each refresh: mark the chunks whose ground changed (new tiles explored, terrain known).
+function invalidateGround(v) {
+  const next = new Map();
+  for (const [k, t] of Object.entries(v.tiles)) {
+    const i = Number(k), sig = tileSig(t);
+    next.set(i, sig);
+    if (TILE_SIG.get(i) !== sig) bumpChunk(i, v.width);
+  }
+  for (const i of TILE_SIG.keys()) if (!next.has(i)) bumpChunk(i, v.width);
+  TILE_SIG = next;
+}
+function bumpChunk(i, width) {
+  const c = i % width, r = Math.floor(i / width);
+  // a tile's coast edge is drawn by its neighbours too: bump the chunks around it
+  for (const [dc, dr] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const cc = Math.floor((c + dc) / CHUNK), rr = Math.floor((r + dr) / CHUNK);
+    const key = `${cc},${rr}`;
+    CHUNK_VER.set(key, (CHUNK_VER.get(key) || 0) + 1);
+  }
+}
+function chunkOrigin(cx, cy) { return [cx * CHUNK * SQ3 * R0, cy * CHUNK * 1.5 * R0]; }
+function renderChunk(cx, cy, Rb) {
+  const k = Rb / R0, [ox, oy] = chunkOrigin(cx, cy);
+  const w = Math.ceil((CHUNK + 1.5) * SQ3 * R0 * k) + 4, h = Math.ceil((CHUNK * 1.5 + 2.5) * R0 * k) + 4;
+  const W0 = S.view.width;
+  const tiles = [];
+  for (let r = cy * CHUNK; r < Math.min(S.view.height, (cy + 1) * CHUNK); r++) {
+    for (let col = cx * CHUNK; col < Math.min(W0, (cx + 1) * CHUNK); col++) {
+      const i = r * W0 + col, t = S.tilesByIndex.get(i);
+      if (!t) continue;
+      const [wx, wy] = center(i);
+      tiles.push([i, t, (wx - ox) * k, (wy - oy) * k]);
+    }
+  }
+  if (!tiles.length) return null;  // nothing explored here yet: no canvas
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d");
+  for (const [i, t, x, y] of tiles) {
+    const sp = tileSprite(t, i, Rb);
+    g.drawImage(sp, x - sp.width / 2, y - sp.height / 2);
+  }
+  // coastlines: sand on the land side, foam on the water side
+  for (const [i, t1, x, y] of tiles) {
+    const water1 = t1.terrain === "coast" || t1.terrain === "ocean";
+    for (const [n, edge] of neighbourEdges(i)) {
+      const t2 = S.tilesByIndex.get(n);
+      if (!t2) continue;
+      const water2 = t2.terrain === "coast" || t2.terrain === "ocean";
+      if (water1 === water2) continue;
+      const kk = water1 ? 0.93 : 0.95;
+      const [x1, y1] = corner(x, y, Rb * kk, edge), [x2, y2] = corner(x, y, Rb * kk, (edge + 1) % 6);
+      g.strokeStyle = water1 ? "rgba(235,248,255,0.55)" : "rgba(232,214,160,0.9)";
+      g.lineWidth = Math.max(1.2, Rb * (water1 ? 0.07 : 0.1));
+      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    }
+  }
+  return c;
+}
+function drawGround(W, H, R) {
+  const Rb = zoomStep(R), scale = R / Rb;
+  const [wx0, wy0] = toWorld(0, 0), [wx1, wy1] = toWorld(W, H);
+  const cx0 = Math.max(0, Math.floor(wx0 / (CHUNK * SQ3 * R0)) - 1), cx1 = Math.floor(wx1 / (CHUNK * SQ3 * R0)) + 1;
+  const cy0 = Math.max(0, Math.floor(wy0 / (CHUNK * 1.5 * R0)) - 1), cy1 = Math.floor(wy1 / (CHUNK * 1.5 * R0)) + 1;
+  for (let cy = cy0; cy <= cy1; cy++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      if (cx * CHUNK >= S.view.width || cy * CHUNK >= S.view.height) continue;
+      const key = `${cx},${cy}|${Rb}`, ver = CHUNK_VER.get(`${cx},${cy}`) || 0;
+      let entry = CHUNKS.get(key);
+      if (!entry || entry.ver !== ver) {
+        entry = { ver, canvas: renderChunk(cx, cy, Rb) };
+        CHUNKS.delete(key); CHUNKS.set(key, entry);
+        if (CHUNKS.size > 90) CHUNKS.delete(CHUNKS.keys().next().value);  // least recently made
+      }
+      if (!entry.canvas) continue;
+      const [ox, oy] = chunkOrigin(cx, cy);
+      const [sx, sy] = toScreen(ox, oy);
+      ctx.drawImage(entry.canvas, sx, sy, entry.canvas.width * scale, entry.canvas.height * scale);
+    }
+  }
+}
+// The hexes on screen, from the camera (rows and columns), with their screen centres.
+function visibleTiles(W, H, R) {
+  const out = [];
+  const [wx0, wy0] = toWorld(-R * 3, -R * 3), [wx1, wy1] = toWorld(W + R * 3, H + R * 3);
+  const r0 = Math.max(0, Math.floor((wy0 - R0) / (1.5 * R0)) - 1), r1 = Math.min(S.view.height - 1, Math.ceil((wy1 - R0) / (1.5 * R0)) + 1);
+  const c0 = Math.max(0, Math.floor(wx0 / (SQ3 * R0)) - 1), c1 = Math.min(S.view.width - 1, Math.ceil(wx1 / (SQ3 * R0)) + 1);
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      const i = r * S.view.width + c;
+      const [sx, sy] = toScreen(...center(i));
+      out.push([i, sx, sy, S.tilesByIndex.has(i)]);
+    }
+  }
+  return out;
+}
+
+// =============================================================================================
 // fog: drifting clouds instead of black
 
 let PUFFS = null;
@@ -323,6 +430,7 @@ function drawFog(visible, R, t) {
 async function refresh(keepSelection = true) {
   const v = await api("/api/view");
   const newTurn = S.view && v.turn !== S.view.turn;
+  const newWorld = !S.view || S.view.seed !== v.seed || S.view.width !== v.width || S.view.me !== v.me;
   // keep a log of past turns' events in this browser session (the server sends the latest)
   S.history = S.history || [];
   if (newTurn || !S.history.length) S.history.push({ turn: v.turn, events: v.events });
@@ -331,6 +439,8 @@ async function refresh(keepSelection = true) {
   S.view = v;
   S.explored = new Set(v.explored);
   S.tilesByIndex = new Map(Object.entries(v.tiles).map(([k, t]) => [Number(k), t]));
+  if (newWorld) { TILE_SIG = new Map(); CHUNKS.clear(); CHUNK_VER.clear(); }
+  invalidateGround(v);
   S.unitsByTile = new Map();
   S.defencesByTile = new Map();  // city defences are part of their city: not drawn or selected
   for (const u of v.units) {
@@ -390,35 +500,10 @@ function draw(t = performance.now()) {
   const bombard = new Set(S.targetMode === "bombard" && S.city ? S.city.bombard : []);
   // a selected city shows its improved tiles: worked (green, with yields) or free (gold, click to staff)
   const cityTiles = new Map(S.selected && S.selected.kind === "city" && S.city ? S.city.workable.map((w) => [w.tile, w]) : []);
-  const visible = [];
-  const total = S.view.width * S.view.height;
-  for (let i = 0; i < total; i++) {
-    const [sx, sy] = toScreen(...center(i));
-    if (sx < -R * 3 || sy < -R * 3 || sx > W + R * 3 || sy > H + R * 3) continue;
-    visible.push([i, sx, sy, S.tilesByIndex.has(i)]);
-  }
-  // 1. terrain
-  for (const [i, sx, sy, shown] of visible) {
-    if (!shown) continue;
-    const sp = tileSprite(S.tilesByIndex.get(i), i, Ri);
-    ctx.drawImage(sp, sx - sp.width / 2, sy - sp.height / 2);
-  }
-  // 2. coastlines: sand on the land side, foam on the water side
-  for (const [i, sx, sy, shown] of visible) {
-    if (!shown) continue;
-    const t1 = S.tilesByIndex.get(i), water1 = t1.terrain === "coast" || t1.terrain === "ocean";
-    for (const [n, edge] of neighbourEdges(i)) {
-      const t2 = S.tilesByIndex.get(n);
-      if (!t2) continue;
-      const water2 = t2.terrain === "coast" || t2.terrain === "ocean";
-      if (water1 === water2) continue;
-      const k = water1 ? 0.93 : 0.95;
-      const [x1, y1] = corner(sx, sy, R * k, edge), [x2, y2] = corner(sx, sy, R * k, (edge + 1) % 6);
-      ctx.strokeStyle = water1 ? "rgba(235,248,255,0.55)" : "rgba(232,214,160,0.9)";
-      ctx.lineWidth = Math.max(1.2, R * (water1 ? 0.07 : 0.1));
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
-  }
+  // only the rows and columns on screen (the map has ~27,000 hexes)
+  const visible = visibleTiles(W, H, R);
+  // 1-2. the ground (terrain and coasts), from cached chunks (see "ground chunks")
+  drawGround(W, H, R);
   // 3. routes
   for (const [i, sx, sy, shown] of visible) {
     if (!shown) continue;

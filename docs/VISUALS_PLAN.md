@@ -18,7 +18,7 @@ Rules for every slice:
 
 ## Pass 1
 
-- [ ] 0. Renderer: move map drawing to WebGL (PixiJS from a pinned CDN version) or an
+- [x] 0. Renderer: move map drawing to WebGL (PixiJS from a pinned CDN version) or an
       optimised canvas layer cache, keeping today's look and every overlay (fog, highlights,
       shards, finds, city tiles, combat targets).
 - [ ] 1. Terrain: painted textures per terrain (grassland, plains, desert, tundra, snow, coast,
@@ -48,3 +48,4 @@ Rules for every slice:
 ## Notes
 
 (one line per finished slice: what changed, what is still weak)
+- 0 Renderer: canvas kept (no new dependency); ground (terrain, coasts) drawn into cached 16x16-hex chunks at 8 zoom steps, rebuilt only when a tile changes; only on-screen hexes are visited. Frame 3-34 ms at 1400x860. Still weak: the cloud fog is the costliest pass at far zoom.
