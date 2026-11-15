@@ -227,8 +227,16 @@ button.link:hover { color: var(--brass-hi); background: none; }
 .pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pool .member { border: 1px solid var(--line); background: #121b24; }
 .member.picked { outline: 2px solid var(--science); background: #173048; }
-.member .avatar { font-size: 22px; color: var(--brass); line-height: 1; }
-.member.recruit .avatar { color: var(--beacon); }
+/* portraits: painted busts in a bronze ring (citizens) or a violet ring (alien recruits) */
+.portrait { display: block; border-radius: 50%; border: 2px solid var(--brass); box-shadow: 0 0 0 1px #05080b, 0 2px 6px rgba(0,0,0,0.55); background: #141c24; }
+.member .avatar { width: 54px; height: 54px; margin: 0 auto 4px; }
+.member.recruit .avatar { border-color: var(--beacon); }
+.citizens .citizen { display: flex; gap: 8px; align-items: flex-start; }
+.citizen .cbody { flex: 1; min-width: 0; }
+.citizen .face { width: 46px; height: 46px; flex: none; }
+.evfaces { display: flex; justify-content: center; gap: 10px; margin: -34px 0 4px; position: relative; }
+.evfaces .portrait { width: 64px; height: 64px; }
+.evfaces .portrait.alien { border-color: var(--beacon); width: 84px; height: 84px; }
 .member .mname { font: 700 12px var(--heading); }
 .citizens.wide { max-height: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .popcity { margin-bottom: 14px; }

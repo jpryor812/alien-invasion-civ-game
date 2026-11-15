@@ -1813,6 +1813,167 @@ function techScreen(d) {
         ${alien.length ? `<div class="levelhead static" style="margin-top:14px">Alien (espionage only)</div>${alien.map((t) => techCard(t, d)).join("")}` : ""}</div>
       ${heads}<svg class="links" width="${W}" height="${H + 30}">${lines}</svg>${cards}</div></div>`;
 }
+// Portraits (visuals pass 1): every citizen and recruit gets a painted bust, drawn once from a seed
+// (their id) and cached as an image. People are fictional; no real faces. Citizens vary in skin,
+// hair, eyes, brows, clothes and accessories; alien recruits get elongated crania, large eyes and
+// crests in their own colours.
+const PORTRAITS = new Map();
+const SKIN = [["#f3d6c1", "#d9a98c"], ["#e8bf9c", "#c9926e"], ["#d6a67c", "#b07c55"], ["#bf8a5e", "#946240"], ["#9c6b45", "#74492b"], ["#7a4f33", "#55341f"], ["#5e3b26", "#3f2617"], ["#efc9a8", "#cf9b78"]];
+const HAIR = ["#1d1611", "#3a2618", "#5b3a22", "#8a5a33", "#b98a4e", "#d9b87a", "#9a9a9a", "#e8e3da", "#6b2a1c", "#2a2a33"];
+const IRIS = ["#4a3020", "#6b4a2a", "#3d6b8f", "#4f7a4a", "#7a8a99", "#2e2018"];
+const CLOTH = ["#3f5a3a", "#2f4560", "#7a3d2c", "#5b5f66", "#2f6b6b", "#6b5a2f", "#4a3a5c", "#8a6a3a"];
+const ALIEN_SKIN = [["#7c5bb8", "#3e2a66"], ["#3fa39a", "#1d5650"], ["#b8504a", "#5e2220"], ["#6f9a3e", "#384f1e"], ["#4a6fb8", "#22386b"], ["#a87a3a", "#5a3e1a"]];
+const ALIEN_EYE = ["#ffd36b", "#7ef0ff", "#ff7a5c", "#b6ff7a", "#f2a6ff"];
+function portraitURL(kind, id, opts = {}) {
+  const key = `${kind}:${id}:${opts.child ? 1 : 0}:${opts.legendary ? 1 : 0}`;
+  let url = PORTRAITS.get(key);
+  if (url) return url;
+  const N = 160, c = document.createElement("canvas"); c.width = c.height = N;
+  const g = c.getContext("2d"), rnd = rng((kind === "recruit" ? 7919 : 104729) + id * 2654435761);
+  if (kind === "recruit") paintAlienBust(g, N, rnd, opts); else paintHumanBust(g, N, rnd, opts);
+  url = c.toDataURL("image/png"); PORTRAITS.set(key, url);
+  return url;
+}
+function portraitImg(kind, id, cls = "", opts = {}) {
+  return `<img class="portrait ${cls}" alt="" src="${portraitURL(kind, id, opts)}">`;
+}
+const pickOf = (rnd, a) => a[Math.floor(rnd() * a.length)];
+function bustBackground(g, N, inner, outer) {
+  const bg = g.createRadialGradient(N * 0.45, N * 0.35, N * 0.05, N * 0.5, N * 0.5, N * 0.75);
+  bg.addColorStop(0, inner); bg.addColorStop(1, outer);
+  g.fillStyle = bg; g.fillRect(0, 0, N, N);
+  g.fillStyle = "rgba(255,255,255,0.05)"; for (let k = 0; k < 14; k++) { g.beginPath(); g.arc((k * 53) % N, (k * 37) % N, 6 + (k % 4) * 5, 0, Math.PI * 2); g.fill(); }
+}
+function shaded(g, x, y, rx, ry, light, dark, rot = 0) {
+  const gr = g.createRadialGradient(x - rx * 0.35, y - ry * 0.4, rx * 0.1, x, y, Math.max(rx, ry) * 1.1);
+  gr.addColorStop(0, light); gr.addColorStop(0.7, dark); gr.addColorStop(1, shade(dark.startsWith("#") ? dark : "#555555", -0.25));
+  g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); g.fill();
+}
+function paintHumanBust(g, N, rnd, opts) {
+  bustBackground(g, N, "#4b6170", "#141c24");
+  g.save(); g.translate(N / 2, N * 0.8); g.scale(1.26, 1.26); g.translate(-N / 2, -N * 0.74);  // a close bust crop
+  const [skin, skinD] = pickOf(rnd, SKIN), hair = pickOf(rnd, HAIR), cloth = pickOf(rnd, CLOTH);
+  const kid = !!opts.child, cx = N / 2, hy = kid ? N * 0.5 : N * 0.44, hw = kid ? N * 0.2 : N * (0.19 + rnd() * 0.03), hh = kid ? N * 0.22 : N * (0.24 + rnd() * 0.03);
+  const style = Math.floor(rnd() * 7), beard = !kid && rnd() < 0.22, glasses = rnd() < 0.15, scarf = rnd() < 0.12;
+  // shoulders and clothes
+  const sy = hy + hh * 1.05;
+  const cg = g.createLinearGradient(0, sy, 0, N); cg.addColorStop(0, shade(cloth, 0.15)); cg.addColorStop(1, shade(cloth, -0.45));
+  g.fillStyle = cg; g.beginPath(); g.moveTo(cx - N * (kid ? 0.3 : 0.42), N); g.quadraticCurveTo(cx - N * 0.38, sy + N * 0.02, cx - hw * 0.5, sy - N * 0.02);
+  g.lineTo(cx + hw * 0.5, sy - N * 0.02); g.quadraticCurveTo(cx + N * 0.38, sy + N * 0.02, cx + N * (kid ? 0.3 : 0.42), N); g.closePath(); g.fill();
+  // long hair falls behind the shoulders
+  if (style === 2 || style === 5) { g.fillStyle = shade(hair, -0.15); g.beginPath(); g.ellipse(cx, hy + hh * 0.5, hw * 1.25, hh * 1.25, 0, 0, Math.PI * 2); g.fill(); }
+  // neck
+  g.fillStyle = skinD; g.fillRect(cx - hw * 0.42, hy + hh * 0.6, hw * 0.84, hh * 0.6);
+  g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(cx - hw * 0.42, hy + hh * 0.6, hw * 0.84, hh * 0.18);
+  // collar
+  g.fillStyle = scarf ? pickOf(rnd, ["#c9a24a", "#8a2f2f", "#e3dccf", "#2f6b6b"]) : shade(cloth, 0.3);
+  g.beginPath(); g.moveTo(cx - hw * 0.7, sy - N * 0.01); g.lineTo(cx, sy + N * (scarf ? 0.06 : 0.1)); g.lineTo(cx + hw * 0.7, sy - N * 0.01); g.lineTo(cx + hw * 0.45, sy - N * 0.04); g.lineTo(cx, sy + N * 0.02); g.lineTo(cx - hw * 0.45, sy - N * 0.04); g.closePath(); g.fill();
+  // ears and head
+  shaded(g, cx - hw * 0.98, hy + hh * 0.05, hw * 0.16, hh * 0.18, skin, skinD);
+  shaded(g, cx + hw * 0.98, hy + hh * 0.05, hw * 0.16, hh * 0.18, skin, skinD);
+  shaded(g, cx, hy, hw, hh, skin, skinD);
+  // jaw shadow and cheeks
+  g.fillStyle = "rgba(60,30,20,0.12)"; g.beginPath(); g.ellipse(cx + hw * 0.1, hy + hh * 0.62, hw * 0.75, hh * 0.3, 0, 0, Math.PI); g.fill();
+  g.fillStyle = "rgba(220,100,90,0.12)"; g.beginPath(); g.arc(cx - hw * 0.5, hy + hh * 0.25, hw * 0.2, 0, Math.PI * 2); g.arc(cx + hw * 0.5, hy + hh * 0.25, hw * 0.2, 0, Math.PI * 2); g.fill();
+  // eyes
+  const ey = hy - hh * 0.02, ex = hw * 0.4, iris = pickOf(rnd, IRIS), er = hw * 0.13;
+  for (const s of [-1, 1]) {
+    g.fillStyle = "#f4efe6"; g.beginPath(); g.ellipse(cx + s * ex, ey, er * 1.45, er * 0.85, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = iris; g.beginPath(); g.arc(cx + s * ex, ey, er * 0.75, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#120c08"; g.beginPath(); g.arc(cx + s * ex, ey, er * 0.36, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255,255,255,0.85)"; g.beginPath(); g.arc(cx + s * ex - er * 0.25, ey - er * 0.25, er * 0.18, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = shade(skinD, -0.35); g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx + s * ex, ey, er * 1.45, er * 0.85, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+    // brows
+    const tilt = (rnd() - 0.5) * 0.25;
+    g.strokeStyle = shade(hair, -0.1); g.lineWidth = Math.max(2, hw * (0.07 + rnd() * 0.05)); g.lineCap = "round";
+    g.beginPath(); g.moveTo(cx + s * ex - er * 1.4, ey - er * (1.7 + s * tilt)); g.quadraticCurveTo(cx + s * ex, ey - er * 2.3, cx + s * ex + er * 1.4 * 1, ey - er * (1.6 - s * tilt)); g.stroke();
+  }
+  // nose and mouth
+  g.strokeStyle = shade(skinD, -0.25); g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(cx + hw * 0.02, ey + er * 0.6); g.quadraticCurveTo(cx + hw * 0.16, hy + hh * 0.28, cx - hw * 0.02, hy + hh * 0.32); g.stroke();
+  const mw = hw * (0.28 + rnd() * 0.12), my = hy + hh * 0.52, smile = (rnd() - 0.3) * hh * 0.08;
+  g.strokeStyle = "#7a3a30"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - mw, my); g.quadraticCurveTo(cx, my + smile + 2, cx + mw, my); g.stroke();
+  g.fillStyle = "rgba(150,70,60,0.35)"; g.beginPath(); g.ellipse(cx, my + 3, mw * 0.7, hh * 0.05, 0, 0, Math.PI); g.fill();
+  if (beard) {
+    g.fillStyle = shade(hair, 0.05); g.globalAlpha = 0.9;
+    g.beginPath(); g.moveTo(cx - hw * 0.95, hy + hh * 0.1); g.quadraticCurveTo(cx - hw * 0.9, hy + hh * 1.05, cx, hy + hh * 1.1); g.quadraticCurveTo(cx + hw * 0.9, hy + hh * 1.05, cx + hw * 0.95, hy + hh * 0.1);
+    g.quadraticCurveTo(cx + hw * 0.6, hy + hh * 0.55, cx, my + hh * 0.06); g.quadraticCurveTo(cx - hw * 0.6, hy + hh * 0.55, cx - hw * 0.95, hy + hh * 0.1); g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = "#5a2a22"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - mw * 0.8, my); g.quadraticCurveTo(cx, my + 2, cx + mw * 0.8, my); g.stroke();
+  }
+  // hair on top
+  g.fillStyle = hair;
+  const top = hy - hh;
+  if (style === 0) { g.beginPath(); g.ellipse(cx, hy - hh * 0.45, hw * 1.04, hh * 0.62, 0, Math.PI, 0); g.fill(); }  // short
+  else if (style === 1) { g.beginPath(); g.moveTo(cx - hw * 1.02, hy - hh * 0.1); g.quadraticCurveTo(cx - hw * 1.1, top - hh * 0.1, cx + hw * 0.2, top - hh * 0.05); g.quadraticCurveTo(cx + hw * 1.15, top + hh * 0.1, cx + hw * 1.02, hy - hh * 0.1); g.quadraticCurveTo(cx + hw * 0.4, hy - hh * 0.65, cx - hw * 1.02, hy - hh * 0.1); g.fill(); }  // swept
+  else if (style === 2 || style === 5) {  // long: a parted cap with locks framing the face
+    g.beginPath(); g.ellipse(cx, hy - hh * 0.42, hw * 1.1, hh * 0.68, 0, Math.PI, 0); g.fill();
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx + s * hw * 1.1, hy - hh * 0.45); g.quadraticCurveTo(cx + s * hw * 1.25, hy + hh * 0.5, cx + s * hw * 1.05, hy + hh * 1.15);
+      g.quadraticCurveTo(cx + s * hw * 0.9, hy + hh * 0.5, cx + s * hw * 0.82, hy - hh * 0.2); g.quadraticCurveTo(cx + s * hw * 0.3, hy - hh * 0.75, cx, hy - hh * 0.62); g.closePath(); g.fill();
+    }
+  }
+  else if (style === 3) { for (let k = 0; k < 16; k++) { const a = Math.PI + (k / 15) * Math.PI; g.beginPath(); g.arc(cx + Math.cos(a) * hw * 0.95, hy - hh * 0.3 + Math.sin(a) * hh * 0.75, hw * 0.24, 0, Math.PI * 2); g.fill(); } }  // curls
+  else if (style === 4) { g.globalAlpha = 0.55; g.beginPath(); g.ellipse(cx, hy - hh * 0.5, hw * 1.0, hh * 0.55, 0, Math.PI, 0); g.fill(); g.globalAlpha = 1; }  // buzz
+  else { g.beginPath(); g.ellipse(cx, hy - hh * 0.45, hw * 1.04, hh * 0.6, 0, Math.PI, 0); g.fill(); g.beginPath(); g.arc(cx, top - hh * 0.05, hw * 0.38, 0, Math.PI * 2); g.fill(); }  // bun
+  g.fillStyle = "rgba(255,255,255,0.12)"; g.beginPath(); g.ellipse(cx - hw * 0.3, top + hh * 0.2, hw * 0.4, hh * 0.12, -0.3, 0, Math.PI * 2); g.fill();
+  if (glasses) {
+    g.strokeStyle = "#1e1e22"; g.lineWidth = 2;
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * ex, ey, er * 1.9, er * 1.4, 0, 0, Math.PI * 2); g.stroke(); }
+    g.beginPath(); g.moveTo(cx - ex + er * 1.9, ey); g.lineTo(cx + ex - er * 1.9, ey); g.stroke();
+  }
+  g.restore();
+  // vignette
+  const vg = g.createRadialGradient(N / 2, N / 2, N * 0.35, N / 2, N / 2, N * 0.72);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.45)"); g.fillStyle = vg; g.fillRect(0, 0, N, N);
+}
+function paintAlienBust(g, N, rnd, opts) {
+  bustBackground(g, N, opts.legendary ? "#6a4a8c" : "#3d3358", "#0d0a16");
+  g.save(); g.translate(N / 2, N * 0.72); g.scale(1.15, 1.15); g.translate(-N / 2, -N * 0.72);
+  const [skin, skinD] = pickOf(rnd, ALIEN_SKIN), eye = pickOf(rnd, ALIEN_EYE), cx = N / 2, hy = N * 0.42;
+  const hw = N * (0.17 + rnd() * 0.04), hh = N * (0.27 + rnd() * 0.05), eyes = rnd() < 0.25 ? 4 : 2, crest = Math.floor(rnd() * 4);
+  // robed shoulders with a glowing clasp
+  const sy = hy + hh * 0.95, robe = pickOf(rnd, ["#2a2238", "#1f3036", "#3a2420", "#26301f"]);
+  const cg = g.createLinearGradient(0, sy, 0, N); cg.addColorStop(0, shade(robe, 0.25)); cg.addColorStop(1, shade(robe, -0.4));
+  g.fillStyle = cg; g.beginPath(); g.moveTo(cx - N * 0.45, N); g.quadraticCurveTo(cx - N * 0.36, sy, cx - hw * 0.4, sy - N * 0.03); g.lineTo(cx + hw * 0.4, sy - N * 0.03); g.quadraticCurveTo(cx + N * 0.36, sy, cx + N * 0.45, N); g.closePath(); g.fill();
+  g.fillStyle = eye; g.shadowColor = eye; g.shadowBlur = 8; g.beginPath(); g.arc(cx, sy + N * 0.08, N * 0.025, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+  // long thin neck
+  g.fillStyle = skinD; g.fillRect(cx - hw * 0.28, hy + hh * 0.5, hw * 0.56, hh * 0.55);
+  // crest behind the head
+  g.fillStyle = shade(skinD, -0.1);
+  if (crest === 1) { for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * hw * 0.5, hy - hh * 0.6); g.quadraticCurveTo(cx + s * hw * 1.8, hy - hh * 1.3, cx + s * hw * 1.6, hy - hh * 1.6); g.quadraticCurveTo(cx + s * hw * 1.1, hy - hh * 0.9, cx + s * hw * 0.3, hy - hh * 0.75); g.fill(); } }
+  else if (crest === 2) { g.beginPath(); g.ellipse(cx, hy - hh * 0.25, hw * 1.7, hh * 0.75, 0, 0, Math.PI * 2); g.fill(); for (let k = 0; k < 7; k++) { const a = Math.PI * (1.05 + k * 0.15); g.strokeStyle = shade(skin, 0.1); g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, hy - hh * 0.2); g.lineTo(cx + Math.cos(a) * hw * 1.7, hy - hh * 0.25 + Math.sin(a) * hh * 0.75); g.stroke(); } }
+  else if (crest === 3) { g.beginPath(); g.moveTo(cx - hw * 0.25, hy - hh * 0.8); g.lineTo(cx, hy - hh * 1.55); g.lineTo(cx + hw * 0.25, hy - hh * 0.8); g.fill(); }
+  // elongated cranium narrowing to a small jaw
+  const hg = g.createRadialGradient(cx - hw * 0.4, hy - hh * 0.5, hw * 0.1, cx, hy, hh * 1.1);
+  hg.addColorStop(0, shade(skin, 0.35)); hg.addColorStop(0.6, skin); hg.addColorStop(1, skinD);
+  g.fillStyle = hg; g.beginPath();
+  g.moveTo(cx, hy + hh * 0.75); g.bezierCurveTo(cx - hw * 0.7, hy + hh * 0.7, cx - hw * 1.15, hy, cx - hw * 1.0, hy - hh * 0.55);
+  g.bezierCurveTo(cx - hw * 0.8, hy - hh * 1.15, cx + hw * 0.8, hy - hh * 1.15, cx + hw * 1.0, hy - hh * 0.55);
+  g.bezierCurveTo(cx + hw * 1.15, hy, cx + hw * 0.7, hy + hh * 0.7, cx, hy + hh * 0.75); g.fill();
+  // ridges
+  g.strokeStyle = "rgba(0,0,0,0.25)"; g.lineWidth = 1.5;
+  for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx - hw * 0.6, hy - hh * (0.6 + k * 0.12)); g.quadraticCurveTo(cx, hy - hh * (0.75 + k * 0.12), cx + hw * 0.6, hy - hh * (0.6 + k * 0.12)); g.stroke(); }
+  // glowing eyes
+  const rows = eyes === 4 ? [[0, 1], [0.22, 0.6]] : [[0, 1]];
+  for (const [dy, sz] of rows) for (const s of [-1, 1]) {
+    const x = cx + s * hw * (0.45 - dy * 0.3), y = hy - hh * 0.05 + dy * hh;
+    g.fillStyle = "#0a0610"; g.beginPath(); g.ellipse(x, y, hw * 0.34 * sz, hh * 0.13 * sz, s * 0.35, 0, Math.PI * 2); g.fill();
+    g.fillStyle = eye; g.shadowColor = eye; g.shadowBlur = 10; g.beginPath(); g.ellipse(x, y, hw * 0.26 * sz, hh * 0.08 * sz, s * 0.35, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+    g.fillStyle = "#0a0610"; g.beginPath(); g.ellipse(x, y, hw * 0.04 * sz, hh * 0.07 * sz, 0, 0, Math.PI * 2); g.fill();
+  }
+  // slit nostrils and a thin mouth or mandibles
+  g.fillStyle = "rgba(0,0,0,0.45)"; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * hw * 0.09, hy + hh * 0.3, hw * 0.03, hh * 0.04, 0, 0, Math.PI * 2); g.fill(); }
+  if (rnd() < 0.5) { g.strokeStyle = shade(skinD, -0.4); g.lineWidth = 1.6; g.beginPath(); g.moveTo(cx - hw * 0.22, hy + hh * 0.5); g.quadraticCurveTo(cx, hy + hh * 0.54, cx + hw * 0.22, hy + hh * 0.5); g.stroke(); }
+  else { g.fillStyle = shade(skinD, -0.2); for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * hw * 0.15, hy + hh * 0.42); g.quadraticCurveTo(cx + s * hw * 0.45, hy + hh * 0.6, cx + s * hw * 0.12, hy + hh * 0.78); g.lineTo(cx + s * hw * 0.06, hy + hh * 0.5); g.fill(); } }
+  // markings
+  g.fillStyle = shade(eye.length === 7 ? eye : "#ffd36b", -0.2); g.globalAlpha = 0.45;
+  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * hw * 0.62, hy + hh * 0.22, hw * 0.06, hh * 0.12, s * 0.4, 0, Math.PI * 2); g.fill(); }
+  g.globalAlpha = 1;
+  if (opts.legendary) { g.strokeStyle = "rgba(255,215,120,0.8)"; g.lineWidth = 2; g.beginPath(); g.ellipse(cx, hy - hh * 1.1, hw * 0.9, hh * 0.12, 0, 0, Math.PI * 2); g.stroke(); }
+  g.restore();
+  const vg = g.createRadialGradient(N / 2, N / 2, N * 0.35, N / 2, N / 2, N * 0.72);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.5)"); g.fillStyle = vg; g.fillRect(0, 0, N, N);
+}
 function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<span class="chip ${d}">${pretty(d)} +${v}%</span>`).join(""); }
 // The council (designer 2026-11-14, after a reference layout): three general seats on top, the
 // two seats of each domain in a row below, and every possible member (alien recruits and grown
@@ -1820,7 +1981,7 @@ function scoreChips(scores) { return Object.entries(scores).map(([d, v]) => `<sp
 function memberCard(m, picked) {
   const chips = Object.entries(m.scores).map(([k, v]) => `<span class="tag ${k}">${v} ${k}</span>`).join("");
   return `<div class="member ${m.kind}${picked ? " picked" : ""}" data-member="${m.kind}:${m.id}">
-    <div class="avatar">${m.kind === "recruit" ? "◈" : "●"}</div><div class="mname">${esc(m.name)}${m.seats.length && !m.pinned ? ' <span class="autotag" title="Placed by Auto: it gives way to recruits; click it and a seat to fix it here">auto</span>' : ""}</div>
+    ${portraitImg(m.kind, m.id, "avatar", { legendary: /legendary/.test(m.where) })}<div class="mname">${esc(m.name)}${m.seats.length && !m.pinned ? ' <span class="autotag" title="Placed by Auto: it gives way to recruits; click it and a seat to fix it here">auto</span>' : ""}</div>
     <div class="muted small">${esc(m.where)}</div><div>${chips}</div>
     ${m.traits.length ? `<div class="small">${m.traits.map((t) => `<span class="trait">${esc(pretty(t))}</span>`).join(" ")}</div>` : ""}</div>`;
 }
@@ -2175,7 +2336,7 @@ function citizenRow(p, d) {
   else where = '<span class="bad">idle: no improved tile or council seat free</span>';
   const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
   const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}</select>` : "";
-  return `<div class="citizen"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div>`;
+  return `<div class="citizen">${portraitImg("citizen", p.id, "face", { child: !p.adult })}<div class="cbody"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div></div>`;
 }
 
 function promoName(id) {
@@ -2371,7 +2532,11 @@ function showEventCard(ev) {
   const body = $("modal-body");
   const choices = ev.choices ? `<div class="evchoices">${ev.choices.map((c, k) => `<button class="${k ? "" : "primary"}" data-choice="${k}"><b>${esc(c.label)}</b>${c.detail ? `<span class="muted"> ${esc(c.detail)}</span>` : ""}</button>`).join("")}</div>` : "";
   const result = ev.result && ev.result.length ? `<div class="evresult">${ev.result.map((r) => `<span class="tag">${esc(r)}</span>`).join(" ")}</div>` : "";
-  body.innerHTML = `<div class="evcard">${pictureSvg(ev.picture, false)}<h2>${esc(ev.title)}</h2><p class="evbody">${esc(ev.body)}</p>${result}${choices}
+  // faces on the people events: three survivors, or the outcast (its seed is the event's id)
+  const seed = ev.story || ev.tile || 1;
+  const faces = ev.picture === "survivors" ? `<div class="evfaces">${[0, 1, 2].map((k) => portraitImg("citizen", 50000 + seed * 3 + k)).join("")}</div>`
+    : ev.picture === "outcast" ? `<div class="evfaces">${portraitImg("recruit", 50000 + seed, "alien")}</div>` : "";
+  body.innerHTML = `<div class="evcard">${pictureSvg(ev.picture, false)}${faces}<h2>${esc(ev.title)}</h2><p class="evbody">${esc(ev.body)}</p>${result}${choices}
     ${ev.choices ? "" : '<div class="row"><button class="primary" id="ev-ok">Continue</button></div>'}</div>`;
   document.querySelector(".modal-box").classList.add("narrow");
   $("modal").classList.remove("hidden"); S.screen = "event";
