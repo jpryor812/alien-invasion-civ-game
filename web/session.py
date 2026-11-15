@@ -62,6 +62,7 @@ PUBLIC_EVENTS = frozenset(
 class Session:
     def __init__(self, cfg: Config, seed: int = 1, human: str = "europe"):
         self.cfg = cfg
+        self.reveal = False  # developer only (web.server --reveal): the whole map, for art
         self.new(seed, human)
 
     # -- lifecycle ---------------------------------------------------------------------------
@@ -296,6 +297,9 @@ class Session:
                 },
             }
         )
+        if self.reveal:  # developer view for art testing: every hex, seen
+            v["tiles"] = {str(i): {**to_dict(t), "visible": True} for i, t in enumerate(s.tiles)}
+            v["explored"] = list(range(len(s.tiles)))
         for key, t in v["tiles"].items():
             if t.get("improvement"):
                 t["yields"] = _tile_yields(cfg, s.tiles[int(key)])  # what the tile gives a city

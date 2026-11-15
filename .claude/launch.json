@@ -29,9 +29,10 @@
         "--port",
         "8766",
         "--seed",
-        "1",
+        "5",
         "--human",
-        "north_america"
+        "europe",
+        "--reveal"
       ],
       "port": 8766
     }

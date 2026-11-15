@@ -126,124 +126,158 @@ function hexPath(g, cx, cy, r) {
 }
 
 // =============================================================================================
-// terrain sprites: painted once per (terrain, elevation, feature, variant, size) and reused
+// painted terrain (visuals pass 1): each terrain is a seamless painted texture, laid across the
+// map as one continuous surface inside a blurred mask of its hexes, so terrains blend softly with
+// no per-hex seams; beaches and surf soften the shores; features (forests, jungle, hills,
+// mountains, marsh) are sprites that spill over hex edges.
 
-const SPRITES = new Map();
-function tileSprite(t, i, R) {
-  const variant = Math.floor(hash(i) * 3);
-  const key = `${t.terrain}|${t.elevation}|${t.feature || ""}|${variant}|${R}`;
-  let sp = SPRITES.get(key);
-  if (sp) return sp;
-  if (SPRITES.size > 2500) SPRITES.clear();
-  const w = Math.ceil(SQ3 * R) + 4, h = 2 * R + 4;
-  sp = document.createElement("canvas");
-  sp.width = w; sp.height = h;
-  const g = sp.getContext("2d");
-  paintTile(g, t, w / 2, h / 2, R, variant);
-  SPRITES.set(key, sp);
-  return sp;
+const PAINT = {
+  grassland: { base: "#5c8c38", blobs: ["#4b7a2d", "#6f9f45", "#3e6826", "#7fae52"], fleck: "rgba(214,232,120,0.35)" },
+  plains: { base: "#a89a4c", blobs: ["#b9aa5b", "#958a40", "#c6b86d", "#8c8a46"], fleck: "rgba(255,240,170,0.35)" },
+  desert: { base: "#d9bd80", blobs: ["#e6cc93", "#cba86a", "#efd9a6", "#c49c5e"], fleck: "rgba(255,248,220,0.45)" },
+  tundra: { base: "#86896f", blobs: ["#9a9d82", "#6f735c", "#adb09a", "#7b7f63"], fleck: "rgba(235,238,225,0.35)" },
+  snow: { base: "#e4ebf0", blobs: ["#ffffff", "#cdd8e1", "#f2f6f9", "#bfcbd6"], fleck: "rgba(255,255,255,0.6)" },
+  coast: { base: "#3a8db2", blobs: ["#46a2c4", "#2f7ea3", "#58b3cf", "#2a7097"], fleck: "rgba(220,245,255,0.25)" },
+  ocean: { base: "#1d4c78", blobs: ["#235985", "#173f66", "#2a6390", "#143a5f"], fleck: "rgba(170,210,255,0.12)" },
+  beach: { base: "#d8c48e", blobs: ["#e6d6a6", "#c9b27a", "#efe2bd"], fleck: "rgba(255,255,240,0.4)" },
+};
+const TEX = new Map();
+// A 256px seamless painted texture: soft blobs (drawn wrapped at the edges) plus brush flecks.
+function terrainTexture(kind) {
+  if (TEX.has(kind)) return TEX.get(kind);
+  const P = PAINT[kind], N = 256, c = document.createElement("canvas");
+  c.width = c.height = N;
+  const g = c.getContext("2d"), rnd = rng(kind.length * 977 + kind.charCodeAt(0));
+  g.fillStyle = P.base; g.fillRect(0, 0, N, N);
+  const blob = (x, y, r, col, a) => {
+    for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) {
+      const rg = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+      rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)");
+      g.globalAlpha = a; g.fillStyle = rg; g.beginPath(); g.arc(x + ox, y + oy, r, 0, Math.PI * 2); g.fill();
+    }
+  };
+  for (let k = 0; k < 70; k++) blob(rnd() * N, rnd() * N, 18 + rnd() * 46, P.blobs[k % P.blobs.length], 0.45 + rnd() * 0.35);
+  g.globalAlpha = 1;
+  for (let k = 0; k < 380; k++) {  // brush strokes, like a painted map
+    const x = rnd() * N, y = rnd() * N, len = 2 + rnd() * 6, a = (rnd() - 0.5) * 0.8;
+    g.strokeStyle = rnd() < 0.55 ? P.fleck : "rgba(0,0,0,0.10)"; g.lineWidth = 1 + rnd() * 1.4;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke();
+  }
+  if (kind === "desert" || kind === "beach") {  // dune ripples
+    g.strokeStyle = "rgba(160,120,60,0.18)"; g.lineWidth = 1.5;
+    for (let k = 0; k < 26; k++) { const x = rnd() * N, y = rnd() * N; g.beginPath(); g.arc(x, y + 20, 22, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+  }
+  if (kind === "coast" || kind === "ocean") {  // wave glints
+    g.strokeStyle = kind === "coast" ? "rgba(235,250,255,0.28)" : "rgba(170,210,255,0.16)"; g.lineWidth = 1.4;
+    for (let k = 0; k < 60; k++) {
+      const x = rnd() * N, y = rnd() * N;
+      g.beginPath(); g.moveTo(x - 6, y); g.quadraticCurveTo(x - 3, y - 2.5, x, y); g.quadraticCurveTo(x + 3, y + 2.5, x + 6, y); g.stroke();
+    }
+  }
+  TEX.set(kind, c);
+  return c;
 }
-
-function paintTile(g, t, cx, cy, R, variant) {
-  const rnd = rng(variant * 101 + t.terrain.length * 7 + (t.feature || "").length * 13 + (t.elevation === "hills" ? 5 : 0));
-  const base = GROUND[t.terrain][variant] || "#777";
-  g.save();
-  hexPath(g, cx, cy, R + 0.8);
-  g.clip();
-  const grad = g.createLinearGradient(0, cy - R, 0, cy + R);
-  grad.addColorStop(0, shade(base, 0.1));
-  grad.addColorStop(1, shade(base, -0.12));
-  g.fillStyle = grad;
-  g.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 2.4);
-  for (let k = 0; k < 26; k++) {
-    g.fillStyle = rnd() < 0.5 ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.07)";
-    g.beginPath(); g.arc(cx + (rnd() - 0.5) * 1.8 * R, cy + (rnd() - 0.5) * 1.8 * R, R * (0.03 + rnd() * 0.06), 0, Math.PI * 2); g.fill();
-  }
-  const T = t.terrain;
-  if (T === "grassland" || T === "plains") {
-    g.strokeStyle = T === "grassland" ? "rgba(40,80,25,0.45)" : "rgba(120,100,40,0.45)"; g.lineWidth = Math.max(1, R * 0.04);
-    for (let k = 0; k < 9; k++) {
-      const x = cx + (rnd() - 0.5) * 1.5 * R, y = cy + (rnd() - 0.5) * 1.4 * R;
-      g.beginPath(); g.moveTo(x - R * 0.05, y - R * 0.07); g.lineTo(x, y); g.lineTo(x + R * 0.05, y - R * 0.08); g.stroke();
-    }
-    if (T === "plains") {
-      g.strokeStyle = "rgba(255,240,170,0.25)"; g.lineWidth = Math.max(1, R * 0.07);
-      for (const dy of [-0.35, 0, 0.35]) { g.beginPath(); g.moveTo(cx - R, cy + dy * R + R * 0.1); g.lineTo(cx + R, cy + dy * R - R * 0.1); g.stroke(); }
-    }
-  } else if (T === "desert") {
-    for (const [dx, dy] of [[-0.3, -0.25], [0.25, 0.1], [-0.15, 0.45]]) {
-      g.strokeStyle = "rgba(255,245,210,0.6)"; g.lineWidth = Math.max(1, R * 0.06);
-      g.beginPath(); g.arc(cx + dx * R, cy + dy * R + R * 0.35, R * 0.4, Math.PI * 1.2, Math.PI * 1.8); g.stroke();
-      g.strokeStyle = "rgba(150,110,50,0.35)";
-      g.beginPath(); g.arc(cx + dx * R, cy + dy * R + R * 0.42, R * 0.4, Math.PI * 1.25, Math.PI * 1.75); g.stroke();
-    }
-  } else if (T === "tundra") {
-    for (let k = 0; k < 5; k++) {
-      g.fillStyle = rnd() < 0.5 ? "rgba(70,80,70,0.25)" : "rgba(220,225,215,0.3)";
-      g.beginPath(); g.ellipse(cx + (rnd() - 0.5) * 1.4 * R, cy + (rnd() - 0.5) * 1.3 * R, R * 0.22, R * 0.1, 0, 0, Math.PI * 2); g.fill();
-    }
-  } else if (T === "snow") {
-    g.strokeStyle = "rgba(150,175,195,0.45)"; g.lineWidth = Math.max(1, R * 0.05);
-    for (const dy of [-0.3, 0.15, 0.5]) { g.beginPath(); g.arc(cx + (rnd() - 0.5) * R, cy + dy * R + R * 0.3, R * 0.35, Math.PI * 1.2, Math.PI * 1.8); g.stroke(); }
-  } else if (T === "coast" || T === "ocean") {
-    const rg = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.1);
-    rg.addColorStop(0, T === "coast" ? "rgba(140,210,230,0.25)" : "rgba(60,110,160,0.18)");
-    rg.addColorStop(1, "rgba(0,20,40,0.15)");
-    g.fillStyle = rg; g.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 2.4);
-    g.strokeStyle = T === "coast" ? "rgba(255,255,255,0.28)" : "rgba(190,220,255,0.14)"; g.lineWidth = Math.max(1, R * 0.045);
-    for (let k = 0; k < 3; k++) {
-      const x = cx + (rnd() - 0.5) * 1.2 * R, y = cy + (rnd() - 0.5) * 1.2 * R;
-      g.beginPath(); g.moveTo(x - R * 0.2, y); g.quadraticCurveTo(x - R * 0.1, y - R * 0.08, x, y); g.quadraticCurveTo(x + R * 0.1, y + R * 0.08, x + R * 0.2, y); g.stroke();
-    }
-  }
-  if (t.feature === "marsh") {
-    for (let k = 0; k < 4; k++) {
-      const x = cx + (rnd() - 0.5) * 1.2 * R, y = cy + (rnd() - 0.5) * 1.1 * R;
-      g.fillStyle = "rgba(60,110,130,0.55)"; g.beginPath(); g.ellipse(x, y, R * 0.2, R * 0.08, 0, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = "rgba(40,70,30,0.8)"; g.lineWidth = Math.max(1, R * 0.03);
-      for (const d of [-0.08, 0, 0.08]) { g.beginPath(); g.moveTo(x + d * R, y - R * 0.02); g.lineTo(x + d * R * 1.4, y - R * 0.22); g.stroke(); }
-    }
-  }
-  if (t.elevation === "hills") {
-    for (const [dx, dy, s] of [[-0.35, 0.18, 1], [0.3, 0.3, 0.85], [0.05, -0.2, 0.7]]) {
-      const x = cx + dx * R, y = cy + dy * R, w = R * 0.42 * s, h = R * 0.32 * s;
-      const hg = g.createLinearGradient(x - w, y - h, x + w, y);
-      hg.addColorStop(0, "rgba(255,240,200,0.35)"); hg.addColorStop(1, "rgba(60,40,20,0.35)");
-      g.fillStyle = hg; g.beginPath(); g.ellipse(x, y, w, h, 0, Math.PI, 0); g.fill();
-      g.strokeStyle = "rgba(60,40,20,0.35)"; g.lineWidth = Math.max(1, R * 0.03); g.stroke();
-    }
-  }
-  if (t.feature === "forest") drawTrees(g, cx, cy, R, rnd, "forest");
-  if (t.feature === "jungle") drawTrees(g, cx, cy, R, rnd, "jungle");
-  if (t.elevation === "mountain") {
-    for (const [dx, h, w] of [[-0.25, 0.85, 0.5], [0.3, 0.6, 0.38]]) {
-      const bx = cx + dx * R, by = cy + R * 0.5, px = bx + R * 0.05, py = by - h * R;
-      g.fillStyle = "#857e74"; g.beginPath(); g.moveTo(bx - w * R, by); g.lineTo(px, py); g.lineTo(px, by); g.fill();
-      g.fillStyle = "#5f5951"; g.beginPath(); g.moveTo(px, py); g.lineTo(bx + w * R, by); g.lineTo(px, by); g.fill();
-      g.fillStyle = "#f2f5f7"; g.beginPath(); g.moveTo(px - w * R * 0.32, py + h * R * 0.32); g.lineTo(px, py); g.lineTo(px + w * R * 0.3, py + h * R * 0.3); g.lineTo(px + w * R * 0.05, py + h * R * 0.22); g.fill();
-    }
-  }
-  g.restore();
-  hexPath(g, cx, cy, R - 0.5);
-  g.strokeStyle = "rgba(0,0,0,0.16)"; g.lineWidth = 1; g.stroke();
+function isWater(t) { return t.terrain === "coast" || t.terrain === "ocean"; }
+// Scratch canvases reused while building chunks, to avoid churning memory.
+const LAYERS = [];
+function layerCanvas(w, h, slot) {
+  let c = LAYERS[slot];
+  if (!c) { c = document.createElement("canvas"); LAYERS[slot] = c; }
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  return c;
 }
-
-function drawTrees(g, cx, cy, R, rnd, kind) {
+// Feature sprites drawn over the blended ground (trees, hills, peaks, marsh), cached.
+const FEATURES = new Map();
+function featureSprite(t, Rb, variant) {
+  const key = `${t.elevation}|${t.feature || ""}|${t.terrain}|${Rb}|${variant}`;
+  let c = FEATURES.get(key);
+  if (c !== undefined) return c;
+  if (FEATURES.size > 900) FEATURES.clear();
+  if (t.elevation === "flat" && !t.feature) { FEATURES.set(key, null); return null; }
+  const w = Math.ceil(Rb * 2.6), h = Math.ceil(Rb * 2.8);
+  c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"), cx = w / 2, cy = h / 2 + Rb * 0.1;
+  const rnd = rng(variant * 131 + (t.feature || "").length * 17 + t.elevation.length * 5 + t.terrain.length);
+  if (t.feature === "marsh") paintMarsh(g, cx, cy, Rb, rnd);
+  if (t.elevation === "hills") paintHills(g, cx, cy, Rb, rnd, t.terrain);
+  if (t.feature === "forest") paintForest(g, cx, cy, Rb, rnd, t.terrain);
+  if (t.feature === "jungle") paintJungle(g, cx, cy, Rb, rnd);
+  if (t.elevation === "mountain") paintMountains(g, cx, cy, Rb, rnd, t.terrain);
+  FEATURES.set(key, c);
+  return c;
+}
+function paintHills(g, cx, cy, R, rnd, terrain) {
+  const tone = { desert: ["#e4c98f", "#a7834e"], snow: ["#ffffff", "#9fb0c0"], tundra: ["#a9ab92", "#5f624f"] }[terrain] || ["#9fbf6a", "#4c6a2c"];
+  const mounds = [[-0.42, 0.28, 0.62], [0.36, 0.34, 0.55], [0.0, -0.08, 0.5], [-0.15, 0.55, 0.42]];
+  for (const [dx, dy, s] of mounds) {
+    const x = cx + dx * R, y = cy + dy * R, w = R * 0.62 * s * (0.9 + rnd() * 0.2), h = R * 0.5 * s;
+    g.fillStyle = "rgba(0,0,0,0.18)"; g.beginPath(); g.ellipse(x + w * 0.15, y + h * 0.1, w, h * 0.35, 0, 0, Math.PI * 2); g.fill();
+    const hg = g.createLinearGradient(x - w, y - h, x + w * 0.6, y);
+    hg.addColorStop(0, tone[0]); hg.addColorStop(1, tone[1]);
+    g.fillStyle = hg; g.beginPath(); g.moveTo(x - w, y); g.bezierCurveTo(x - w * 0.6, y - h * 1.1, x + w * 0.5, y - h * 1.15, x + w, y); g.closePath(); g.fill();
+    g.strokeStyle = "rgba(40,30,15,0.25)"; g.lineWidth = Math.max(1, R * 0.03); g.stroke();
+  }
+}
+function paintForest(g, cx, cy, R, rnd, terrain) {
+  const cold = terrain === "tundra" || terrain === "snow";
   const pts = [];
-  for (let k = 0; k < 6; k++) pts.push([cx + (rnd() - 0.5) * 1.3 * R, cy + (rnd() - 0.5) * 1.15 * R]);
+  for (let k = 0; k < 13; k++) pts.push([cx + (rnd() - 0.5) * 1.55 * R, cy + (rnd() - 0.5) * 1.3 * R, 0.75 + rnd() * 0.5]);
   pts.sort((a, b) => a[1] - b[1]);
-  for (const [x, y] of pts) {
-    if (kind === "forest") {
-      g.fillStyle = "#4a3320"; g.fillRect(x - R * 0.025, y, R * 0.05, R * 0.1);
-      for (const [dy, w] of [[0, 0.17], [-0.12, 0.13], [-0.22, 0.09]]) {
-        g.fillStyle = "#2d5a2a"; g.beginPath(); g.moveTo(x, y + dy * R - R * 0.16); g.lineTo(x - w * R, y + dy * R + R * 0.03); g.lineTo(x + w * R, y + dy * R + R * 0.03); g.fill();
-        g.fillStyle = "#3f7536"; g.beginPath(); g.moveTo(x, y + dy * R - R * 0.16); g.lineTo(x - w * R, y + dy * R + R * 0.03); g.lineTo(x, y + dy * R + R * 0.03); g.fill();
-      }
+  for (const [x, y, s] of pts) {
+    g.fillStyle = "rgba(0,0,0,0.22)"; g.beginPath(); g.ellipse(x + R * 0.06, y + R * 0.09, R * 0.13 * s, R * 0.05 * s, 0, 0, Math.PI * 2); g.fill();
+    if (cold || rnd() < 0.55) {
+      const hgt = R * 0.42 * s, wid = R * 0.15 * s;
+      g.fillStyle = cold ? "#2d4a36" : "#2b5226"; g.beginPath(); g.moveTo(x, y - hgt); g.lineTo(x - wid, y + R * 0.04); g.lineTo(x + wid, y + R * 0.04); g.fill();
+      g.fillStyle = cold ? "#46684f" : "#3f7433"; g.beginPath(); g.moveTo(x, y - hgt); g.lineTo(x - wid, y + R * 0.04); g.lineTo(x - wid * 0.1, y + R * 0.04); g.fill();
+      if (cold) { g.fillStyle = "rgba(240,245,250,0.85)"; g.beginPath(); g.moveTo(x, y - hgt); g.lineTo(x - wid * 0.35, y - hgt * 0.62); g.lineTo(x + wid * 0.35, y - hgt * 0.62); g.fill(); }
     } else {
-      g.fillStyle = "#4a3320"; g.fillRect(x - R * 0.02, y, R * 0.04, R * 0.12);
-      g.fillStyle = "#1f5a2c"; g.beginPath(); g.arc(x, y - R * 0.02, R * 0.16, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "#2f7a38"; g.beginPath(); g.arc(x - R * 0.05, y - R * 0.07, R * 0.1, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#4b3420"; g.fillRect(x - R * 0.02, y - R * 0.05, R * 0.04, R * 0.1);
+      g.fillStyle = "#3d6b2b"; g.beginPath(); g.arc(x, y - R * 0.13 * s, R * 0.14 * s, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#5a8f3c"; g.beginPath(); g.arc(x - R * 0.04 * s, y - R * 0.17 * s, R * 0.08 * s, 0, Math.PI * 2); g.fill();
     }
+  }
+}
+function paintJungle(g, cx, cy, R, rnd) {
+  const pts = [];
+  for (let k = 0; k < 15; k++) pts.push([cx + (rnd() - 0.5) * 1.6 * R, cy + (rnd() - 0.5) * 1.35 * R, 0.7 + rnd() * 0.6]);
+  pts.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, s] of pts) {
+    g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.ellipse(x + R * 0.05, y + R * 0.08, R * 0.15 * s, R * 0.05 * s, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#1c4a22"; g.beginPath(); g.arc(x, y - R * 0.08 * s, R * 0.17 * s, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#2f6e32"; g.beginPath(); g.arc(x - R * 0.05 * s, y - R * 0.13 * s, R * 0.11 * s, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#3f8a3a"; g.lineWidth = Math.max(1, R * 0.03);
+    for (let f = 0; f < 4; f++) { const a = (f / 4) * Math.PI * 2 + rnd(); g.beginPath(); g.moveTo(x, y - R * 0.1 * s); g.quadraticCurveTo(x + Math.cos(a) * R * 0.12 * s, y - R * 0.2 * s, x + Math.cos(a) * R * 0.2 * s, y - R * 0.05 * s); g.stroke(); }
+  }
+}
+function paintMountains(g, cx, cy, R, rnd, terrain) {
+  const peaks = [[-0.38, 0.95, 0.55], [0.3, 0.75, 0.5], [0.0, 1.15, 0.6], [0.55, 0.5, 0.35]];
+  peaks.sort((a, b) => b[1] - a[1]);
+  for (const [dx, hgt, wid] of peaks) {
+    const bx = cx + dx * R, by = cy + R * 0.55, px = bx + (rnd() - 0.5) * R * 0.1, py = by - hgt * R * (0.85 + rnd() * 0.25);
+    g.fillStyle = "rgba(0,0,0,0.22)"; g.beginPath(); g.ellipse(bx + R * 0.1, by, wid * R * 1.05, R * 0.12, 0, 0, Math.PI * 2); g.fill();
+    const lg = g.createLinearGradient(bx - wid * R, py, px, by);
+    lg.addColorStop(0, "#a49a8b"); lg.addColorStop(1, "#7d7466");
+    g.fillStyle = lg; g.beginPath(); g.moveTo(bx - wid * R, by); g.lineTo(px, py); g.lineTo(px + R * 0.02, by); g.fill();
+    const dg = g.createLinearGradient(px, py, bx + wid * R, by);
+    dg.addColorStop(0, "#5f574c"); dg.addColorStop(1, "#40392f");
+    g.fillStyle = dg; g.beginPath(); g.moveTo(px, py); g.lineTo(bx + wid * R, by); g.lineTo(px - R * 0.02, by); g.fill();
+    g.strokeStyle = "rgba(30,25,20,0.35)"; g.lineWidth = Math.max(1, R * 0.025);
+    g.beginPath(); g.moveTo(px, py); g.lineTo(px - wid * R * 0.3, py + hgt * R * 0.45); g.lineTo(px - wid * R * 0.15, by); g.stroke();
+    const cap = terrain === "snow" || terrain === "tundra" ? 0.5 : 0.32;
+    g.fillStyle = "#f4f7fa"; g.beginPath(); g.moveTo(px, py);
+    g.lineTo(px - wid * R * cap, py + hgt * R * cap * 0.9); g.lineTo(px - wid * R * cap * 0.4, py + hgt * R * cap * 0.7);
+    g.lineTo(px, py + hgt * R * cap * 0.95); g.lineTo(px + wid * R * cap * 0.5, py + hgt * R * cap * 0.65);
+    g.lineTo(px + wid * R * cap, py + hgt * R * cap * 0.9); g.closePath(); g.fill();
+  }
+}
+function paintMarsh(g, cx, cy, R, rnd) {
+  for (let k = 0; k < 6; k++) {
+    const x = cx + (rnd() - 0.5) * 1.3 * R, y = cy + (rnd() - 0.5) * 1.1 * R;
+    const pg = g.createRadialGradient(x, y, 0, x, y, R * 0.25);
+    pg.addColorStop(0, "rgba(70,120,140,0.75)"); pg.addColorStop(1, "rgba(50,90,100,0)");
+    g.fillStyle = pg; g.beginPath(); g.ellipse(x, y, R * 0.26, R * 0.11, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(55,85,35,0.9)"; g.lineWidth = Math.max(1, R * 0.025);
+    for (const d of [-0.1, -0.03, 0.04, 0.11]) { g.beginPath(); g.moveTo(x + d * R, y - R * 0.02); g.quadraticCurveTo(x + d * R * 1.2, y - R * 0.15, x + d * R * 1.6, y - R * 0.27); g.stroke(); }
   }
 }
 
@@ -271,48 +305,83 @@ function invalidateGround(v) {
 }
 function bumpChunk(i, width) {
   const c = i % width, r = Math.floor(i / width);
-  // a tile's coast edge is drawn by its neighbours too: bump the chunks around it
-  for (const [dc, dr] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    const cc = Math.floor((c + dc) / CHUNK), rr = Math.floor((r + dr) / CHUNK);
-    const key = `${cc},${rr}`;
+  const seen = new Set();
+  for (const dc of [-2, 0, 2]) for (const dr of [-2, 0, 2]) {  // a chunk blends 2 hexes past its edge
+    const key = `${Math.floor((c + dc) / CHUNK)},${Math.floor((r + dr) / CHUNK)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     CHUNK_VER.set(key, (CHUNK_VER.get(key) || 0) + 1);
   }
 }
-function chunkOrigin(cx, cy) { return [cx * CHUNK * SQ3 * R0, cy * CHUNK * 1.5 * R0]; }
+const CHUNK_PAD = 2 * R0;  // world units of overdraw around a chunk (features spill over)
+function chunkOrigin(cx, cy) { return [cx * CHUNK * SQ3 * R0 - CHUNK_PAD, cy * CHUNK * 1.5 * R0 - CHUNK_PAD]; }
 function renderChunk(cx, cy, Rb) {
   const k = Rb / R0, [ox, oy] = chunkOrigin(cx, cy);
-  const w = Math.ceil((CHUNK + 1.5) * SQ3 * R0 * k) + 4, h = Math.ceil((CHUNK * 1.5 + 2.5) * R0 * k) + 4;
+  const w = Math.ceil(((CHUNK + 1.5) * SQ3 * R0 + 2 * CHUNK_PAD) * k) + 4;
+  const h = Math.ceil(((CHUNK * 1.5 + 2.5) * R0 + 2 * CHUNK_PAD) * k) + 4;
   const W0 = S.view.width;
-  const tiles = [];
-  for (let r = cy * CHUNK; r < Math.min(S.view.height, (cy + 1) * CHUNK); r++) {
-    for (let col = cx * CHUNK; col < Math.min(W0, (cx + 1) * CHUNK); col++) {
+  const tiles = [], ring = [];  // the chunk's own hexes, and its own plus a ring of neighbours
+  for (let r = cy * CHUNK - 2; r < Math.min(S.view.height, (cy + 1) * CHUNK + 2); r++) {
+    if (r < 0) continue;
+    for (let col = cx * CHUNK - 2; col < Math.min(W0, (cx + 1) * CHUNK + 2); col++) {
+      if (col < 0) continue;
       const i = r * W0 + col, t = S.tilesByIndex.get(i);
       if (!t) continue;
       const [wx, wy] = center(i);
-      tiles.push([i, t, (wx - ox) * k, (wy - oy) * k]);
+      const row = [i, t, (wx - ox) * k, (wy - oy) * k];
+      ring.push(row);
+      if (r >= cy * CHUNK && r < (cy + 1) * CHUNK && col >= cx * CHUNK && col < (cx + 1) * CHUNK) tiles.push(row);
     }
   }
   if (!tiles.length) return null;  // nothing explored here yet: no canvas
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d");
-  for (const [i, t, x, y] of tiles) {
-    const sp = tileSprite(t, i, Rb);
-    g.drawImage(sp, x - sp.width / 2, y - sp.height / 2);
-  }
-  // coastlines: sand on the land side, foam on the water side
-  for (const [i, t1, x, y] of tiles) {
-    const water1 = t1.terrain === "coast" || t1.terrain === "ocean";
-    for (const [n, edge] of neighbourEdges(i)) {
-      const t2 = S.tilesByIndex.get(n);
-      if (!t2) continue;
-      const water2 = t2.terrain === "coast" || t2.terrain === "ocean";
-      if (water1 === water2) continue;
-      const kk = water1 ? 0.93 : 0.95;
-      const [x1, y1] = corner(x, y, Rb * kk, edge), [x2, y2] = corner(x, y, Rb * kk, (edge + 1) % 6);
-      g.strokeStyle = water1 ? "rgba(235,248,255,0.55)" : "rgba(232,214,160,0.9)";
-      g.lineWidth = Math.max(1.2, Rb * (water1 ? 0.07 : 0.1));
-      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  const coastal = (i) => neighbourEdges(i).some(([n]) => { const t2 = S.tilesByIndex.get(n); return t2 && isWater(t2); });
+  // 1. ground, clipped to this chunk's own hexes (the ring of neighbours only feeds the blending):
+  //    a solid base, then each terrain as one continuous world-aligned texture in a blurred mask
+  g.save(); g.beginPath();
+  for (const [, , x, y] of tiles) for (let q = 0; q < 6; q++) { const [px, py] = corner(x, y, Rb + 0.6, q); if (q === 0) g.moveTo(px, py); else g.lineTo(px, py); }
+  g.clip();
+  for (const [, t, x, y] of ring) { hexPath(g, x, y, Rb + 1); g.fillStyle = PAINT[t.terrain].base; g.fill(); }
+  const blurPx = Math.max(1.5, Rb * 0.38);
+  for (const kind of ["ocean", "coast", "beach", "snow", "tundra", "desert", "plains", "grassland"]) {
+    const m = layerCanvas(w, h, 0), mg = m.getContext("2d");
+    if (kind === "beach") {  // surf: a soft white halo around the land, over the water
+      const land = ring.filter(([, t]) => !isWater(t));
+      if (land.length) {
+        mg.clearRect(0, 0, w, h);
+        mg.filter = `blur(${Math.max(1.5, Rb * 0.3)}px)`; mg.fillStyle = "rgba(236,248,255,0.55)";
+        for (const [, , x, y] of land) { hexPath(mg, x, y, Rb * 1.16); mg.fill(); }
+        mg.filter = "none";
+        g.drawImage(m, 0, 0);
+      }
     }
+    const mine = kind === "beach" ? ring.filter(([i, t]) => !isWater(t) && coastal(i)) : ring.filter(([, t]) => t.terrain === kind);
+    if (!mine.length) continue;
+    mg.clearRect(0, 0, w, h);
+    mg.filter = `blur(${blurPx}px)`; mg.fillStyle = "#fff";
+    const water = kind === "ocean" || kind === "coast";
+    for (const [i, , x, y] of mine) {
+      const grow = kind === "beach" ? 1.18 : water ? 1.12 : coastal(i) ? 0.82 : 1.02;
+      hexPath(mg, x, y, Rb * grow); mg.fill();
+    }
+    mg.filter = "none";
+    mg.globalCompositeOperation = "source-in";
+    const pat = mg.createPattern(terrainTexture(kind), "repeat");
+    const sc = Math.max(0.35, Rb / 40);
+    pat.setTransform(new DOMMatrix().translate(-(ox * k) % (256 * sc), -(oy * k) % (256 * sc)).scale(sc));
+    mg.fillStyle = pat; mg.fillRect(0, 0, w, h);
+    mg.globalCompositeOperation = "source-over";
+    g.drawImage(m, 0, 0);
+  }
+  g.restore();
+  // 2. a faint hex grid over the land, as in Civ
+  g.strokeStyle = "rgba(20,25,20,0.07)"; g.lineWidth = 1;
+  for (const [, t, x, y] of tiles) { if (!isWater(t)) { hexPath(g, x, y, Rb - 0.5); g.stroke(); } }
+  // 3. features over the ground, back to front
+  for (const [i, t, x, y] of [...tiles].sort((a, b) => a[3] - b[3])) {
+    const sp = featureSprite(t, Rb, i % 3);
+    if (sp) g.drawImage(sp, x - sp.width / 2, y - sp.height / 2 - Rb * 0.1);
   }
   return c;
 }

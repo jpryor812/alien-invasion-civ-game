@@ -21,7 +21,7 @@ Rules for every slice:
 - [x] 0. Renderer: move map drawing to WebGL (PixiJS from a pinned CDN version) or an
       optimised canvas layer cache, keeping today's look and every overlay (fog, highlights,
       shards, finds, city tiles, combat targets).
-- [ ] 1. Terrain: painted textures per terrain (grassland, plains, desert, tundra, snow, coast,
+- [x] 1. Terrain: painted textures per terrain (grassland, plains, desert, tundra, snow, coast,
       ocean), soft blending between neighbouring hexes, sandy coasts and foam, forests and jungle
       as clustered trees, hills as shaded mounds, mountains as peaks with snow, marsh.
 - [ ] 2. Tile improvements and roads: farms (field rows), mines, extractors, solar, wind,
@@ -49,3 +49,4 @@ Rules for every slice:
 
 (one line per finished slice: what changed, what is still weak)
 - 0 Renderer: canvas kept (no new dependency); ground (terrain, coasts) drawn into cached 16x16-hex chunks at 8 zoom steps, rebuilt only when a tile changes; only on-screen hexes are visited. Frame 3-34 ms at 1400x860. Still weak: the cloud fog is the costliest pass at far zoom.
+- 1 Terrain: seamless painted textures per terrain laid as one continuous surface in blurred masks (soft blends, no per-hex seams), beaches and a soft surf halo, faint land grid; sprites for forests (conifer/broadleaf, snowy in the cold), jungle, hills, snow-capped mountain ranges, marsh. Dev flag `web.server --reveal` shows the whole map for art checks. Still weak: coastlines keep a hex-stepped outline; forests are dense everywhere.

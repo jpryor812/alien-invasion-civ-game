@@ -133,7 +133,9 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
 
 def serve(port: int = 8765, seed: int = 1, human: str = "europe") -> ThreadingHTTPServer:
     app = App(seed, human)
-    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(app))
+    server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(app))
+    server.app = app  # type: ignore[attr-defined]
+    return server
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -141,8 +143,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--human", default="europe")
+    parser.add_argument(
+        "--reveal", action="store_true", help="developer: show the whole map (art testing)"
+    )
     args = parser.parse_args(argv)
     server = serve(args.port, args.seed, args.human)
+    server.app.session.reveal = args.reveal  # type: ignore[attr-defined]
     print(f"Beacon running at http://127.0.0.1:{args.port}")
     with contextlib.suppress(KeyboardInterrupt):
         server.serve_forever()
