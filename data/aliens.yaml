@@ -5,9 +5,11 @@ progress:
   note: Progress per turn = max(floor, base + per_city x alien cities + per_pop_pct% of alien
     population). More cities, faster progress (the tipping point, DESIGN.md 9).
   base: 2
-  per_city: 1
-  per_pop_pct: 20
+  per_city: 0
+  per_pop_pct: 15
   floor: 8
+  # 2026-11-14 retune: per_city 1 and per_pop_pct 20 were set for 24 alien cities; with 84 (every
+  # lost city alien-held) alien tech ran three times faster. Now about 40 a turn at the start.
 
 # Bought in `order` with progress. Effects add up. Units unlock through `alien_tech` in units.yaml.
 techs:
@@ -44,7 +46,8 @@ cities:
   max_pop: 6
   max_units_nearby: 3
   nearby_radius: 3
-  units_per_city_pct: 110
+  units_per_city_pct: 45
+  # 2026-11-14 retune: was 110 with 24 alien cities (a cap of 26 units); 45 of 84 cities is 37.
   garrison: alien_hive_guard
   spawn_weights: {alien_drone: 3, alien_warrior: 4, alien_spitter: 2, alien_brute: 3, alien_titan: 1,
                   alien_hatchling: 2, alien_pillager: 2, alien_sporecaster: 2, alien_wraith: 2,
@@ -103,7 +106,7 @@ director:
   value_base: 20
   value_capital: 30
   value_per_pop: 5
-  value_retake: 25
+  value_retake: 10
   defence_per_strength: 2
   distance_penalty: 2
 

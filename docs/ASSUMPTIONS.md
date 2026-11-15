@@ -536,3 +536,16 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   cities in all). The war barely advances with one starting city and no starting farms: open for
   the designer (retune before relying on balance numbers).
 
+## Retune for the one-city start (designer, 2026-11-14)
+
+- **Capital**: starts with 5 citizens (designer), still 2 infantry, 1 engineer and the scout. The
+  palace adds +3 food and +1 production, so 5 citizens are fed before any farm is built.
+- **Alien cities**: one hive guard each (was a hive guard and a warrior); a city with an enemy
+  soldier next to it does not heal; retaking freed cities is valued 10 (was 25).
+- **Alien scaling**: tech progress and the army cap were set for 24 alien cities and ran three
+  times too strong with 84. Progress is now 2 + 15% of alien population (no per-city term), about
+  40 a turn at the start; the army cap is 45% of alien cities (about 37 units, was 110%).
+- **Result**: 6 AI seeds to turn 200: 0 victories, no continent fell, 8-41 alien cities left. To
+  turn 300: victories on turns 236 and 264, the other four with 1-7 alien cities left; players
+  lost 7-16 cities along the way. Games take 70-140 s to 300 turns.
+

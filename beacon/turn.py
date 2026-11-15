@@ -12,6 +12,7 @@ from beacon import (
     economy,
     endgame,
     fog,
+    hexgrid,
     improvements,
     liberation,
     network,
@@ -58,9 +59,17 @@ def reset_units(state: GameState, cfg: Config) -> None:
 
 
 def heal_cities(state: GameState, cfg: Config) -> None:
+    from beacon.units import hostile, is_civilian
+
     for city in state.cities:
         city.bombarded = False
-        if not city.besieged:
+        # a city with an enemy soldier next to it does not heal (sieges make progress)
+        pressed = any(
+            hostile(u.owner, city.owner or "") and not is_civilian(cfg, u.type)
+            for n in hexgrid.neighbours(city.tile, state.width, state.height)
+            for u in state.units_at(n)
+        )
+        if not city.besieged and not pressed:
             city.hp = min(cities.max_hp(cfg, city, state), city.hp + cfg.t("cities.heal_per_turn"))
         city.besieged = False
 

@@ -73,9 +73,9 @@ cities:
     overrun: 100
   start_pop:
     status: placeholder
-    note: Starting population by starting role. Capital 3 and others 2 (2026-11-14, from 5 and
-      3) - cities start with no farms or mines, so they must not start hungry.
-    capital: 3
+    note: Starting population by starting role. Designer 2026-11-14 - the capital starts with 5
+      citizens (the palace food keeps them fed before any farm is built); others 2.
+    capital: 5
     known: 2
     dormant: 2
     overrun: 3
@@ -127,10 +127,13 @@ cities:
       near-impregnable to early units in M4 runs).
   capital:
     status: placeholder
-    note: A capital's built-in defences (like Civ's palace), added to its strength and HP. With one
+    note: A capital's built-in defences (like Civ's palace), added to its strength and HP, and the
+      palace's own food and production (so 5 starting citizens are fed before any farm). With one
       starting city (designer 2026-11-14) an undefended capital fell to the first alien sieges.
     strength: 15
     hp: 100
+    food: 3
+    production: 1
   base_hp:
     value: 200
     status: placeholder
@@ -285,10 +288,11 @@ start:
 aliens:
   garrison:
     status: placeholder
-    note: Alien units placed in each overrun city at the start (the first sits in the city). The
+    note: Alien units placed in each overrun city at the start (the first sits in the city); one
+      hive guard each (2026-11-14 retune, was hive guard and warrior). The
       alien city nearest each capital gets only near_list, so a first liberation comes early
       (designer 2026-11-14, with one starting city).
-    list: [alien_hive_guard, alien_warrior]
+    list: [alien_hive_guard]
     near_list: [alien_hatchling]
   near_hp_pct:
     value: 50

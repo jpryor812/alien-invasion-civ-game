@@ -48,6 +48,9 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
 
     add("city_tile", tile_yields(cfg, state.tiles[city.tile]))
     add("city_centre", cfg.t("economy.city_center_yields"))
+    if city.is_capital:
+        cap = cfg.t("cities.capital")
+        add("palace", {"food": cap["food"], "production": cap["production"]})
     worked, people, fraction = citizens.city_lines(state, cfg, city)
     lines.extend(people)
     add("population", {"science": city.pop * cfg.t("economy.science_per_pop_pct") // 100})

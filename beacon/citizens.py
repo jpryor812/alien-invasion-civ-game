@@ -173,6 +173,8 @@ def base_food(state: GameState, cfg: Config, city: City) -> int:
     """Food a city makes without workers: its own hex, the centre bonus and buildings."""
     food = tile_yields(cfg, state.tiles[city.tile])["food"]
     food += cfg.t("economy.city_center_yields").get("food", 0)
+    if city.is_capital:
+        food += cfg.t("cities.capital.food")
     return food + sum(cfg.buildings[b]["yields"].get("food", 0) for b in city.buildings)
 
 

@@ -179,6 +179,9 @@ def test_besieged_cities_do_not_heal(cfg):
     heal_cities(s, cfg)
     assert city.hp == hit
     heal_cities(s, cfg)
+    assert city.hp == hit  # an enemy soldier still next to it: no healing (2026-11-14)
+    art.tile = east(city.tile, -3)
+    heal_cities(s, cfg)
     assert city.hp > hit
 
 
