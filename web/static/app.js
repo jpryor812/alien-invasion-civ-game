@@ -120,7 +120,9 @@ function neighbourEdges(i) {
 }
 function corner(cx, cy, r, k) { const a = Math.PI / 180 * (60 * k - 30); return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
 function hexPath(g, cx, cy, r) {
-  g.beginPath();
+  g.beginPath(); hexSub(g, cx, cy, r);
+}
+function hexSub(g, cx, cy, r) {  // add a hex to the current path (to fill many hexes in one call)
   for (let k = 0; k < 6; k++) { const [x, y] = corner(cx, cy, r, k); if (k === 0) g.moveTo(x, y); else g.lineTo(x, y); }
   g.closePath();
 }
@@ -220,8 +222,19 @@ function paintHills(g, cx, cy, R, rnd, terrain) {
 }
 function paintForest(g, cx, cy, R, rnd, terrain) {
   const cold = terrain === "tundra" || terrain === "snow";
-  const pts = [];
-  for (let k = 0; k < 13; k++) pts.push([cx + (rnd() - 0.5) * 1.55 * R, cy + (rnd() - 0.5) * 1.3 * R, 0.75 + rnd() * 0.5]);
+  // trees grow in clumps with clearings between them; density varies from hex to hex
+  const pts = [], clumps = 2 + Math.floor(rnd() * 3), total = 7 + Math.floor(rnd() * 8);
+  const centres = Array.from({ length: clumps }, () => [cx + (rnd() - 0.5) * 1.1 * R, cy + (rnd() - 0.5) * 0.9 * R]);
+  for (let k = 0; k < total; k++) {
+    const [qx, qy] = centres[k % clumps], a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * R * 0.32;
+    pts.push([qx + Math.cos(a) * d, qy + Math.sin(a) * d * 0.75, 0.7 + rnd() * 0.55]);
+  }
+  // a darker forest floor under each clump
+  for (const [qx, qy] of centres) {
+    const fg = g.createRadialGradient(qx, qy + R * 0.05, 0, qx, qy + R * 0.05, R * 0.42);
+    fg.addColorStop(0, cold ? "rgba(40,60,45,0.35)" : "rgba(30,60,20,0.35)"); fg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = fg; g.beginPath(); g.ellipse(qx, qy + R * 0.05, R * 0.45, R * 0.32, 0, 0, Math.PI * 2); g.fill();
+  }
   pts.sort((a, b) => a[1] - b[1]);
   for (const [x, y, s] of pts) {
     g.fillStyle = "rgba(0,0,0,0.22)"; g.beginPath(); g.ellipse(x + R * 0.06, y + R * 0.09, R * 0.13 * s, R * 0.05 * s, 0, 0, Math.PI * 2); g.fill();
@@ -315,6 +328,80 @@ function bumpChunk(i, width) {
 }
 const CHUNK_PAD = 2 * R0;  // world units of overdraw around a chunk (features spill over)
 function chunkOrigin(cx, cy) { return [cx * CHUNK * SQ3 * R0 - CHUNK_PAD, cy * CHUNK * 1.5 * R0 - CHUNK_PAD]; }
+// Fill a mask canvas (white where wanted) with a terrain's texture, aligned to the world.
+function texturise(mg, kind, w, h, wx, wy, Rb) {
+  mg.globalCompositeOperation = "source-in";
+  const pat = mg.createPattern(terrainTexture(kind), "repeat"), sc = Math.max(0.35, Rb / 40);
+  pat.setTransform(new DOMMatrix().translate(-wx % (256 * sc), -wy % (256 * sc)).scale(sc));
+  mg.fillStyle = pat; mg.fillRect(0, 0, w, h);
+  mg.globalCompositeOperation = "source-over";
+}
+// A 256px seamless value-noise tile (two octaves), to wobble coastlines.
+let NOISE = null;
+function noiseTile() {
+  if (NOISE) return NOISE;
+  const N = 256, c = document.createElement("canvas"); c.width = c.height = N;
+  const g = c.getContext("2d"), img = g.createImageData(N, N), rnd = rng(4242);
+  const grids = [8, 16].map((n) => ({ n, v: Array.from({ length: n * n }, () => rnd()) }));
+  const sm = (t) => t * t * (3 - 2 * t);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let v = 0, amp = 0.65;
+    for (const { n, v: gv } of grids) {
+      const fx = (x / N) * n, fy = (y / N) * n, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = sm(fx - x0), ty = sm(fy - y0);
+      const at = (a, b) => gv[((b + n) % n) * n + ((a + n) % n)];
+      const top = at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx, bot = at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx;
+      v += (top * (1 - ty) + bot * ty) * amp; amp = 0.35;
+    }
+    const o = (y * N + x) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = Math.round(v * 255); img.data[o + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return (NOISE = c);
+}
+// Smooth coastline masks for one chunk: land hexes are blurred into a field, wobbled by world-aligned
+// noise, then cut at three levels: the land itself, a beach band just inside the shore, and a surf
+// band just outside it. Hexes next to unexplored ones count as land, so fog edges show no coast.
+function coastMasks(w, h, Rb, k, ox, oy, land, anyWater) {
+  if (!anyWater) return null;
+  // the field is smooth, so it is built at a quarter of the chunk's size and scaled up when drawn
+  const q = 4, wq = Math.ceil(w / q), hq = Math.ceil(h / q);
+  const F = layerCanvas(wq, hq, 3), fg = F.getContext("2d", { willReadFrequently: true });
+  fg.setTransform(1, 0, 0, 1, 0, 0); fg.fillStyle = "#000"; fg.fillRect(0, 0, wq, hq);
+  fg.setTransform(1 / q, 0, 0, 1 / q, 0, 0);
+  // half a wide blur (smooth, wavy coasts) plus half a narrow one (so one-hex islands survive)
+  fg.beginPath();
+  for (const [i, , x, y] of land) {
+    hexSub(fg, x, y, Rb);
+    for (const [n] of neighbourEdges(i)) {
+      if (S.tilesByIndex.has(n)) continue;
+      const [nx, ny] = center(n); hexSub(fg, (nx - ox) * k, (ny - oy) * k, Rb);
+    }
+  }
+  fg.globalCompositeOperation = "lighter"; fg.fillStyle = "#808080";
+  fg.filter = `blur(${Math.max(1, (Rb * 0.85) / q)}px)`; fg.fill("nonzero");
+  fg.filter = `blur(${Math.max(0.7, (Rb * 0.32) / q)}px)`; fg.fill("nonzero");
+  fg.filter = "none"; fg.globalCompositeOperation = "source-over"; fg.setTransform(1, 0, 0, 1, 0, 0);
+  const N = layerCanvas(wq, hq, 4), ng = N.getContext("2d", { willReadFrequently: true });
+  const pat = ng.createPattern(noiseTile(), "repeat"), sc = (Rb * 12) / 256 / q;
+  pat.setTransform(new DOMMatrix().translate(-((ox * k) / q) % (256 * sc), -((oy * k) / q) % (256 * sc)).scale(sc));
+  ng.fillStyle = pat; ng.fillRect(0, 0, wq, hq);
+  const f = fg.getImageData(0, 0, wq, hq).data, nz = ng.getImageData(0, 0, wq, hq).data;
+  const out = [fg.createImageData(wq, hq), fg.createImageData(wq, hq), fg.createImageData(wq, hq)];
+  const [ld, bd, sd] = out.map((o) => o.data);
+  const ss = (a, b, v) => { if (v <= a) return 0; if (v >= b) return 1; const t = (v - a) / (b - a); return t * t * (3 - 2 * t); };
+  for (let p = 0; p < f.length; p += 4) {
+    const v = f[p] / 255 + (nz[p] / 255 - 0.5) * 0.34;
+    const landA = ss(0.45, 0.55, v), inner = ss(0.6, 0.72, v), surf = ss(0.28, 0.44, v) - landA;
+    ld[p] = ld[p + 1] = ld[p + 2] = bd[p] = bd[p + 1] = bd[p + 2] = sd[p] = sd[p + 1] = sd[p + 2] = 255;
+    ld[p + 3] = landA * 255; bd[p + 3] = Math.max(0, landA - inner) * 255; sd[p + 3] = Math.max(0, surf) * 200;
+  }
+  const make = (img) => {  // scale the small mask up to the chunk's size
+    const small = document.createElement("canvas"); small.width = wq; small.height = hq; small.getContext("2d").putImageData(img, 0, 0);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const cg = c.getContext("2d"); cg.imageSmoothingQuality = "high"; cg.drawImage(small, 0, 0, wq * q, hq * q);
+    return c;
+  };
+  return { land: make(out[0]), beach: make(out[1]), surf: make(out[2]) };
+}
 function renderChunk(cx, cy, Rb) {
   const k = Rb / R0, [ox, oy] = chunkOrigin(cx, cy);
   const w = Math.ceil(((CHUNK + 1.5) * SQ3 * R0 + 2 * CHUNK_PAD) * k) + 4;
@@ -337,42 +424,57 @@ function renderChunk(cx, cy, Rb) {
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d");
   const coastal = (i) => neighbourEdges(i).some(([n]) => { const t2 = S.tilesByIndex.get(n); return t2 && isWater(t2); });
-  // 1. ground, clipped to this chunk's own hexes (the ring of neighbours only feeds the blending):
-  //    a solid base, then each terrain as one continuous world-aligned texture in a blurred mask
+  // 1. ground, clipped to this chunk's own hexes (the ring of neighbours only feeds the blending).
+  //    Water first, then the land cut out by a smooth coastline mask with a beach band inside it
+  //    and a surf band outside it.
   g.save(); g.beginPath();
   for (const [, , x, y] of tiles) for (let q = 0; q < 6; q++) { const [px, py] = corner(x, y, Rb + 0.6, q); if (q === 0) g.moveTo(px, py); else g.lineTo(px, py); }
   g.clip();
-  for (const [, t, x, y] of ring) { hexPath(g, x, y, Rb + 1); g.fillStyle = PAINT[t.terrain].base; g.fill(); }
   const blurPx = Math.max(1.5, Rb * 0.38);
-  for (const kind of ["ocean", "coast", "beach", "snow", "tundra", "desert", "plains", "grassland"]) {
+  const paintLayer = (target, kind, rows, grow, blur = blurPx) => {  // one terrain as a world-aligned texture in a blurred mask
     const m = layerCanvas(w, h, 0), mg = m.getContext("2d");
-    if (kind === "beach") {  // surf: a soft white halo around the land, over the water
-      const land = ring.filter(([, t]) => !isWater(t));
-      if (land.length) {
-        mg.clearRect(0, 0, w, h);
-        mg.filter = `blur(${Math.max(1.5, Rb * 0.3)}px)`; mg.fillStyle = "rgba(236,248,255,0.55)";
-        for (const [, , x, y] of land) { hexPath(mg, x, y, Rb * 1.16); mg.fill(); }
-        mg.filter = "none";
-        g.drawImage(m, 0, 0);
-      }
-    }
-    const mine = kind === "beach" ? ring.filter(([i, t]) => !isWater(t) && coastal(i)) : ring.filter(([, t]) => t.terrain === kind);
-    if (!mine.length) continue;
     mg.clearRect(0, 0, w, h);
-    mg.filter = `blur(${blurPx}px)`; mg.fillStyle = "#fff";
-    const water = kind === "ocean" || kind === "coast";
-    for (const [i, , x, y] of mine) {
-      const grow = kind === "beach" ? 1.18 : water ? 1.12 : coastal(i) ? 0.82 : 1.02;
-      hexPath(mg, x, y, Rb * grow); mg.fill();
+    mg.filter = `blur(${blur}px)`; mg.fillStyle = "#fff"; mg.beginPath();
+    for (const [i, , x, y] of rows) hexSub(mg, x, y, Rb * grow(i));
+    mg.fill("nonzero"); mg.filter = "none";
+    texturise(mg, kind, w, h, ox * k, oy * k, Rb);
+    target.drawImage(m, 0, 0);
+  };
+  const water = ring.filter(([, t]) => isWater(t)), land = ring.filter(([, t]) => !isWater(t));
+  // water: deep ocean everywhere as the base, then the shallows (coast hexes, and land hexes, so a
+  // coastline that curves inland shows shallows) as one widely blurred layer: no hard hex edges
+  g.beginPath(); for (const [, , x, y] of ring) hexSub(g, x, y, Rb + 1);
+  g.fillStyle = PAINT.ocean.base; g.fill();
+  paintLayer(g, "ocean", ring.filter(([, t]) => t.terrain === "ocean"), () => 1.1, Math.max(2, Rb * 0.5));
+  paintLayer(g, "coast", ring.filter(([, t]) => t.terrain !== "ocean"), () => 1.05, Math.max(2, Rb * 0.8));
+  if (land.length) {
+    const masks = coastMasks(w, h, Rb, k, ox, oy, land, water.length > 0);
+    if (masks) {  // surf: a soft white band just off the shore
+      const sm = layerCanvas(w, h, 0), smg = sm.getContext("2d");
+      smg.clearRect(0, 0, w, h); smg.drawImage(masks.surf, 0, 0);
+      smg.globalCompositeOperation = "source-in"; smg.fillStyle = "rgba(236,248,255,0.6)"; smg.fillRect(0, 0, w, h); smg.globalCompositeOperation = "source-over";
+      g.drawImage(sm, 0, 0);
     }
-    mg.filter = "none";
-    mg.globalCompositeOperation = "source-in";
-    const pat = mg.createPattern(terrainTexture(kind), "repeat");
-    const sc = Math.max(0.35, Rb / 40);
-    pat.setTransform(new DOMMatrix().translate(-(ox * k) % (256 * sc), -(oy * k) % (256 * sc)).scale(sc));
-    mg.fillStyle = pat; mg.fillRect(0, 0, w, h);
-    mg.globalCompositeOperation = "source-over";
-    g.drawImage(m, 0, 0);
+    // land: each terrain grown past its hex, then cut to the coastline
+    const L = layerCanvas(w, h, 1), lg = L.getContext("2d");
+    lg.clearRect(0, 0, w, h);
+    for (const kind of ["snow", "tundra", "desert", "plains", "grassland"]) {
+      lg.beginPath(); for (const [, t, x, y] of land) if (t.terrain === kind) hexSub(lg, x, y, Rb * 1.3);
+      lg.fillStyle = PAINT[kind].base; lg.fill();
+    }
+    for (const kind of ["snow", "tundra", "desert", "plains", "grassland"]) {
+      const mine = land.filter(([, t]) => t.terrain === kind);
+      if (mine.length) paintLayer(lg, kind, mine, () => (masks ? 1.22 : 1.02));
+    }
+    if (masks) {
+      // beach: sand along the shore, inside the coastline (pale shingle on cold coasts)
+      const B = layerCanvas(w, h, 2), bg = B.getContext("2d");
+      bg.clearRect(0, 0, w, h); bg.drawImage(masks.beach, 0, 0);
+      texturise(bg, "beach", w, h, ox * k, oy * k, Rb);
+      lg.drawImage(B, 0, 0);
+      lg.globalCompositeOperation = "destination-in"; lg.drawImage(masks.land, 0, 0); lg.globalCompositeOperation = "source-over";
+    }
+    g.drawImage(L, 0, 0);
   }
   g.restore();
   // 2. a faint hex grid over the land, as in Civ
@@ -380,7 +482,7 @@ function renderChunk(cx, cy, Rb) {
   for (const [, t, x, y] of tiles) { if (!isWater(t)) { hexPath(g, x, y, Rb - 0.5); g.stroke(); } }
   // 3. features over the ground, back to front
   for (const [i, t, x, y] of [...tiles].sort((a, b) => a[3] - b[3])) {
-    const sp = featureSprite(t, Rb, i % 3);
+    const sp = featureSprite(t, Rb, Math.floor(hash(i, 3) * 6));
     if (sp) g.drawImage(sp, x - sp.width / 2, y - sp.height / 2 - Rb * 0.1);
   }
   return c;
