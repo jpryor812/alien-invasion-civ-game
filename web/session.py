@@ -315,6 +315,7 @@ class Session:
             city = s.cities[int(key)]
             c.setdefault("tile", city.tile)
             c["max_hp"] = _city_max_hp(s, cfg, city)
+            c["strength"] = combat.city_strength(s, cfg, city).total  # the banner's shield
             c["hp_now"] = (
                 city.hp
                 if city.tile in fog.visible_tiles(s, cfg, me) or (city.owner == me)

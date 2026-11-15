@@ -1176,6 +1176,16 @@ function drawResource(res, sx, sy, R) {
   ctx.fillText(res[0].toUpperCase(), x, y + 0.5);
 }
 
+// City renders (visuals round 2): Blender towns from Poly Haven CC0 textures (web/static/cities).
+const CITY_IMG = {};
+for (let t = 0; t < 4; t++) for (let v = 0; v < 2; v++) CITY_IMG[`city_${t}_${v}`] = null;
+for (let v = 0; v < 3; v++) CITY_IMG[`suburb_${v}`] = null;
+for (const name of Object.keys(CITY_IMG)) {
+  const im = new Image(); im.onload = () => { CITY_SPRITES.clear(); OUTSKIRTS.clear(); if (typeof S !== "undefined") S.dirty = true; };
+  im.src = `cities/${name}.png`; CITY_IMG[name] = im;
+}
+const cityArt = (name) => { const im = CITY_IMG[name]; return im && im.complete && im.naturalWidth ? im : null; };
+const CITY_ART_PENDING = () => Object.values(CITY_IMG).some((im) => !im.complete);
 // Cities (visuals pass 1): painted once per look and zoom step, drawn scaled. Four modern tiers by
 // population (houses, mid-rise town, towers, skyscraper metropolis), a domed capitol and flag for
 // capitals, a concrete ring for walls and a dome for plasma shields; alien hives grow organic
@@ -1190,12 +1200,13 @@ function drawCity(c, sx, sy, R, i) {
   let sp = CITY_SPRITES.get(key);
   if (!sp) {
     if (CITY_SPRITES.size > 400) CITY_SPRITES.clear();
-    sp = document.createElement("canvas"); sp.width = Math.ceil(Rb * 3); sp.height = Math.ceil(Rb * 3.6);
+    sp = document.createElement("canvas"); sp.width = Math.ceil(Rb * 3.2); sp.height = Math.ceil(Rb * 3.6);
     const g = sp.getContext("2d"), cx = sp.width / 2, cy = sp.height - Rb * 1.45, rnd = rng(i % 3 * 97 + tier * 13 + 7);
+    const art = cityArt(`city_${tier}_${i % 2}`);
     if (c.status === "overrun") paintHive(g, cx, cy, Rb, tier, rnd);
     else if (c.status === "empty") paintRuins(g, cx, cy, Rb, rnd);
-    else paintCity(g, cx, cy, Rb, tier, owner, c.is_capital, walls, shield, c.status === "dormant", rnd);
-    CITY_SPRITES.set(key, sp);
+    else paintCity(g, cx, cy, Rb, tier, owner, c.is_capital, walls, shield, c.status === "dormant", rnd, art);
+    if (art || c.status === "overrun" || c.status === "empty" || !CITY_ART_PENDING()) CITY_SPRITES.set(key, sp);
   }
   const k = R / Rb;
   ctx.drawImage(sp, sx - sp.width * k / 2, sy - (sp.height - Rb * 1.45) * k, sp.width * k, sp.height * k);
@@ -1236,7 +1247,10 @@ function drawOutskirts(c, i, sx, sy, R) {
       if (OUTSKIRTS.size > 300) OUTSKIRTS.clear();
       sp = document.createElement("canvas"); sp.width = Math.ceil(Rb * 2); sp.height = Math.ceil(Rb * 2);
       const g = sp.getContext("2d"), rnd = rng(variant * 71 + tier * 13 + (hive ? 5 : 1));
-      if (hive) paintCreep(g, sp.width / 2, sp.height / 2, Rb, rnd); else paintSuburb(g, sp.width / 2, sp.height / 2, Rb, tier, rnd);
+      const art = hive ? null : cityArt(`suburb_${variant % 3}`);
+      if (hive) paintCreep(g, sp.width / 2, sp.height / 2, Rb, rnd);
+      else if (art) { const s = Rb * 2.6; g.drawImage(art, sp.width / 2 - s / 2, sp.height / 2 - s * 0.62, s, s); }
+      else paintSuburb(g, sp.width / 2, sp.height / 2, Rb, tier, rnd);
       OUTSKIRTS.set(key, sp);
     }
     const [nx, ny] = center(n);
@@ -1305,9 +1319,16 @@ function windows(g, x, y, w, h, color, rnd) {
 const FACADES = [["#e8dcc0", "#cdbf9f", "#f4ead2"], ["#c98e6a", "#a8704f", "#d9a582"], ["#b5654e", "#8f4b38", "#c97c64"],
   ["#c9c4b8", "#a6a195", "#dcd8cd"], ["#d8c08e", "#b49c6c", "#e6d3a8"], ["#9fb0b8", "#7d8f98", "#b7c6cd"]];
 const ROOFS = ["#6e3a2c", "#8a4a35", "#5b5f66", "#4f5a4a", "#7a6450", "#3f4650"];
-function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, rnd) {
+function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, rnd, art = null) {
   const spread = [0.8, 0.9, 1.0, 1.1][tier];
   const rx = R * spread * 1.12, ry = R * spread * 0.8;
+  if (art) {  // a Blender render (hex centre 62% down a 3.2-hex frame); walls, capitol and shield go over it
+    const s = R * 3.2;
+    g.filter = dormant ? "grayscale(0.85) brightness(0.8)" : "saturate(1.35) contrast(1.18) brightness(1.12)";
+    g.drawImage(art, cx - s / 2, cy - s * 0.62, s, s); g.filter = "none";
+    paintCityExtras(g, cx, cy, R, rx, ry, owner, capital, walls, shield, dormant);
+    return;
+  }
   // the district: worn paving fading into the land, blocks of streets
   const pg = g.createRadialGradient(cx, cy, R * 0.15, cx, cy, rx);
   pg.addColorStop(0, dormant ? "rgba(96,92,86,0.95)" : "rgba(122,112,96,0.95)"); pg.addColorStop(0.55, dormant ? "rgba(84,80,74,0.8)" : "rgba(108,98,82,0.8)"); pg.addColorStop(1, "rgba(100,90,74,0)");
@@ -1370,6 +1391,15 @@ function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, r
       windows(g, x, y, w, h, "rgba(255,240,190,0.5)", rnd);
       g.strokeStyle = "#cfd8df"; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y - h); g.lineTo(x, y - h - R * 0.12); g.stroke();
     }
+  }
+  paintCityExtras(g, cx, cy, R, rx, ry, owner, capital, false, shield, dormant);
+}
+function paintCityExtras(g, cx, cy, R, rx, ry, owner, capital, walls, shield, dormant) {
+  if (walls) {  // the perimeter, drawn over a render as a low wall ring
+    g.strokeStyle = "rgba(30,26,22,0.55)"; g.lineWidth = Math.max(3, R * 0.1);
+    g.beginPath(); g.ellipse(cx, cy + R * 0.06, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = "#a59f93"; g.lineWidth = Math.max(2, R * 0.07);
+    g.beginPath(); g.ellipse(cx, cy + R * 0.04, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2); g.stroke();
   }
   if (capital && !dormant) {  // a domed capitol and a flag in the owner's colour
     const x = cx + R * 0.04, y = cy + R * 0.36, w = R * 0.44;
@@ -1441,6 +1471,10 @@ function roundRect(x, y, w, h, r) {
 // Civ-style city banner: a dark plate with owner-coloured end caps (population on the left,
 // production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
 // and the city's health bar beneath.
+function shieldPath(x, y, w, h) {
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h * 0.5);
+  ctx.quadraticCurveTo(x + w, y + h * 0.85, x + w / 2, y + h); ctx.quadraticCurveTo(x, y + h * 0.85, x, y + h * 0.5); ctx.closePath();
+}
 function drawBanner(c, sx, sy, R) {
   if (S.cam.zoom < 0.42) return;
   const hive = c.status === "overrun";
@@ -1478,7 +1512,12 @@ function drawBanner(c, sx, sy, R) {
   // name (with the capital star)
   let nx = bx + cap + fs * 0.55;
   ctx.textAlign = "left";
-  if (c.is_capital) { ctx.fillStyle = "#f2cf6e"; ctx.font = `700 ${fs}px sans-serif`; ctx.fillText("★", nx, pcy + 0.5); nx += fs * 1.1; }
+  if (c.is_capital) {  // a small gold crown for the capital
+    const w = fs * 0.95, h = fs * 0.7, x0 = nx, y0 = pcy + h * 0.45;
+    ctx.fillStyle = "#f2cf6e"; ctx.strokeStyle = "#6b4d14"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0, y0 - h * 0.75); ctx.lineTo(x0 + w * 0.27, y0 - h * 0.35); ctx.lineTo(x0 + w * 0.5, y0 - h); ctx.lineTo(x0 + w * 0.73, y0 - h * 0.35); ctx.lineTo(x0 + w, y0 - h * 0.75); ctx.lineTo(x0 + w, y0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    nx += fs * 1.15;
+  }
   ctx.font = `600 ${fs}px Roboto, Arial, sans-serif`;
   ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillText(label, nx + 1, pcy + 1.5);
   ctx.fillStyle = hive ? "#ffc9b8" : "#f6efdc"; ctx.fillText(label, nx, pcy + 0.5);
@@ -1487,6 +1526,15 @@ function drawBanner(c, sx, sy, R) {
     ctx.fillStyle = "rgba(8,12,16,0.7)"; ctx.beginPath(); ctx.arc(px, pcy, bh * 0.36, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#e69a5c"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#ffd9b0"; ctx.font = `700 ${fs - 1}px sans-serif`; ctx.textAlign = "center"; ctx.fillText(prodText, px, pcy + 0.5);
+  }
+  if (c.strength && fs >= 10) {  // the defence shield above the banner's left end, as in Civ
+    const sw = fs * 2.0, sh = fs * 1.9, sxl = bx + cap * 0.55 - sw / 2, syt = by - sh * 0.9;
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; shieldPath(sxl + 1.5, syt + 2, sw, sh); ctx.fill();
+    const sg = ctx.createLinearGradient(0, syt, 0, syt + sh); sg.addColorStop(0, "#3c4a56"); sg.addColorStop(1, "#1a232b");
+    ctx.fillStyle = sg; shieldPath(sxl, syt, sw, sh); ctx.fill();
+    ctx.strokeStyle = mine ? "#e9c77a" : "#9aa6b0"; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = "#f6efdc"; ctx.font = `700 ${Math.round(fs * 0.82)}px Roboto, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(Math.round(c.strength / 100)), sxl + sw / 2, syt + sh * 0.42);  // hundredths in the view
   }
   if (c.hp_now != null && c.max_hp) {
     const f = Math.max(0, Math.min(1, c.hp_now / c.max_hp)), hx = bx + bev, hw = bw - bev * 2;
