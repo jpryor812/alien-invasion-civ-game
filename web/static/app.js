@@ -1049,15 +1049,105 @@ function drawBanner(c, sx, sy, R) {
 }
 
 function isCivilian(type) { const t = S.view.unit_types[type]; return t && t.role === "civilian"; }
+// Unit figures (visuals pass 1): Meshy models rendered in Blender from the map camera angle
+// (web/static/units/*.png). Each unit type maps to the nearest model; infantry-like units stand as a
+// squad of three. Figures stand on a team-coloured base with a small flag badge; at far zoom, or
+// before the art loads, the badge alone is drawn.
+const UNIT_MODELS = {
+  // model: [size in hex radii, figures in the squad]
+  infantry: [0.7, 3], engineer: [0.66, 1], tank: [1.0, 1], artillery: [0.95, 1], walker: [0.95, 1],
+  drone: [0.5, 2, 0.35], destroyer: [1.25, 1], hover_tank: [1.0, 1],
+  alien_small: [0.55, 3], alien_warrior: [0.72, 2], alien_spitter: [0.8, 1], alien_brute: [0.95, 1], alien_titan: [1.25, 1],
+};
+const UNIT_ART = {
+  infantry: "infantry", militia: "infantry", marines: "infantry", home_guard: "infantry", recon_team: "infantry",
+  anti_tank_team: "infantry", exo_infantry: "walker", xeno_trooper: "infantry", plasma_lancer: "infantry",
+  engineers: "engineer", survey_team: "engineer", medical_team: "engineer", nanorepair_crew: "engineer",
+  tank: "tank", mech_infantry: "tank", armoured_recon: "tank", hover_tank: "hover_tank", trade_convoy: "tank",
+  artillery: "artillery", city_artillery: "artillery", railgun_artillery: "artillery", self_propelled_howitzer: "artillery",
+  rocket_battery: "artillery", plasma_cannon: "artillery", walker: "walker",
+  drone_recon: "drone", swarm_drones: "drone",
+  scout_boat: "destroyer", destroyer: "destroyer", railgun_cruiser: "destroyer", attack_submarine: "destroyer",
+  alien_drone: "alien_small", alien_hatchling: "alien_small", alien_warrior: "alien_warrior", alien_pillager: "alien_warrior",
+  alien_wraith: "alien_warrior", alien_spitter: "alien_spitter", alien_sporecaster: "alien_spitter",
+  alien_hive_guard: "alien_brute", alien_brute: "alien_brute", alien_shieldbearer: "alien_brute",
+  alien_titan: "alien_titan", alien_leviathan: "alien_titan",
+};
+const UNIT_IMG = new Map(), UNIT_SPR = new Map();
+function unitArt(type, Rb) {
+  const model = UNIT_ART[type];
+  if (!model || !UNIT_MODELS[model]) return null;
+  let img = UNIT_IMG.get(model);
+  if (!img) {
+    img = new Image();
+    img.onload = () => { img.crop = cropToContent(img); img.ready = true; };
+    img.onerror = () => { img.failed = true; };
+    img.src = `units/${model}.png`; UNIT_IMG.set(model, img);
+  }
+  if (!img.ready) return null;
+  const [size] = UNIT_MODELS[model], px = Math.max(8, Math.round(Rb * size * 2)), key = `${model}|${px}`;
+  let sp = UNIT_SPR.get(key);
+  if (!sp) {  // downscale once per zoom step (in halves, for a crisp result)
+    let src = img.crop, w = src.width;
+    while (w / 2 >= px) {
+      const c = document.createElement("canvas"); c.width = c.height = Math.round(w / 2);
+      c.getContext("2d").drawImage(src, 0, 0, c.width, c.height); src = c; w = c.width;
+    }
+    sp = document.createElement("canvas"); sp.width = sp.height = px;
+    const g = sp.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(src, 0, 0, px, px);
+    UNIT_SPR.set(key, sp);
+  }
+  return [sp, UNIT_MODELS[model]];
+}
+function cropToContent(img) {
+  // trim the transparent margin; return a square canvas with the figure centred and standing on
+  // its bottom edge
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 <= x0) return c;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, n = Math.max(w, h);
+  const o = document.createElement("canvas"); o.width = o.height = n;
+  o.getContext("2d").drawImage(c, x0, y0, w, h, (n - w) / 2, n - h, w, h);
+  return o;
+}
+function drawFigures(u, x, y, R, scale = 1) {
+  const art = R >= 14 ? unitArt(u.type, zoomStep(R)) : null;
+  if (!art) return false;
+  const [sp, [size, n, lift = 0]] = art, side = R * size * 2 * scale / 2;  // sprites are rendered at 2x
+  const owner = u.owner === "aliens" ? "#c2362b" : OWNER[u.owner] || "#999";
+  // team-coloured base under the squad
+  const bw = R * (n > 1 ? 0.5 : Math.min(0.5, size * 0.45)) * scale, bh = bw * 0.4;
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(x, y, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = owner; ctx.lineWidth = Math.max(1.2, R * 0.03 * scale); ctx.globalAlpha = 0.8; ctx.stroke(); ctx.globalAlpha = 1;
+  const spots = n === 3 ? [[-0.3, -0.1], [0.3, -0.1], [0, 0.12]] : n === 2 ? [[-0.2, 0], [0.2, 0.04]] : [[0, 0]];
+  for (const [dx, dy] of spots) {
+    const fx = x + dx * R * scale, fy = y + (dy - lift) * R * scale;  // drones hover over their base
+    ctx.drawImage(sp, fx - side / 2, fy - side * 0.94, side, side);
+  }
+  return true;
+}
 function drawUnits(us, sx, sy, R, inCity = false) {
   const military = us.filter((u) => !isCivilian(u.type));
   const civil = us.filter((u) => isCivilian(u.type));
   // a garrison stands at the city's front edge so the city itself stays visible
   if (military.length) {
-    if (inCity) drawBadge(military[0], sx - 0.42 * R, sy + 0.5 * R, 0.33 * R, R);
-    else drawBadge(military[0], sx, sy + 0.05 * R, 0.43 * R, R);
+    const m = military[0];
+    if (inCity) {
+      if (drawFigures(m, sx - 0.42 * R, sy + 0.62 * R, R, 0.7)) drawBadge(m, sx - 0.78 * R, sy + 0.2 * R, 0.2 * R, R);
+      else drawBadge(m, sx - 0.42 * R, sy + 0.5 * R, 0.33 * R, R);
+    } else if (drawFigures(m, sx, sy + 0.3 * R, R)) drawBadge(m, sx - 0.55 * R, sy - 0.42 * R, 0.22 * R, R);
+    else drawBadge(m, sx, sy + 0.05 * R, 0.43 * R, R);
   }
-  if (civil.length) drawBadge(civil[0], sx + 0.45 * R, sy + 0.42 * R, 0.27 * R, R);
+  if (civil.length) {
+    const c = civil[0];
+    if (drawFigures(c, sx + 0.45 * R, sy + 0.55 * R, R, 0.8)) drawBadge(c, sx + 0.72 * R, sy + 0.05 * R, 0.17 * R, R);
+    else drawBadge(c, sx + 0.45 * R, sy + 0.42 * R, 0.27 * R, R);
+  }
 }
 function drawBadge(u, x, y, r, R) {
   const owner = OWNER[u.owner] || "#999";
