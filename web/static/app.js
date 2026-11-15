@@ -573,28 +573,23 @@ function draw(t = performance.now()) {
   const visible = visibleTiles(W, H, R);
   // 1-2. the ground (terrain and coasts), from cached chunks (see "ground chunks")
   drawGround(W, H, R);
-  // 3. routes
-  for (const [i, sx, sy, shown] of visible) {
+  // 3. routes: from each route hex's centre to the edge it shares with each joined neighbour, so
+  //    joins meet at edges and bends look natural (dirt roads; railways with ties and rails)
+  if (z > 0.25) for (const [i, sx, sy, shown] of visible) {
     if (!shown) continue;
     const t1 = S.tilesByIndex.get(i);
     if (!(t1.route || S.citiesByTile.has(i))) continue;
-    for (const [n] of neighbourEdges(i)) {
-      if (n < i) continue;
+    const joins = neighbourEdges(i).filter(([n]) => { const t2 = S.tilesByIndex.get(n); return t2 && (t2.route || S.citiesByTile.has(n)) && (t1.route || t2.route); });
+    for (const [n, edge] of joins) {
       const t2 = S.tilesByIndex.get(n);
-      if (!t2 || !(t2.route || S.citiesByTile.has(n))) continue;
-      const [nx, ny] = toScreen(...center(n));
+      const [ax, ay] = corner(sx, sy, R, edge), [bx, by] = corner(sx, sy, R, (edge + 1) % 6);
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
       const rail = t1.route === "railway" && t2.route === "railway";
-      if (rail) {
-        ctx.strokeStyle = "#3a3633"; ctx.lineWidth = Math.max(2, 3.2 * z);
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nx, ny); ctx.stroke();
-        ctx.strokeStyle = "#8a8580"; ctx.lineWidth = Math.max(1, 1 * z); ctx.setLineDash([2 * z, 3 * z]);
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nx, ny); ctx.stroke(); ctx.setLineDash([]);
-      } else {
-        ctx.strokeStyle = "#5a4027"; ctx.lineWidth = Math.max(2, 3 * z);
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nx, ny); ctx.stroke();
-        ctx.strokeStyle = "#a07a4c"; ctx.lineWidth = Math.max(1, 1.4 * z);
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nx, ny); ctx.stroke();
-      }
+      drawRouteSegment(sx, sy, mx, my, R, rail, i * 7 + n);
+    }
+    if (t1.route && joins.length && !S.citiesByTile.has(i)) {  // a small hub where branches meet
+      ctx.fillStyle = t1.route === "railway" ? "#3d3833" : "#8a6a42";
+      ctx.beginPath(); ctx.arc(sx, sy, Math.max(1.5, R * 0.09), 0, Math.PI * 2); ctx.fill();
     }
   }
   // 4. improvements and resources
@@ -648,31 +643,164 @@ function draw(t = performance.now()) {
 const IMP_TINT = { farm: "230,200,80", mine: "170,120,70", extractor: "90,90,90", hydroponic_plot: "120,210,140",
   solar_array: "90,170,230", wind_turbines: "200,220,240" };
 function drawImprovedHex(i, kind, sx, sy, R) {
-  const tint = IMP_TINT[kind] || "120,180,200";
-  hexPath(ctx, sx, sy, R * 0.86);
-  ctx.fillStyle = `rgba(${tint},0.18)`; ctx.fill();
-  ctx.strokeStyle = `rgba(${tint},0.85)`; ctx.lineWidth = Math.max(1.5, R * 0.06); ctx.setLineDash([R * 0.18, R * 0.1]); ctx.stroke(); ctx.setLineDash([]);
+  // a citizen working the tile: a small figure (the painted improvement itself shows it is built)
   const w = S.view.worked && S.view.worked[i];
   if (w && S.cam.zoom > 0.5) {
-    const x = sx - R * 0.42, y = sy - R * 0.42, r = R * 0.12;
-    ctx.fillStyle = "#f2d38a"; ctx.beginPath(); ctx.arc(x, y - r * 0.9, r * 0.55, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - r, y + r); ctx.quadraticCurveTo(x, y - r * 0.6, x + r, y + r); ctx.fill();
+    const x = sx - R * 0.5, y = sy - R * 0.38, r = R * 0.13;
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + r * 1.1, r, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f2d38a"; ctx.strokeStyle = "#4a3410"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x, y - r * 0.9, r * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - r * 0.9, y + r); ctx.quadraticCurveTo(x, y - r * 0.6, x + r * 0.9, y + r); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 }
+// Improvements are painted once per (kind, zoom step) and drawn scaled.
+const IMPS = new Map();
 function drawImprovement(kind, sx, sy, R) {
-  if (kind === "farm") {
-    ctx.fillStyle = "rgba(230,205,95,0.85)";
-    for (let k = 0; k < 3; k++) ctx.fillRect(sx - 0.45 * R, sy + (0.1 + k * 0.14) * R, 0.55 * R, 0.07 * R);
+  const Rb = zoomStep(R), key = `${kind}|${Rb}`;
+  let c = IMPS.get(key);
+  if (!c) {
+    c = document.createElement("canvas"); c.width = Math.ceil(Rb * 2.2); c.height = Math.ceil(Rb * 2.2);
+    paintImprovement(c.getContext("2d"), kind, c.width / 2, c.height / 2, Rb);
+    IMPS.set(key, c);
+  }
+  const s2 = R / Rb;
+  ctx.drawImage(c, sx - c.width * s2 / 2, sy - c.height * s2 / 2, c.width * s2, c.height * s2);
+}
+function paintImprovement(g, kind, cx, cy, R) {
+  const rnd = rng(kind.length * 31 + kind.charCodeAt(0));
+  const shadow = (x, y, w) => { g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.ellipse(x + w * 0.15, y, w, w * 0.32, 0, 0, Math.PI * 2); g.fill(); };
+  if (kind === "farm" || kind === "hydroponic_plot") {
+    // field strips clipped to the hex, a farmhouse and (hydroponics) glass domes
+    g.save(); hexPath(g, cx, cy, R * 0.86); g.clip();
+    const cols = kind === "farm" ? ["#d9b84a", "#a9b83e", "#c7a23c", "#8fae3a", "#e0c463"] : ["#6fbf7a", "#4f9e5c", "#88d08f"];
+    g.translate(cx, cy); g.rotate(-0.45);
+    for (let k = -5; k <= 5; k++) {
+      g.fillStyle = cols[(k + 10) % cols.length]; g.fillRect(-R * 1.4, k * R * 0.24, R * 2.8, R * 0.22);
+      g.strokeStyle = "rgba(90,60,20,0.35)"; g.lineWidth = Math.max(1, R * 0.02);
+      for (let x = -R * 1.4; x < R * 1.4; x += R * 0.12) { g.beginPath(); g.moveTo(x, k * R * 0.24 + 0.02 * R); g.lineTo(x, k * R * 0.24 + 0.2 * R); g.stroke(); }
+    }
+    g.restore();
+    hexPath(g, cx, cy, R * 0.86); g.strokeStyle = "rgba(110,80,30,0.55)"; g.lineWidth = Math.max(1, R * 0.04); g.stroke();
+    if (kind === "farm") {
+      const hx = cx + R * 0.3, hy = cy - R * 0.25, hw = R * 0.26, hh = R * 0.18;
+      shadow(hx, hy + hh * 0.5, hw * 0.7);
+      g.fillStyle = "#efe2c4"; g.fillRect(hx - hw / 2, hy - hh / 2, hw, hh);
+      g.fillStyle = "#9b3b2a"; g.beginPath(); g.moveTo(hx - hw * 0.62, hy - hh / 2); g.lineTo(hx, hy - hh * 1.25); g.lineTo(hx + hw * 0.62, hy - hh / 2); g.fill();
+      g.fillStyle = "#5a3a1c"; g.fillRect(hx - hw * 0.1, hy - hh * 0.05, hw * 0.2, hh * 0.55);
+    } else {
+      for (const [dx, dy] of [[-0.3, -0.2], [0.25, -0.05], [-0.05, 0.3]]) {
+        const x = cx + dx * R, y = cy + dy * R, r = R * 0.18;
+        shadow(x, y + r * 0.3, r);
+        const dg = g.createRadialGradient(x - r * 0.3, y - r * 0.4, 1, x, y, r);
+        dg.addColorStop(0, "rgba(230,255,240,0.95)"); dg.addColorStop(1, "rgba(120,190,170,0.6)");
+        g.fillStyle = dg; g.beginPath(); g.arc(x, y, r, Math.PI, 0); g.closePath(); g.fill();
+        g.strokeStyle = "rgba(60,110,90,0.8)"; g.lineWidth = Math.max(1, R * 0.02); g.stroke();
+      }
+    }
     return;
   }
-  ctx.save(); ctx.translate(sx + 0.3 * R, sy - 0.42 * R);
-  const s = R * 0.13;
-  if (kind === "mine") { ctx.fillStyle = "#2c241c"; ctx.beginPath(); ctx.moveTo(-s * 1.3, s); ctx.lineTo(0, -s * 1.1); ctx.lineTo(s * 1.3, s); ctx.fill(); ctx.fillStyle = "#c9a35c"; ctx.fillRect(-s * 0.3, -s * 0.1, s * 0.6, s * 0.9); }
-  else if (kind === "extractor") { ctx.strokeStyle = "#1b1b1b"; ctx.lineWidth = Math.max(1, s * 0.4); ctx.beginPath(); ctx.moveTo(-s, s); ctx.lineTo(0, -s * 1.4); ctx.lineTo(s, s); ctx.moveTo(-s * 0.5, 0); ctx.lineTo(s * 0.5, 0); ctx.stroke(); }
-  else if (kind === "radio_beacon" || kind === "sensor_mast") { ctx.strokeStyle = "#c88df2"; ctx.lineWidth = Math.max(1, s * 0.35); ctx.beginPath(); ctx.moveTo(0, s); ctx.lineTo(0, -s); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -s, s, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
-  else if (kind === "military_base") { ctx.fillStyle = "#7a2d24"; ctx.fillRect(-s, -s * 0.6, s * 2, s * 1.4); ctx.fillStyle = "#e9d8a6"; ctx.fillRect(-s * 0.2, -s * 1.4, s * 0.15, s * 0.8); ctx.fillStyle = "#c0392b"; ctx.fillRect(-s * 0.05, -s * 1.4, s * 0.7, s * 0.4); }
-  else { ctx.fillStyle = "#3a5a7a"; ctx.fillRect(-s, -s * 0.5, s * 2, s); }
-  ctx.restore();
+  if (kind === "mine") {
+    // a shaft in the hillside, timber frame, rails and an ore cart, spoil heaps
+    for (const [dx, dy, s] of [[-0.35, 0.3, 1], [0.38, 0.25, 0.8]]) {
+      const x = cx + dx * R, y = cy + dy * R;
+      g.fillStyle = "#6b5a49"; g.beginPath(); g.ellipse(x, y, R * 0.22 * s, R * 0.12 * s, 0, Math.PI, 0); g.fill();
+      g.fillStyle = "#857260"; g.beginPath(); g.ellipse(x - R * 0.03, y - R * 0.02, R * 0.14 * s, R * 0.08 * s, 0, Math.PI, 0); g.fill();
+    }
+    const x = cx, y = cy - R * 0.05;
+    g.fillStyle = "#1b1612"; g.beginPath(); g.moveTo(x - R * 0.2, y + R * 0.15); g.lineTo(x - R * 0.2, y - R * 0.1); g.quadraticCurveTo(x, y - R * 0.3, x + R * 0.2, y - R * 0.1); g.lineTo(x + R * 0.2, y + R * 0.15); g.fill();
+    g.strokeStyle = "#8a5a2b"; g.lineWidth = Math.max(1.5, R * 0.06);
+    g.beginPath(); g.moveTo(x - R * 0.22, y + R * 0.15); g.lineTo(x - R * 0.22, y - R * 0.12); g.lineTo(x + R * 0.22, y - R * 0.12); g.lineTo(x + R * 0.22, y + R * 0.15); g.stroke();
+    g.strokeStyle = "#5d5852"; g.lineWidth = Math.max(1, R * 0.025);
+    g.beginPath(); g.moveTo(x - R * 0.08, y + R * 0.15); g.lineTo(x - R * 0.18, y + R * 0.6); g.moveTo(x + R * 0.08, y + R * 0.15); g.lineTo(x + R * 0.02, y + R * 0.6); g.stroke();
+    g.fillStyle = "#3b3632"; g.fillRect(x - R * 0.2, y + R * 0.32, R * 0.2, R * 0.12);
+    g.fillStyle = "#c9a35c"; g.beginPath(); g.ellipse(x - R * 0.1, y + R * 0.32, R * 0.1, R * 0.05, 0, Math.PI, 0); g.fill();
+    return;
+  }
+  if (kind === "extractor") {
+    // an oil derrick with a pump
+    const x = cx, y = cy + R * 0.35;
+    shadow(x, y, R * 0.3);
+    g.strokeStyle = "#2b2622"; g.lineWidth = Math.max(1.5, R * 0.05);
+    g.beginPath(); g.moveTo(x - R * 0.22, y); g.lineTo(x, y - R * 0.85); g.lineTo(x + R * 0.22, y); g.stroke();
+    for (const f of [0.25, 0.5, 0.72]) { g.beginPath(); g.moveTo(x - R * 0.22 * (1 - f), y - R * 0.85 * f); g.lineTo(x + R * 0.22 * (1 - f), y - R * 0.85 * f); g.stroke(); }
+    g.fillStyle = "#c0392b"; g.fillRect(x + R * 0.18, y - R * 0.22, R * 0.4, R * 0.08);
+    g.fillStyle = "#3b3632"; g.beginPath(); g.arc(x + R * 0.38, y - R * 0.12, R * 0.08, 0, Math.PI * 2); g.fill();
+    return;
+  }
+  if (kind === "solar_array") {
+    g.save(); g.translate(cx, cy); g.rotate(-0.3);
+    for (let r = -1; r <= 1; r++) for (let c = -1; c <= 1; c++) {
+      const x = c * R * 0.42, y = r * R * 0.32;
+      g.fillStyle = "rgba(0,0,0,0.25)"; g.fillRect(x - R * 0.17, y - R * 0.08, R * 0.38, R * 0.24);
+      const pg = g.createLinearGradient(x, y - R * 0.12, x, y + R * 0.12);
+      pg.addColorStop(0, "#5aa0d8"); pg.addColorStop(1, "#1d3f73");
+      g.fillStyle = pg; g.fillRect(x - R * 0.18, y - R * 0.12, R * 0.36, R * 0.22);
+      g.strokeStyle = "rgba(220,240,255,0.6)"; g.lineWidth = 1; g.strokeRect(x - R * 0.18, y - R * 0.12, R * 0.36, R * 0.22);
+    }
+    g.restore();
+    return;
+  }
+  if (kind === "wind_turbines") {
+    for (const [dx, dy, s] of [[-0.3, 0.1, 1], [0.32, 0.25, 0.85], [0.0, -0.25, 0.75]]) {
+      const x = cx + dx * R, y = cy + dy * R + R * 0.3, h = R * 0.75 * s;
+      shadow(x, y, R * 0.12);
+      g.strokeStyle = "#e8ecef"; g.lineWidth = Math.max(1.5, R * 0.045);
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - h); g.stroke();
+      const a0 = rnd() * Math.PI * 2;
+      g.lineWidth = Math.max(1, R * 0.035);
+      for (let b = 0; b < 3; b++) { const a = a0 + b * Math.PI * 2 / 3; g.beginPath(); g.moveTo(x, y - h); g.lineTo(x + Math.cos(a) * R * 0.28 * s, y - h + Math.sin(a) * R * 0.28 * s); g.stroke(); }
+      g.fillStyle = "#cfd6dc"; g.beginPath(); g.arc(x, y - h, R * 0.04, 0, Math.PI * 2); g.fill();
+    }
+    return;
+  }
+  if (kind === "military_base" || kind === "minefield") {
+    // sandbag ring and a flag (minefields: warning posts)
+    if (kind === "military_base") {
+      g.strokeStyle = "#b39a6a"; g.lineWidth = Math.max(2, R * 0.12); g.setLineDash([R * 0.12, R * 0.04]);
+      g.beginPath(); g.ellipse(cx, cy + R * 0.1, R * 0.5, R * 0.32, 0, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+      g.fillStyle = "#4b5a3a"; g.fillRect(cx - R * 0.2, cy - R * 0.05, R * 0.4, R * 0.2);
+      g.strokeStyle = "#3a2f22"; g.lineWidth = Math.max(1, R * 0.03); g.beginPath(); g.moveTo(cx + R * 0.25, cy + R * 0.1); g.lineTo(cx + R * 0.25, cy - R * 0.55); g.stroke();
+      g.fillStyle = "#c0392b"; g.beginPath(); g.moveTo(cx + R * 0.25, cy - R * 0.55); g.lineTo(cx + R * 0.55, cy - R * 0.45); g.lineTo(cx + R * 0.25, cy - R * 0.35); g.fill();
+    } else {
+      for (const [dx, dy] of [[-0.45, -0.2], [0.4, -0.3], [-0.2, 0.4], [0.35, 0.35]]) {
+        const x = cx + dx * R, y = cy + dy * R;
+        g.strokeStyle = "#3a2f22"; g.lineWidth = Math.max(1, R * 0.03); g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - R * 0.25); g.stroke();
+        g.fillStyle = "#e6c13a"; g.beginPath(); g.moveTo(x - R * 0.08, y - R * 0.25); g.lineTo(x + R * 0.08, y - R * 0.25); g.lineTo(x, y - R * 0.38); g.fill();
+      }
+    }
+    return;
+  }
+  if (kind === "radio_beacon" || kind === "sensor_mast") {
+    const x = cx, y = cy + R * 0.35, h = R * (kind === "sensor_mast" ? 0.95 : 0.75);
+    shadow(x, y, R * 0.14);
+    g.strokeStyle = "#9aa4ad"; g.lineWidth = Math.max(1.5, R * 0.04);
+    g.beginPath(); g.moveTo(x - R * 0.1, y); g.lineTo(x, y - h); g.lineTo(x + R * 0.1, y); g.stroke();
+    g.strokeStyle = "rgba(200,141,242,0.85)"; g.lineWidth = Math.max(1, R * 0.035);
+    for (const r of [0.14, 0.26]) { g.beginPath(); g.arc(x, y - h, R * r, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+    g.fillStyle = "#e0362c"; g.beginPath(); g.arc(x, y - h, R * 0.04, 0, Math.PI * 2); g.fill();
+    return;
+  }
+  // anything else: a small marker
+  g.fillStyle = "#3a5a7a"; g.fillRect(cx - R * 0.15, cy - R * 0.1, R * 0.3, R * 0.2);
+}
+function drawRouteSegment(x1, y1, x2, y2, R, rail, seed) {
+  const bend = (hash(seed, 9) - 0.5) * R * 0.12;
+  const mx = (x1 + x2) / 2 + bend, my = (y1 + y2) / 2 - bend;
+  if (rail) {
+    ctx.strokeStyle = "#4a3a2a"; ctx.lineWidth = Math.max(2, R * 0.16); ctx.lineCap = "butt"; ctx.setLineDash([Math.max(1, R * 0.03), Math.max(2, R * 0.07)]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke(); ctx.setLineDash([]);
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1, nx = -dy / len * R * 0.05, ny = dx / len * R * 0.05;
+    ctx.strokeStyle = "#8d949b"; ctx.lineWidth = Math.max(1, R * 0.03);
+    for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x1 + nx * sgn, y1 + ny * sgn); ctx.quadraticCurveTo(mx + nx * sgn, my + ny * sgn, x2 + nx * sgn, y2 + ny * sgn); ctx.stroke(); }
+    return;
+  }
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(70,50,30,0.55)"; ctx.lineWidth = Math.max(2.5, R * 0.17);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+  ctx.strokeStyle = "#b08a58"; ctx.lineWidth = Math.max(1.5, R * 0.11);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+  ctx.strokeStyle = "rgba(240,215,160,0.45)"; ctx.lineWidth = Math.max(1, R * 0.03);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
 }
 function drawResource(res, sx, sy, R) {
   const x = sx - 0.45 * R, y = sy - 0.38 * R, r = 0.17 * R;
