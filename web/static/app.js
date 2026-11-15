@@ -271,12 +271,20 @@ for (const [kind, n] of Object.entries(FEATURE_FILES)) {
   }
 }
 const featureArt = (kind, v) => { if (featurePending) return null; const list = FEATURE_ART[kind].filter((im) => im.naturalWidth); return list.length ? list[v % list.length] : null; };
+// mountain rock graded to its land: warm sandstone in deserts, cold grey under snow
+const MOUNTAIN_GRADE = {
+  desert: "sepia(0.55) saturate(1.5) hue-rotate(-8deg) brightness(1.1)",
+  plains: "sepia(0.2) saturate(1.15) brightness(1.05)",
+  grassland: "saturate(0.9) contrast(1.08)",
+  tundra: "saturate(0.45) brightness(1.08) contrast(1.05)",
+  snow: "saturate(0.25) brightness(1.25) contrast(0.95)",
+};
 // forest tints by climate and season: cold forests turn dark blue-green, a few warm ones autumnal
 function forestFilter(t, variant) {
   if (t.terrain === "tundra" || t.terrain === "snow") return "hue-rotate(28deg) saturate(0.75) brightness(0.82) contrast(1.1)";
-  if (variant === 5 && t.terrain !== "desert") return "hue-rotate(-38deg) saturate(1.9) brightness(1.22)";
-  if (variant === 4) return "hue-rotate(-14deg) saturate(1.6) brightness(1.22)";
-  return "saturate(1.55) hue-rotate(12deg) brightness(1.28) contrast(1.05)";
+  if (variant === 5 && t.terrain !== "desert") return "hue-rotate(-38deg) saturate(1.9) brightness(1.08)";
+  if (variant === 4) return "hue-rotate(-14deg) saturate(1.55) brightness(1.06)";
+  return "saturate(1.5) hue-rotate(12deg) brightness(1.1) contrast(1.08)";
 }
 // hill relief: the rendered grey shading, re-centred on mid-grey so that overlay only lights the
 // slopes facing the sun and shades the rest, with soft edges
@@ -320,8 +328,13 @@ function featureSprite(t, Rb, variant, rendered = false) {
   if (t.feature === "forest") { g.filter = forestFilter(t, variant); if (!art("forest")) { g.filter = "none"; paintForest(g, cx, cy, Rb, rnd, t.terrain); } g.filter = "none"; }
   if (t.feature === "jungle") { g.filter = "saturate(1.7) hue-rotate(18deg) brightness(0.92) contrast(1.1)"; if (!art("jungle")) { g.filter = "none"; paintJungle(g, cx, cy, Rb, rnd); } g.filter = "none"; }
   if (t.elevation === "mountain") {
-    if (t.terrain === "desert") g.filter = "sepia(0.4) saturate(1.3) brightness(1.05)";
     const im = featureArt("mountain", variant);  // rendered with the hex centre 62% down the frame
+    if (im) {  // a soft shadow where the range meets the ground, then the rock graded to its land
+      const sh = g.createRadialGradient(cx + Rb * 0.1, cy + Rb * 0.12, Rb * 0.1, cx + Rb * 0.1, cy + Rb * 0.12, Rb * 0.95);
+      sh.addColorStop(0, "rgba(20,18,14,0.35)"); sh.addColorStop(1, "rgba(20,18,14,0)");
+      g.fillStyle = sh; g.beginPath(); g.ellipse(cx + Rb * 0.1, cy + Rb * 0.12, Rb * 0.95, Rb * 0.5, 0, 0, Math.PI * 2); g.fill();
+      g.filter = MOUNTAIN_GRADE[t.terrain] || "none";
+    }
     if (im) g.drawImage(im, cx - w / 2, cy - w * 0.62, w, w);
     else { g.filter = "none"; paintMountains(g, cx, cy, Rb, rnd, t.terrain); }
     g.filter = "none";

@@ -70,7 +70,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 ## Pass 2 (improve each, in the same order)
 
 - [x] 1. Terrain textures
-- [ ] 2. Forests, hills, mountains
+- [x] 2. Forests, hills, mountains
 - [ ] 3. Borders and farms
 - [ ] 4. Cities
 - [ ] 5. Units
@@ -86,3 +86,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - 5 Units: formations as in Civ, figures in staggered ranks: infantry 8, tanks, guns and hover tanks 3, walkers 2, drones 4, small aliens 6, warriors 5, spitters 3, brutes 2. Figures are smaller and the base ellipse fits the formation. The flag above each unit is now Civ's style: a disc in the owner's colour (red for aliens) with a dark rim, a pale inner ring and a white class icon, plus the type code, health and promotions as before. The selected unit stands in a pulsing gold ring on the ground, and the old hex outline pulse is kept. Still weak: flags are discs only (Civ varies the shape); no unit facing; formations do not thin out as units take damage.
 - 6 Layout: Civ's corners. The unit panel now sits at the bottom left with the unit's render in a big round bronze frame (ringed in the owner's colour) breaking out of the panel; city and turret panels keep the top left. The action button and minimap share one bronze-cornered frame at the bottom right, button above. The top bar is thinner (34 px) and darker. The combat preview (already Civ's structure: outcome banner, strengths with modifiers, HP bars) gets a gilded Cinzel banner and framed sides. Still weak: the action buttons in the unit panel are text, not round icons as in Civ; no left-hand icon strip.
 - P2.1 Terrain: a patchwork layer. Each land hex leans toward one of several shades for its terrain (grassland greens and golds, plains ochres, desert sands, tundra greys), filled per hex, blurred so neighbours blend, and laid in soft-light at 60%. Wide grasslands now read as a quilt, as in the references, without hiding the photo detail. The first build of a screen is about 1.35 s, cached after. Still weak: tones change by whole hexes; Civ also shows field-like streaks inside a hex.
+- P2.2 Features: forests and jungles were re-rendered with a stronger, higher sun, a rim light and a lighter forest floor, so crowns catch the light and the hexes read as canopy rather than dark patches; the client tints were rebalanced to match. Mountains now sit on a soft shadow where they meet the ground and are graded to their land: warm sandstone in the desert, cold grey in tundra, pale in snow. Still weak: forests still fill whole hexes edge to edge (Civ's thin out at the borders); all mountains share one boulder model.
