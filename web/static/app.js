@@ -833,10 +833,13 @@ function draw(t = performance.now()) {
   for (const [i, sx, sy, shown] of visible) {
     if (!shown) continue;
     const t1 = S.tilesByIndex.get(i);
-    if (t1.improvement && z > 0.3) { drawImprovedHex(i, t1.improvement, sx, sy, R); drawImprovement(t1.improvement, sx, sy, R); }
+    if (t1.improvement && z > 0.3) { drawImprovedHex(i, t1.improvement, sx, sy, R); drawImprovement(t1.improvement, sx, sy, R, Math.floor(hash(i, 9) * 6)); }
     if (t1.turret && z > 0.3) drawTurret(t1, sx, sy, R);
     if (t1.resource && t1.visible && z > 0.6) drawResource(t1.resource, sx, sy, R);
   }
+  // 4b. territory borders: a line in the owner's colour along every edge where ownership changes,
+  //     with a soft glow inside, as in Civ
+  if (z > 0.2) drawBorders(visible, R);
   // 5. fog, and a light veil over remembered city hexes not seen right now
   drawFog(visible, R, t);
   for (const [i, sx, sy, shown] of visible) {
@@ -891,23 +894,101 @@ function drawImprovedHex(i, kind, sx, sy, R) {
     ctx.beginPath(); ctx.moveTo(x - r * 0.9, y + r); ctx.quadraticCurveTo(x, y - r * 0.6, x + r * 0.9, y + r); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 }
+function tileOwner(i) {
+  const t = S.tilesByIndex.get(i);
+  if (!t || t.city == null) return null;
+  const c = S.view.cities[String(t.city)];
+  return c && c.owner && c.status !== "empty" ? c.owner : null;
+}
+function drawBorders(visible, R) {
+  const glow = [], lines = new Map();
+  for (const [i, sx, sy, shown] of visible) {
+    if (!shown) continue;
+    const own = tileOwner(i);
+    if (!own) continue;
+    for (const [n, edge] of neighbourEdges(i)) {
+      if (tileOwner(n) === own) continue;
+      const [ax, ay] = corner(sx, sy, R, edge), [bx, by] = corner(sx, sy, R, (edge + 1) % 6);
+      glow.push([own, sx, sy, ax, ay, bx, by]);
+      if (!lines.has(own)) lines.set(own, []);
+      lines.get(own).push([ax, ay, bx, by, sx, sy]);
+    }
+  }
+  // the inner glow: a band from each border edge fading toward the hex centre
+  for (const [own, sx, sy, ax, ay, bx, by] of glow) {
+    const col = own === "aliens" ? "#e0362c" : OWNER[own] || "#999";
+    const mx = (ax + bx) / 2, my = (ay + by) / 2, f = 0.5;
+    const gr = ctx.createLinearGradient(mx, my, mx + (sx - mx) * f, my + (sy - my) * f);
+    gr.addColorStop(0, hexA(col, 0.6)); gr.addColorStop(0.35, hexA(col, 0.22)); gr.addColorStop(1, hexA(col, 0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.lineTo(bx + (sx - bx) * f, by + (sy - by) * f); ctx.lineTo(ax + (sx - ax) * f, ay + (sy - ay) * f); ctx.closePath(); ctx.fill();
+  }
+  // the border line itself, inset a little so two neighbours' borders sit side by side
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const [own, segs] of lines) {
+    const col = own === "aliens" ? "#e0362c" : OWNER[own] || "#999";
+    for (const [w, style] of [[Math.max(4, R * 0.2), "rgba(10,12,16,0.45)"], [Math.max(2.5, R * 0.13), col], [Math.max(1, R * 0.04), "rgba(255,250,230,0.8)"]]) {
+      ctx.strokeStyle = style; ctx.lineWidth = w; ctx.beginPath();
+      for (const [ax, ay, bx, by, sx, sy] of segs) {
+        const k = 0.07;
+        ctx.moveTo(ax + (sx - ax) * k, ay + (sy - ay) * k); ctx.lineTo(bx + (sx - bx) * k, by + (sy - by) * k);
+      }
+      ctx.stroke();
+    }
+  }
+}
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
 // Improvements are painted once per (kind, zoom step) and drawn scaled.
 const IMPS = new Map();
-function drawImprovement(kind, sx, sy, R) {
-  const Rb = zoomStep(R), key = `${kind}|${Rb}`;
+function drawImprovement(kind, sx, sy, R, variant = 0) {
+  const Rb = zoomStep(R), v = kind === "farm" ? variant % 6 : 0, key = `${kind}|${Rb}|${v}`;
   let c = IMPS.get(key);
   if (!c) {
     c = document.createElement("canvas"); c.width = Math.ceil(Rb * 2.2); c.height = Math.ceil(Rb * 2.2);
-    paintImprovement(c.getContext("2d"), kind, c.width / 2, c.height / 2, Rb);
+    paintImprovement(c.getContext("2d"), kind, c.width / 2, c.height / 2, Rb, v);
     IMPS.set(key, c);
   }
   const s2 = R / Rb;
   ctx.drawImage(c, sx - c.width * s2 / 2, sy - c.height * s2 / 2, c.width * s2, c.height * s2);
 }
-function paintImprovement(g, kind, cx, cy, R) {
-  const rnd = rng(kind.length * 31 + kind.charCodeAt(0));
+function paintImprovement(g, kind, cx, cy, R, variant = 0) {
+  const rnd = rng(kind.length * 31 + kind.charCodeAt(0) + variant * 977);
   const shadow = (x, y, w) => { g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.ellipse(x + w * 0.15, y, w, w * 0.32, 0, 0, Math.PI * 2); g.fill(); };
-  if (kind === "farm" || kind === "hydroponic_plot") {
+  if (kind === "farm") {
+    // a patchwork of rectangular fields (greens, golds, ploughed browns) at an angle that changes from
+    // hex to hex, with hedgerows between fields, crop rows in each and a farmstead
+    g.save(); hexPath(g, cx, cy, R * 0.97); g.clip();
+    const cols = ["#7fa83a", "#9bb848", "#c9b04a", "#d9c25a", "#6b8f32", "#b89a4a", "#8a6a3a", "#a9c060"];
+    g.translate(cx, cy); g.rotate(-0.6 + rnd() * 1.2);
+    const fw = R * (0.42 + rnd() * 0.12), fh = R * (0.3 + rnd() * 0.1);
+    for (let row = -4; row <= 4; row++) {
+      const shift = (rnd() - 0.5) * fw;
+      for (let col = -4; col <= 4; col++) {
+        const x = col * fw + shift, y = row * fh, w = fw * (0.85 + rnd() * 0.3);
+        const c0 = cols[Math.floor(rnd() * cols.length)];
+        const fg = g.createLinearGradient(x, y, x + w, y + fh); fg.addColorStop(0, shade(c0, 0.08)); fg.addColorStop(1, shade(c0, -0.12));
+        g.fillStyle = fg; g.fillRect(x, y, w, fh);
+        g.strokeStyle = "rgba(60,45,20,0.22)"; g.lineWidth = Math.max(0.7, R * 0.012);  // crop rows
+        const vertical = rnd() < 0.5;
+        for (let q = 1; q < 7; q++) { g.beginPath(); if (vertical) { g.moveTo(x + w * q / 7, y + 1); g.lineTo(x + w * q / 7, y + fh - 1); } else { g.moveTo(x + 1, y + fh * q / 7); g.lineTo(x + w - 1, y + fh * q / 7); } g.stroke(); }
+        g.strokeStyle = "rgba(55,75,30,0.75)"; g.lineWidth = Math.max(1, R * 0.03); g.strokeRect(x, y, w, fh);  // hedgerow
+      }
+    }
+    g.restore();
+    // the farmstead: a house and a barn with a few trees
+    const hx = cx + (rnd() - 0.5) * R * 0.5, hy = cy + (rnd() - 0.5) * R * 0.4, hw = R * 0.2, hh = R * 0.13;
+    shadow(hx, hy + hh * 0.6, hw);
+    g.fillStyle = "#efe2c4"; g.fillRect(hx - hw / 2, hy - hh / 2, hw, hh);
+    g.fillStyle = "#9b3b2a"; g.beginPath(); g.moveTo(hx - hw * 0.62, hy - hh / 2); g.lineTo(hx, hy - hh * 1.3); g.lineTo(hx + hw * 0.62, hy - hh / 2); g.fill();
+    g.fillStyle = "#7a2f22"; g.fillRect(hx + hw * 0.6, hy - hh * 0.3, hw * 0.7, hh * 0.8);
+    g.fillStyle = "#5a5a5a"; g.fillRect(hx + hw * 0.55, hy - hh * 0.45, hw * 0.8, hh * 0.18);
+    g.fillStyle = "#3e6a2a"; for (const [dx, dy] of [[-0.75, 0.2], [-0.55, 0.45], [0.2, 0.55]]) { g.beginPath(); g.arc(hx + dx * hw, hy + dy * hw, hw * 0.22, 0, Math.PI * 2); g.fill(); }
+    return;
+  }
+  if (kind === "hydroponic_plot") {
     // field strips clipped to the hex, a farmhouse and (hydroponics) glass domes
     g.save(); hexPath(g, cx, cy, R * 0.86); g.clip();
     const cols = kind === "farm" ? ["#d9b84a", "#a9b83e", "#c7a23c", "#8fae3a", "#e0c463"] : ["#6fbf7a", "#4f9e5c", "#88d08f"];
