@@ -133,7 +133,7 @@ continents:
     order: 2
     resources: {wheat: 16, cattle: 14, fish: 12, timber: 10, gold_ore: 4, coffee: 0, oil: 6, aluminum: 8, uranium: 6, rare_earths: 3}
     geo:
-      size: [50, 48]
+      size: [60, 58]
       x_scale_pct: 60
       size_pct: 100
       outline: [[-6, 36], [-2, 37], [0, 39], [0, 40], [1, 41], [3, 42], [3, 43], [5, 43], [8, 44],

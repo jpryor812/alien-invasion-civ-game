@@ -25,6 +25,8 @@ class World:
         self.seed = seed
         self.width = cfg.t("map.width")
         self.height = cfg.t("map.height")
+        if cfg.t("map.wrap"):  # the world is round: east meets west (SPEC_M10)
+            hexgrid.set_wrap(self.width)
         self.tiles = [Tile(terrain="ocean") for _ in range(self.width * self.height)]
         self.cities: list[City] = []
 
@@ -59,24 +61,25 @@ def layout(cfg: Config, seed: int, continents: list[str]) -> dict[str, list[int]
             break
     else:
         raise ValueError("continents do not fit the map; widen map.width or map.height")
+    # Close continents (designer 2026-11-15, SPEC_M10): neighbours in a row sit `gap` columns apart
+    # (negative: their ocean margins overlap, leaving a strait one hex wide that scouts see across)
+    # and the two rows meet at the middle; the spare width is one open ocean at a seeded place, and
+    # the spare height is polar sea north and south.
     boxes: dict[str, list[int]] = {}
-    top = 0
     band_spare = height - sum(max(size[c][1] for c in row) for row in rows if row)
-    for row in rows:
+    vgap = cfg.t("map.row_gap")
+    bands = [max(size[c][1] for c in row) for row in rows if row]
+    mid = band_spare // 2 + bands[0]
+    for k_row, row in enumerate(rows):
         if not row:
             continue
-        band = max(size[c][1] for c in row) + band_spare // len(rows)
         spare = width - sum(size[c][0] for c in row) - gap * (len(row) - 1)
-        # split the spare columns into len(row)+1 seeded pieces (left edge, gaps, right edge)
-        cuts = sorted(r.randint(0, spare) for _ in range(len(row)))
-        pieces = [b - a for a, b in zip([0, *cuts], [*cuts, spare], strict=True)]
-        x = pieces[0]
-        for k, c in enumerate(row):
+        x = r.randint(0, spare)
+        for c in row:
             w, h = size[c]
-            y = top + r.randint(0, band - h)
+            y = mid - h - vgap // 2 if k_row == 0 else mid + (vgap - vgap // 2)
             boxes[c] = [x, y, x + w, y + h]
-            x += w + gap + pieces[k + 1]
-        top += band
+            x += w + gap
     return boxes
 
 
@@ -221,6 +224,48 @@ def _draw_land(w: World, cid: str, proj: _Projection) -> list[int]:
         w.tiles[i].terrain = "grassland"
         w.tiles[i].continent = cid
     return sorted(main)
+
+
+def _grow_land(
+    w: World, cid: str, land: list[int], proj: _Projection, r: random.Random
+) -> list[int]:
+    """Fatten the continent until it fills `map.land_fill_pct` of its box (designer 2026-11-15,
+    SPEC_M10: about 60% land). Coast hexes become land in seeded passes, most readily where more
+    land already surrounds them, so bays fill first and the coast stays ragged."""
+    cfg = w.cfg
+    col0, col1, row0, row1 = _region(cfg, proj.box)
+    box_tiles = {
+        hexgrid.index(c, rr, w.width) for rr in range(row0, row1) for c in range(col0, col1)
+    }
+    # every continent aims for the same amount of land (fairness), as far as its box allows
+    target = min(
+        cfg.t("map.land_per_continent"), len(box_tiles) * cfg.t("map.land_fill_pct") // 100
+    )
+    have = set(land)
+    chance = cfg.t("map.land_grow_chance_pct")  # by land neighbours: index 0..6
+    for _ in range(400):
+        if len(have) >= target:
+            break
+        frontier = sorted(
+            t
+            for i in have
+            for t in w.nbrs(i)
+            if t in box_tiles and t not in have and w.tiles[t].terrain == "ocean"
+        )
+        if not frontier:
+            break
+        grown = []
+        for t in dict.fromkeys(frontier):
+            n_land = sum(1 for n in w.nbrs(t) if n in have)
+            if r.randint(1, 100) <= chance[min(n_land, 6)]:
+                grown.append(t)
+        for t in grown:
+            if len(have) >= target:
+                break
+            have.add(t)
+            w.tiles[t].terrain = "grassland"
+            w.tiles[t].continent = cid
+    return sorted(have)
 
 
 def _paint_biomes(w: World, cid: str, land: list[int], proj: _Projection, r: random.Random) -> None:
@@ -440,6 +485,7 @@ def generate(cfg: Config, seed: int, continents: list[str]) -> tuple[list[Tile],
         r = rng.stream(seed, "map", cid)
         proj = _Projection(cfg, cid, boxes[cid])
         land = _draw_land(w, cid, proj)
+        land = _grow_land(w, cid, land, proj, rng.stream(seed, "map", cid, "grow"))
         _paint_biomes(w, cid, land, proj, r)
         sites[cid] = _city_sites(w, cid, land, proj)
         keep = {n for s in sites[cid] for n in hexgrid.within(s, 1, w.width, w.height)}

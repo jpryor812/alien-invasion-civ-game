@@ -313,6 +313,7 @@ class GameState:
     projects: dict[str, Project] = field(default_factory=dict)
     outcome: str | None = None  # victory | defeat (no turn limit)
     outcome_turn: int | None = None
+    wrap: bool = False  # the map wraps east to west (SPEC_M10); hexgrid.set_wrap registers it
     version: int = STATE_VERSION
 
     # -- lookups -------------------------------------------------------------------------------
@@ -408,7 +409,12 @@ def state_to_json(state: GameState, *, indent: int | None = None) -> str:
 def state_from_json(text: str) -> GameState:
     import json
 
-    return from_dict(GameState, json.loads(text))
+    from beacon import hexgrid
+
+    state = from_dict(GameState, json.loads(text))
+    if state.wrap:
+        hexgrid.set_wrap(state.width)
+    return state
 
 
 def state_digest(state: GameState) -> str:

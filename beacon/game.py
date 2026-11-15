@@ -53,6 +53,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
         tiles=tiles,
         players=new_players(cfg, continents),
         cities=city_list,
+        wrap=bool(cfg.t("map.wrap")),
     )
     radius = cfg.t("cities.work_radius")
     for city in state.cities:

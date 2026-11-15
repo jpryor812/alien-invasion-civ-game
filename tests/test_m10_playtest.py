@@ -104,3 +104,18 @@ def test_library_is_available_from_the_start_and_the_school_needs_it(cfg):
     assert "building:library" in options and "building:school" not in options
     city.buildings = ["library"]
     assert "building:school" in economy.production_options(s, cfg, city)
+
+
+def test_the_map_wraps_east_to_west_and_is_about_60_percent_land(cfg):
+    from beacon import hexgrid
+    from beacon.game import new_game
+    from beacon.tiles import is_water
+
+    s = new_game(cfg, seed=2)
+    assert s.wrap and hexgrid.wraps(s.width)
+    west, east_edge = hexgrid.index(0, 10, s.width), hexgrid.index(s.width - 1, 10, s.width)
+    assert east_edge in hexgrid.neighbours(west, s.width, s.height)
+    assert hexgrid.distance(west, east_edge, s.width) == 1
+    land = sum(1 for t in s.tiles if not is_water(cfg, t))
+    assert 55 <= land * 100 // len(s.tiles) <= 65
+    assert state_from_json(state_to_json(s)).wrap

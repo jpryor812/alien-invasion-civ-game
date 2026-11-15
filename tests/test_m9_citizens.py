@@ -361,11 +361,11 @@ def test_layout_is_shuffled_by_seed(cfg):
     a = mapgen.layout(cfg, 1, cfg.continent_ids())
     b = mapgen.layout(cfg, 2, cfg.continent_ids())
     assert a != b and a == mapgen.layout(cfg, 1, cfg.continent_ids())
-    for boxes in (a, b):  # boxes never overlap and fit the map
-        items = list(boxes.values())
-        for i, (c0, r0, c1, r1) in enumerate(items):
+    for boxes in (a, b):  # boxes fit the map; only their ocean margins may overlap (SPEC_M10)
+        items = [mapgen._region(cfg, box) for box in boxes.values()]
+        for i, (c0, c1, r0, r1) in enumerate(items):
             assert 0 <= c0 < c1 <= cfg.t("map.width") and 0 <= r0 < r1 <= cfg.t("map.height")
-            for d0, s0, d1, s1 in items[i + 1 :]:
+            for d0, d1, s0, s1 in items[i + 1 :]:
                 assert c1 <= d0 or d1 <= c0 or r1 <= s0 or s1 <= r0
 
 

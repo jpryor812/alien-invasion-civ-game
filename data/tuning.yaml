@@ -24,12 +24,38 @@ map:
     value: 128
     status: placeholder
     note: Map rows.
-  layout_gap_min:
-    value: 3
+  wrap:
+    value: true
     status: placeholder
-    note: Fewest ocean columns between two continents in a row when the layout is shuffled.
+    note: The world wraps east to west - the earth is round, there is no edge (designer
+      2026-11-15, SPEC_M10). The map width must be even.
+  land_per_continent:
+    value: 2750
+    status: placeholder
+    note: Land hexes each continent grows to from its real outline, so land is about 60% of the
+      map and every continent has about the same (designer 2026-11-15, SPEC_M10 - "more 60/40
+      land/ocean").
+  land_fill_pct:
+    value: 88
+    status: placeholder
+    note: Most a continent may fill of its box while growing (keeps a ragged coast).
+  land_grow_chance_pct:
+    value: [0, 10, 25, 45, 70, 90, 100]
+    status: placeholder
+    note: Chance a coastal ocean hex becomes land in one growth pass, by how many land
+      neighbours it has (0-6); bays fill first, so the coast stays ragged.
+  row_gap:
+    value: -1
+    status: placeholder
+    note: Rows between the two rows of continents (negative - their margins overlap, leaving a
+      strait one hex wide; designer 2026-11-15, SPEC_M10 - meet a friend by about turn 15).
+  layout_gap_min:
+    value: -1
+    status: placeholder
+    note: Columns between neighbouring continents in a row (negative - their ocean margins
+      overlap, leaving a strait one hex wide; designer 2026-11-15, SPEC_M10).
   ocean_margin:
-    value: 2
+    value: 1
     status: placeholder
     note: Ocean hexes kept clear inside each continent box edge, so continents never touch.
   min_island_tiles:
