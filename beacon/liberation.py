@@ -64,6 +64,7 @@ def _restore(state: GameState, cfg: Config, city: City, pop: int) -> Events:
     city.pop = max(1, pop)
     city.food_store = 0
     city.production_store = 0
+    city.progress = {}
     city.queue = []
     if city.owner is None:
         return []
@@ -151,6 +152,7 @@ def overrun(state: GameState, cfg: Config, city: City, defenders_radius: int = 2
     city.connected = False
     city.queue = []
     city.production_store = 0
+    city.progress = {}
     city.food_store = 0
     city.pop = max(1, city.pop * cfg.t("cities.liberation_pop_loss_pct") // 100)
     city.hp = cities.max_hp(cfg, city, state) * cfg.t("cities.liberated_hp_pct") // 100

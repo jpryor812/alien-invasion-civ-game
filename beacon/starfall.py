@@ -23,8 +23,56 @@ def settings(cfg: Config) -> dict[str, Any]:
 
 
 def active(state: GameState) -> list[Shard]:
-    """Shards warned or landed and not yet claimed."""
+    """Shards warned or landed and not yet claimed (remnants included)."""
     return sorted((s for s in state.shards.values() if s.claimed_by is None), key=lambda s: s.id)
+
+
+def falling(state: GameState) -> list[Shard]:
+    """Active shards from the sky (not the remnants placed at the start)."""
+    return [s for s in active(state) if not s.remnant]
+
+
+def place_remnants(state: GameState, cfg: Config) -> None:
+    """Meteor remnants (designer 2026-11-15, SPEC_M10): 3-5 old shards on every continent at the
+    start, away from cities and finds, minable like a landed shard; the first miner claims one."""
+    r_cfg = cfg.t("remnants")
+    s = settings(cfg)
+    kinds = sorted(s["kinds"])
+    taken = {x.tile for x in state.sites.values()} | {c.tile for c in state.cities}
+    for cid in sorted({c.continent for c in state.cities}):
+        r = rng.stream(state.seed, "map", "remnants", cid)
+        want = r.randint(r_cfg["per_continent_min"], r_cfg["per_continent_max"])
+        options = [
+            i
+            for i, t in enumerate(state.tiles)
+            if t.continent == cid
+            and is_passable_land(cfg, t)
+            and i not in taken
+            and all(
+                hexgrid.distance(i, c.tile, state.width) >= r_cfg["min_city_distance"]
+                for c in state.cities
+            )
+        ]
+        r.shuffle(options)
+        chosen: list[int] = []
+        for i in options:
+            if len(chosen) >= want:
+                break
+            if all(hexgrid.distance(i, j, state.width) >= r_cfg["min_spacing"] for j in chosen):
+                chosen.append(i)
+        for i in sorted(chosen):
+            kind = rng.weighted_choice(r, kinds, [s["kinds"][k]["weight"] for k in kinds])
+            sid = state.new_id()
+            state.shards[str(sid)] = Shard(
+                id=sid,
+                kind=kind,
+                tile=i,
+                warn_turn=0,
+                impact_turn=0,
+                cone_center=i,
+                cone_radius=0,
+                remnant=True,
+            )
 
 
 def landed(state: GameState, shard: Shard) -> bool:
@@ -139,7 +187,7 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
     if state.next_shard_turn < 0:
         state.next_shard_turn = s["first_turn"]
     for shard in active(state):
-        if state.turn == shard.impact_turn:
+        if state.turn == shard.impact_turn and not shard.remnant:
             events.append(
                 {
                     "turn": state.turn,
@@ -152,7 +200,7 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
             )
         if not landed(state, shard):
             continue
-        if state.turn - shard.impact_turn >= s["fade_turns"]:
+        if not shard.remnant and state.turn - shard.impact_turn >= s["fade_turns"]:
             shard.claimed_by, shard.claimed_turn = "nobody", state.turn  # burnt out
             events.append(
                 {"turn": state.turn, "kind": "shard_faded", "shard": shard.id, "tile": shard.tile}
@@ -164,7 +212,7 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
                 if shard.progress[u.owner] >= s["mine_turns"]:
                     events.extend(_claim(state, cfg, shard, u.owner))
                     break
-    if state.turn >= state.next_shard_turn and not active(state):
+    if state.turn >= state.next_shard_turn and not falling(state):
         events.extend(_drop(state, cfg))
         r = rng.stream(state.seed, "events", state.turn, "starfall-next")
         state.next_shard_turn = state.turn + s["interval"] + r.randint(0, s["jitter"])

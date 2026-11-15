@@ -64,6 +64,17 @@ def check(state: GameState, cfg: Config, only: str | None = None) -> Events:
     return events
 
 
+def beacon_contact(state: GameState, cfg: Config, pid: str) -> Events:
+    """Beacon level 1 (designer 2026-11-15, SPEC_M10): the first beacon reaches every other
+    continent, so its player meets everyone without finding their cities."""
+    if cfg.t("contact.beacon_tech") not in state.players[pid].techs:
+        return []
+    events: Events = []
+    for other in state.player_ids():
+        events.extend(meet(state, pid, other, "beacon"))
+    return events
+
+
 def fallen_known(state: GameState) -> Events:
     """A fallen continent is known to everyone (so a rescue can be sent)."""
     events: Events = []

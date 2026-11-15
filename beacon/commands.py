@@ -50,10 +50,25 @@ class SetProduction(Command):
 @register
 @dataclass(frozen=True)
 class Purchase(Command):
-    """Buy the item at the head of the queue outright with gold."""
+    """Buy an item outright with gold: `item` if given (any allowed item, SPEC_M10), else the
+    head of the queue. The queue is otherwise left alone."""
 
     kind: ClassVar[str] = "purchase"
     city: int
+    item: str = ""
+
+
+@register
+@dataclass(frozen=True)
+class SetConvoy(Command):
+    """Send a share of a city's production or spare food each turn to a friendly city joined to
+    it by road (SPEC_M10). target -1 stops the convoy."""
+
+    kind: ClassVar[str] = "set_convoy"
+    city: int
+    target: int
+    goods: str = "production"
+    pct: int = 25
 
 
 @register

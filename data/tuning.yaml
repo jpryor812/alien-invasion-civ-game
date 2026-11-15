@@ -99,7 +99,7 @@ cities:
   start_buildings:
     status: placeholder
     note: Buildings present at the start, by role.
-    capital: [food_depot, workshop, market, school]
+    capital: [food_depot, workshop, market, library, school]
     known: [food_depot]
   refound_pop:
     value: 1
@@ -199,6 +199,11 @@ economy:
     production: {food: 2, production: 5, science: 1, gold: 1, beacon: 1}
     science: {food: 2, production: 1, science: 5, gold: 1, beacon: 1}
     gold: {food: 2, production: 1, science: 1, gold: 5, beacon: 1}
+  connection_gold:
+    value: 2
+    status: placeholder
+    note: Gold a turn for each city (not the capital) joined to the capital by road, rail or city
+      tiles (designer 2026-11-15, SPEC_M10 - cities produce without a road; connecting pays).
   purchase_pct:
     value: 200
     status: placeholder
@@ -465,3 +470,35 @@ repair:
     note: Turns a nanorepair crew takes to rebuild a pillaged improvement (engineers rebuild at
       the normal pace).
 
+convoys:
+  shares_pct:
+    value: [25, 50]
+    status: placeholder
+    note: Shares of its production or spare food a city may send by convoy to a friendly city
+      joined to it by road or rail (designer 2026-11-15, SPEC_M10).
+
+contact:
+  beacon_tech:
+    value: beacon_theory
+    status: placeholder
+    note: Researching this (beacon level 1) makes contact with every other player (designer
+      2026-11-15, SPEC_M10 - meet people without finding their cities).
+
+remnants:
+  per_continent_min:
+    value: 3
+    status: placeholder
+    note: Fewest meteor remnants placed on each continent at the start (designer 2026-11-15,
+      SPEC_M10). Shared - the first player (or the aliens) to mine one claims it.
+  per_continent_max:
+    value: 5
+    status: placeholder
+    note: Most meteor remnants per continent.
+  min_city_distance:
+    value: 4
+    status: placeholder
+    note: No remnant within this many hexes of a city.
+  min_spacing:
+    value: 5
+    status: placeholder
+    note: Fewest hexes between two remnants.

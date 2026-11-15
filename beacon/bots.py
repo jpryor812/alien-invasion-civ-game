@@ -307,9 +307,7 @@ class Bot:
                 if todo is not None and todo not in claimed:
                     targets.append((todo, "road"))
         if not targets:
-            for city in self.view.my_cities():
-                if not city.connected:
-                    continue
+            for city in self.view.my_cities():  # every city produces now (SPEC_M10)
                 for t in cities.work_tiles(self.state, self.cfg, city):
                     imp = self._improvement_for(t)
                     if imp and t not in claimed and self.state.city_at(t) is None:

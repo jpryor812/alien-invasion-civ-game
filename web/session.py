@@ -191,7 +191,7 @@ class Session:
         sources: dict[str, dict[str, int]] = {y: {} for y in ("gold", "science", "beacon")}
         by_city: dict[str, list[list[Any]]] = {y: [] for y in ("gold", "science", "beacon")}
         for c in mine:
-            cy = economy.city_yields(s, cfg, c) if c.connected else None
+            cy = economy.city_yields(s, cfg, c)  # SPEC_M10: every active city produces
             prod = cy.totals["production"] if cy else 0
             if cy:
                 science += cy.totals["science"]
@@ -208,7 +208,10 @@ class Session:
             if head and not head.startswith("project:") and prod > 0:
                 turns = max(
                     0,
-                    -(-(economy.item_cost(cfg, head, s.players[me]) - c.production_store) // prod),
+                    -(
+                        -(economy.item_cost(cfg, head, s.players[me]) - economy.stored(c, head))
+                        // prod
+                    ),
                 )
             city_rows.append({"id": c.id, "production": prod, "head": head, "turns": turns})
         upkeep = (
@@ -461,6 +464,8 @@ class Session:
         ]
         shards = []
         for sh in starfall.active(s):
+            if sh.remnant and not (bits >> sh.tile) & 1:
+                continue  # a remnant shows once its hex is explored (it must be found)
             row = {
                 "id": sh.id,
                 "center": sh.cone_center,
@@ -469,7 +474,8 @@ class Session:
                 "landed": starfall.landed(s, sh),
                 "progress": dict(sh.progress),
                 "needed": sf["mine_turns"],
-                "fades_turn": sh.impact_turn + sf["fade_turns"],
+                "fades_turn": None if sh.remnant else sh.impact_turn + sf["fade_turns"],
+                "remnant": sh.remnant,
             }
             if row["landed"]:
                 row.update(
@@ -579,7 +585,7 @@ class Session:
             raise ValueError(f"no city {city_id} of yours")
         c = s.cities[city_id]
         cy = economy.city_yields(s, cfg, c)
-        prod = cy.totals["production"] if c.connected else 0
+        prod = cy.totals["production"]
         options = []
         for item in economy.production_options(s, cfg, c):
             kind, _, ident = item.partition(":")
@@ -591,7 +597,7 @@ class Session:
                     "id": ident,
                     "cost": cost,
                     "turns": (
-                        -(-max(0, cost - c.production_store) // prod)
+                        -(-max(0, cost - economy.stored(c, item)) // prod)
                         if cost is not None and prod > 0
                         else None
                     ),
@@ -599,7 +605,12 @@ class Session:
                     if kind != "project"
                     else "",
                     "info": describe(cfg, kind, ident),
-                    "price": economy.purchase_price(cfg, item, s.players[me]) if cost else None,
+                    "progress": economy.stored(c, item),
+                    "price": economy.purchase_price(
+                        cfg, item, s.players[me], economy.stored(c, item)
+                    )
+                    if cost
+                    else None,
                 }
             )
         seen = fog.visible_tiles(s, cfg, me)
@@ -769,13 +780,16 @@ class Session:
             if c.owner != me or c.status != ACTIVE:
                 continue
             cy = economy.city_yields(s, cfg, c)
-            prod = cy.totals["production"] if c.connected else 0
+            prod = cy.totals["production"]
             head = c.queue[0] if c.queue else None
             turns = None
             if head and not head.startswith("project:") and prod > 0:
                 turns = max(
                     0,
-                    -(-(economy.item_cost(cfg, head, s.players[me]) - c.production_store) // prod),
+                    -(
+                        -(economy.item_cost(cfg, head, s.players[me]) - economy.stored(c, head))
+                        // prod
+                    ),
                 )
             surplus = cy.surplus_food
             need = economy.growth_threshold(cfg, c.pop) - c.food_store
@@ -789,7 +803,7 @@ class Session:
                     "pop": c.pop,
                     "grows_in": -(-need // surplus) if surplus > 0 else None,
                     "food": surplus,
-                    "yields": cy.totals if c.connected else dict.fromkeys(cy.totals, 0),
+                    "yields": cy.totals,
                     "connected": c.connected,
                     "building": head,
                     "turns": turns,

@@ -51,6 +51,7 @@ from beacon.commands import (
     RefoundCity,
     SeatRecruit,
     SetCitizenJob,
+    SetConvoy,
     SetFocus,
     SetProduction,
     SetResearch,
@@ -149,24 +150,49 @@ def _set_production(state: GameState, cfg: Config, cmd: SetProduction) -> Events
 @handles(Purchase)
 def _purchase(state: GameState, cfg: Config, cmd: Purchase) -> Events:
     city = own_city(state, cmd.player, cmd.city)
-    if not city.connected:
-        raise CommandError(f"{city.name} is not connected")
-    if not city.queue or city.queue[0].startswith("project:"):
-        raise CommandError(f"{city.name} has nothing to buy at the head of its queue")
-    item = city.queue[0]
+    item = cmd.item or (city.queue[0] if city.queue else "")
+    if not item or item.startswith("project:"):
+        raise CommandError(f"{city.name} has nothing to buy")
+    if item not in economy.production_options(state, cfg, city):
+        raise CommandError(f"{city.name} cannot build {item}")
     problem = economy.item_allowed(state, cfg, city, item)
     if problem:
         raise CommandError(problem)
     player = state.players[cmd.player]
-    price = economy.purchase_price(cfg, item, player)
+    price = economy.purchase_price(cfg, item, player, economy.stored(city, item))
     if player.gold < price:
         raise CommandError(f"{item} costs {price} gold; treasury has {player.gold}")
     done = economy.complete_item(state, cfg, city, item)
     if done is None:
         raise CommandError(f"{item} cannot be completed now (no room or no strategic resource)")
     player.gold -= price
-    city.queue.pop(0)
+    city.progress.pop(item, None)
+    if item in city.queue:
+        city.queue.remove(item)
     return [done, {"kind": "purchased", "city": city.id, "item": item, "gold": price}]
+
+
+@handles(SetConvoy)
+def _set_convoy(state: GameState, cfg: Config, cmd: SetConvoy) -> Events:
+    from beacon import convoys
+
+    city = own_city(state, cmd.player, cmd.city)
+    if cmd.target < 0:
+        city.convoy = None
+        return [{"kind": "convoy_stopped", "city": city.id}]
+    why = convoys.problem(state, cfg, city, cmd.target, cmd.goods, cmd.pct)
+    if why:
+        raise CommandError(why)
+    city.convoy = {"to": cmd.target, "kind": cmd.goods, "pct": cmd.pct}
+    return [
+        {
+            "kind": "convoy_set",
+            "city": city.id,
+            "to": cmd.target,
+            "goods": cmd.goods,
+            "pct": cmd.pct,
+        }
+    ]
 
 
 @handles(SetFocus)
@@ -605,8 +631,9 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
             for item in economy.production_options(state, cfg, city)
         ]
         out += [SetFocus(player=pid, city=city.id, focus=f) for f in economy.FOCUSES]
-        if city.queue and not city.queue[0].startswith("project:") and city.connected:
-            price = economy.purchase_price(cfg, city.queue[0], player)
+        if city.queue and not city.queue[0].startswith("project:"):
+            head = city.queue[0]
+            price = economy.purchase_price(cfg, head, player, economy.stored(city, head))
             if player.gold >= price:
                 out.append(Purchase(player=pid, city=city.id))
         for t in hexgrid.within(city.tile, cfg.t("cities.attack_range"), state.width, state.height):

@@ -114,8 +114,8 @@ def test_tech_gating(cfg, game):
     assert "building:factory" in economy.production_options(game, cfg, city)
 
 
-def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
-    # a dormant city off the starting roads (one may lie on a road between known cities)
+def test_unconnected_city_produces_and_a_road_adds_connection_gold(cfg, game):
+    # SPEC_M10 (designer 2026-11-15): a city produces from the start; a road to the capital pays
     w, h = game.width, game.height
     dormant = next(
         c
@@ -128,9 +128,10 @@ def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
     dormant.queue = ["building:food_depot"]
     network.update_connections(game, cfg, PID)
     assert not dormant.connected
-    store, food, gold = dormant.production_store, dormant.food_store, game.players[PID].gold
     economy.player_turn(game, cfg, PID)
-    assert (dormant.production_store, dormant.food_store) == (store, food)
+    assert dormant.progress.get("building:food_depot", 0) > 0
+    sources = {src for src, y, _ in economy.city_yields(game, cfg, dormant).lines if y == "gold"}
+    assert "connection" not in sources
 
     # Lay a road from the dormant city to the capital's network, as engineers would.
     net_tiles = {i for i, t in enumerate(game.tiles) if t.route} | {capital(game).tile}
@@ -145,9 +146,8 @@ def test_disconnected_city_produces_nothing_until_road_built(cfg, game):
         game.tiles[t].route = game.tiles[t].route or "road"
     network.update_connections(game, cfg, PID)
     assert dormant.connected
-    economy.player_turn(game, cfg, PID)
-    assert dormant.production_store > store
-    del gold
+    lines = economy.city_yields(game, cfg, dormant).lines
+    assert ("connection", "gold", cfg.t("economy.connection_gold")) in lines
 
 
 def test_engineers_build_a_road_over_turns(cfg, game):

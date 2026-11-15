@@ -6,7 +6,8 @@ buildings:
   food_depot: {status: placeholder, note: Granary stand-in., cost: 60, maintenance: 1, tech: market_economy, yields: {food: 2}, yield_pct: {}}
   workshop: {status: placeholder, note: Light industry., cost: 70, maintenance: 1, tech: industrial_base, yields: {production: 2}, yield_pct: {}}
   market: {status: placeholder, note: Commerce., cost: 80, maintenance: 0, tech: market_economy, yields: {gold: 2}, yield_pct: {gold: 25}}
-  school: {status: placeholder, note: Education., cost: 80, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}}
+  library: {status: placeholder, note: The first science building - buildable from turn 1 (designer 2026-11-15 SPEC_M10)., cost: 45, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}}
+  school: {status: placeholder, note: Education., cost: 80, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}, requires_building: library}
   port: {status: placeholder, note: Harbour; trade role arrives in M6., cost: 90, maintenance: 1, tech: market_economy, yields: {food: 1, gold: 1}, yield_pct: {}, coastal: true}
   military_base: {status: placeholder, note: Barracks and depots., cost: 100, maintenance: 2, tech: modern_warfare, yields: {}, yield_pct: {}, unit_production_pct: 25, city_strength: 4}
   defence_perimeter: {status: placeholder, note: City walls., cost: 100, maintenance: 1, tech: fortification_doctrine, yields: {}, yield_pct: {}, city_strength: 8, city_hp: 100}

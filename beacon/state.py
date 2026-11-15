@@ -54,7 +54,10 @@ class City:
     pop: int
     is_capital: bool = False
     food_store: int = 0
-    production_store: int = 0
+    production_store: int = 0  # carried production waiting for the next item (aliens: their store)
+    progress: dict[str, int] = field(default_factory=dict)  # production put into each item (M10)
+    convoy: dict[str, Any] | None = None  # {"to": city id, "kind": food|production, "pct"} (M10)
+    incoming: dict[str, int] = field(default_factory=dict)  # convoy goods arriving next turn
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
     buildings: list[str] = field(default_factory=list)
     hp: int = 0
@@ -234,6 +237,7 @@ class Shard:
     progress: dict[str, int] = field(default_factory=dict)  # miner (player id or aliens) -> turns
     claimed_by: str | None = None
     claimed_turn: int | None = None
+    remnant: bool = False  # placed at the start, waiting to be found (SPEC_M10)
 
 
 @dataclass

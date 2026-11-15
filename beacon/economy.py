@@ -48,6 +48,8 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
 
     add("city_tile", tile_yields(cfg, state.tiles[city.tile]))
     add("city_centre", cfg.t("economy.city_center_yields"))
+    if city.connected and not city.is_capital:  # SPEC_M10: a road to the capital pays
+        add("connection", {"gold": cfg.t("economy.connection_gold")})
     if city.is_capital:
         cap = cfg.t("cities.capital")
         add("palace", {"food": cap["food"], "production": cap["production"]})
@@ -169,10 +171,19 @@ def item_cost(cfg: Config, item: str, player: Player | None = None) -> int:
     raise ValueError(f"{item} has no cost")
 
 
-def purchase_price(cfg: Config, item: str, player: Player | None) -> int:
-    """Gold to buy an item outright (Automated Markets lowers it: tech effect purchase_pct)."""
-    base = item_cost(cfg, item, player) * cfg.t("economy.purchase_pct") // 100
-    return base * (100 + techfx.total(cfg, player, "purchase_pct")) // 100
+def purchase_price(cfg: Config, item: str, player: Player | None, progress: int = 0) -> int:
+    """Gold to buy an item outright (Automated Markets lowers it: tech effect purchase_pct). The
+    production already put into the item lowers the price in proportion (SPEC_M10)."""
+    cost = item_cost(cfg, item, player)
+    base = cost * cfg.t("economy.purchase_pct") // 100
+    full = base * (100 + techfx.total(cfg, player, "purchase_pct")) // 100
+    left = max(0, cost - progress)
+    return max(1, full * left // cost) if cost else full
+
+
+def stored(city: City, item: str | None) -> int:
+    """Production already put into `item` in this city (each item keeps its own, SPEC_M10)."""
+    return city.progress.get(item, 0) if item else 0
 
 
 # -- strategic resources -----------------------------------------------------------------------
@@ -255,7 +266,7 @@ def unit_bonus_lines(cfg: Config, city: City, production: int) -> list[Line]:
 def process_city(
     state: GameState, cfg: Config, city: City, player: Player
 ) -> tuple[list[dict[str, Any]], int]:
-    """One turn for a connected, active city: growth and production. Adds its gold and beacon
+    """One turn for an active city: growth and production. Adds its gold and beacon
     points to `player` and returns (events, science) for the caller to settle research."""
     events: list[dict[str, Any]] = []
     cy = city_yields(state, cfg, city)
@@ -266,10 +277,16 @@ def process_city(
             cy.totals[y] += carry // 100
         city.yield_carry[y] = carry % 100
 
+    # convoys: goods that arrived for this city, and the share this city sends away (SPEC_M10)
+    from beacon import convoys  # convoys imports diplomacy, which imports this module
+
+    arrived, city.incoming = city.incoming, {}
+    production_in, surplus = convoys.send(
+        state, city, cy.totals["production"], cy.surplus_food + arrived.get("food", 0)
+    )
     # growth: food brings births, and children grow up faster in a well-fed city
-    events.extend(citizens.grow(state, cfg, city, cy.surplus_food))
+    events.extend(citizens.grow(state, cfg, city, surplus))
     growth = techfx.total(cfg, player, "growth_pct")  # Urban Planning
-    surplus = cy.surplus_food
     city.food_store += surplus * (100 + growth) // 100 if surplus > 0 else surplus
     threshold = growth_threshold(cfg, city.pop)
     if city.food_store >= threshold:
@@ -285,7 +302,7 @@ def process_city(
             events.append({"kind": "city_starved", "city": city.id, "pop": city.pop})
 
     # production
-    production = cy.totals["production"]
+    production = production_in + arrived.get("production", 0)
     head = city.queue[0] if city.queue else None
     if head == "project:barrage":
         from beacon.endgame import city_contribution
@@ -297,19 +314,27 @@ def process_city(
     else:
         if head and head.startswith("unit:"):
             production += sum(v for _, _, v in unit_bonus_lines(cfg, city, production))
-        city.production_store += production
-        if head and city.production_store >= item_cost(cfg, head, player):
-            if item_allowed(state, cfg, city, head) is not None:
-                city.queue.pop(0)
-                events.append({"kind": "item_dropped", "city": city.id, "item": head})
-            else:
-                done = complete_item(state, cfg, city, head)
-                if done is None:
-                    events.append({"kind": "production_stalled", "city": city.id, "item": head})
-                else:
-                    city.production_store -= item_cost(cfg, head, player)
+        # each item keeps its own progress; switching away keeps it, a new item starts at 0.
+        # What is left over when an item finishes carries to the next, up to one turn's worth.
+        if head is None:
+            city.production_store = production
+        else:
+            carry, city.production_store = city.production_store, 0
+            city.progress[head] = city.progress.get(head, 0) + production + carry
+            cost = item_cost(cfg, head, player)
+            if city.progress[head] >= cost:
+                if item_allowed(state, cfg, city, head) is not None:
                     city.queue.pop(0)
-                    events.append(done)
+                    events.append({"kind": "item_dropped", "city": city.id, "item": head})
+                else:
+                    done = complete_item(state, cfg, city, head)
+                    if done is None:
+                        events.append({"kind": "production_stalled", "city": city.id, "item": head})
+                    else:
+                        over = city.progress.pop(head) - cost
+                        city.production_store = min(over, production)
+                        city.queue.pop(0)
+                        events.append(done)
 
     player.gold += cy.totals["gold"]
     player.beacon_points += cy.totals["beacon"]
@@ -352,13 +377,13 @@ def unit_upkeep(state: GameState, cfg: Config, pid: str) -> int:
 
 
 def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]:
-    """Process every connected city of a player, then gold and research."""
+    """Process every active city of a player, then gold and research."""
     player = state.players[pid]
     events: list[dict[str, Any]] = []
     science = 0
     citizens.assign(state, cfg, pid)
     for city in state.cities:
-        if city.owner != pid or city.status != ACTIVE or not city.connected:
+        if city.owner != pid or city.status != ACTIVE:  # SPEC_M10: no road needed to produce
             continue
         city_events, city_science = process_city(state, cfg, city, player)
         events.extend(city_events)
@@ -375,5 +400,10 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
         events.append(
             {"turn": state.turn, "kind": "gold_deficit", "player": pid, "shortfall": shortfall}
         )
-    events.extend(tech.progress(cfg, player, science, state.turn))
+    learned = tech.progress(cfg, player, science, state.turn)
+    events.extend(learned)
+    if any(e["tech"] == cfg.t("contact.beacon_tech") for e in learned):
+        from beacon.contact import beacon_contact  # contact imports fog, which imports this
+
+        events.extend(beacon_contact(state, cfg, pid))
     return events

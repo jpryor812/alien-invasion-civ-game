@@ -6,8 +6,9 @@
   and maybe one trait.
 - A grown citizen either works one improved tile of its city (bare tiles yield nothing), adding
   half its stats to that tile, or sits on the continent council (the same seats as alien
-  recruits), adding its full stats to its home city. Military counts only on the council, as
-  city strength.
+  recruits), adding its full stats to every one of its owner's cities (SPEC_M10: the council is
+  territory-wide, tile work is city-wide). Military counts only on the council, as city
+  strength in every city.
 - Each citizen's job is "auto" (the game places it), "council" or a chosen tile. Auto citizens
   take the best free improved tile for the city's focus; with none left they take a free council
   seat. Recruits always come first: auto citizens give up their seats to them.
@@ -30,6 +31,17 @@ GENERAL = "general"
 
 def of_city(state: GameState, city_id: int) -> list[Citizen]:
     return sorted((c for c in state.citizens.values() if c.city == city_id), key=lambda c: c.id)
+
+
+def council_of(state: GameState, pid: str | None) -> list[Citizen]:
+    """The owner's citizens on the council, whose stats count in every one of its cities."""
+    if pid is None:
+        return []
+    return [
+        c
+        for c in of_player(state, pid)
+        if c.seats and c.adult and state.cities[c.city].status == "active"
+    ]
 
 
 def of_player(state: GameState, pid: str) -> list[Citizen]:
@@ -373,10 +385,13 @@ def city_lines(
                 tiles_sum[y] += v
             for y, v in tile_bonus(cfg, c).items():
                 halves[y] += v
-        elif c.seats:
-            for y, v in council_bonus(cfg, c).items():
-                if v:
-                    lines.append((f"citizen:{c.name} (council)", y, v))
+
+    # the council is territory-wide (designer 2026-11-15, SPEC_M10 section 1): every council
+    # citizen of the owner adds its full stats to each of the owner's cities
+    for c in council_of(state, city.owner):
+        for y, v in council_bonus(cfg, c).items():
+            if v:
+                lines.append((f"citizen:{c.name} (council)", y, v))
     for y in YIELDS:
         if halves[y] >= 100:
             lines.insert(0, ("citizens_on_tiles", y, halves[y] // 100))

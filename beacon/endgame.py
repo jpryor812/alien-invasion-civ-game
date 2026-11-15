@@ -60,8 +60,8 @@ def start_barrage_problem(state: GameState, cfg: Config, pid: str, city_id: int)
     if not 0 <= city_id < len(state.cities):
         return f"no city {city_id}"
     city = state.cities[city_id]
-    if city.owner != pid or city.status != ACTIVE or not city.connected:
-        return "the host must be one of your connected cities"
+    if city.owner != pid or city.status != ACTIVE:
+        return "the host must be one of your active cities"
     return None
 
 

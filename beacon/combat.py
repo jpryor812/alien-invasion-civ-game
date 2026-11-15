@@ -163,10 +163,10 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
                     "value": cfg.buildings[b]["city_strength"],
                 }
             )
-    from beacon.citizens import council_military, of_city
+    from beacon.citizens import council_military, council_of
 
-    for c in of_city(state, city.id):
-        if c.seats and council_military(cfg, c):
+    for c in council_of(state, city.owner):  # the council guards every city (SPEC_M10)
+        if council_military(cfg, c):
             lines.append(
                 {"source": f"citizen:{c.name}", "kind": "base", "value": council_military(cfg, c)}
             )

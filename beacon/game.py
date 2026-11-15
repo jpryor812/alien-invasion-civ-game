@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from beacon import cities, citizens, fog, hexgrid, improvements, mapgen, network, rng, story
+from beacon import (
+    cities,
+    citizens,
+    fog,
+    hexgrid,
+    improvements,
+    mapgen,
+    network,
+    rng,
+    starfall,
+    story,
+)
 from beacon.config import Config
 from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, Player
 from beacon.units import place_unit
@@ -91,6 +102,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
             improvements.auto_improve(state, cfg, city, improved[role], city.owner)
     citizens.assign_all(state, cfg)
     story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
+    starfall.place_remnants(state, cfg)  # meteor remnants (docs/SPEC_M10.md)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)
