@@ -52,7 +52,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
       tundra-like soil) prepared as seamless web textures per terrain; a more saturated palette;
       a thin light hex grid over land and water as in the references; water with depth, glints
       and the surf kept.
-- [ ] 2. Forests, jungle, hills and mountains rendered in Blender from Poly Haven models and
+- [x] 2. Forests, jungle, hills and mountains rendered in Blender from Poly Haven models and
       textures: dense canopy hex sprites (several variants, some autumn), jungle canopy, rolling
       textured hills, big rocky snow-capped mountains.
 - [ ] 3. Territory borders in each owner's colour with an inner glow, and farms as patchwork
@@ -80,3 +80,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 
 (one line per finished slice: what changed, what is still weak)
 - 1 Terrain: six CC0 Poly Haven aerial textures (web/static/terrain, sources in its README) replace the painted ground. Grassland and plains share the drone-shot grass, graded green or gold; desert uses rippled beach sand, beaches flat sand, tundra mossy rocky ground, snow the aerial snow field. Each is graded in code, softened with the old painted tones, and laid world-aligned with one tile per about three hexes. The painted textures stand in until the photos load, then the ground rebuilds. A thin light hex grid now covers land and water as in the references, and water is more teal. Still weak: grassland is fairly uniform (Civ's has more patchwork tone); the first build of a screen takes about 1.6 s while the textures are made.
+- 2 Features: rendered in Blender from CC0 Poly Haven assets (web/static/features, sources in its README). The camera sits 55 degrees up and each scene is stretched so it projects onto the hex. Forests are 80-92 copies of tree_small_02 over a darkened forest floor (4 variants), tinted per hex: lush green, warmer, autumn, or dark blue-green in the cold. Jungle is denser and deep green (2 variants). Hills are rendered relief in plain grey (3 variants), re-centred on mid-grey and laid in overlay blend, so they shade any terrain without changing its colour. Mountains are 5-7 boulder_01 copies stretched into peaks with snow above a height line (3 variants), drawn about 1.2 hexes wide so neighbouring peaks join into ranges. The Poly Haven firs rendered brown and sparse, so they are not used. Still weak: forests read as soft dark masses at mid zoom (Civ's canopies have brighter crowns); mountains are all the same rock colour on every terrain.

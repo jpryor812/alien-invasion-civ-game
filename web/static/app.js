@@ -250,21 +250,76 @@ function layerCanvas(w, h, slot) {
 }
 // Feature sprites drawn over the blended ground (trees, hills, peaks, marsh), cached.
 const FEATURES = new Map();
-function featureSprite(t, Rb, variant) {
-  const key = `${t.elevation}|${t.feature || ""}|${t.terrain}|${Rb}|${variant}`;
+// Rendered feature art (visuals round 2): forests, jungle, hills and mountains rendered in Blender
+// from Poly Haven CC0 models and textures (web/static/features, sources in its README), seen from
+// the map camera and fitted to the hex. Until they load, the painted sprites stand in.
+const FEATURE_FILES = { forest: 4, jungle: 2, hills: 3, mountain: 3 };
+const FEATURE_ART = {};
+let featurePending = 0;
+for (const [kind, n] of Object.entries(FEATURE_FILES)) {
+  FEATURE_ART[kind] = [];
+  for (let k = 0; k < n; k++) {
+    const im = new Image(); featurePending++;
+    im.onload = im.onerror = () => { if (--featurePending === 0) { FEATURES.clear(); RELIEF = undefined; CHUNKS.clear(); if (typeof S !== "undefined") S.dirty = true; } };
+    im.src = `features/${kind}_${k}.png`; FEATURE_ART[kind].push(im);
+  }
+}
+const featureArt = (kind, v) => { if (featurePending) return null; const list = FEATURE_ART[kind].filter((im) => im.naturalWidth); return list.length ? list[v % list.length] : null; };
+// forest tints by climate and season: cold forests turn dark blue-green, a few warm ones autumnal
+function forestFilter(t, variant) {
+  if (t.terrain === "tundra" || t.terrain === "snow") return "hue-rotate(28deg) saturate(0.75) brightness(0.82) contrast(1.1)";
+  if (variant === 5 && t.terrain !== "desert") return "hue-rotate(-38deg) saturate(1.9) brightness(1.22)";
+  if (variant === 4) return "hue-rotate(-14deg) saturate(1.6) brightness(1.22)";
+  return "saturate(1.55) hue-rotate(12deg) brightness(1.28) contrast(1.05)";
+}
+// hill relief: the rendered grey shading, re-centred on mid-grey so that overlay only lights the
+// slopes facing the sun and shades the rest, with soft edges
+let RELIEF;
+function hillRelief() {
+  if (RELIEF !== undefined) return RELIEF;
+  if (featurePending) return null;
+  const src = FEATURE_ART.hills.filter((im) => im.naturalWidth);
+  if (!src.length) return (RELIEF = null);
+  RELIEF = src.map((im) => {
+    const N = 256, c = document.createElement("canvas"); c.width = c.height = N;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0, N, N);
+    const img = g.getImageData(0, 0, N, N), d = img.data;
+    let sum = 0, cnt = 0;
+    for (let p = 0; p < d.length; p += 4) if (d[p + 3] > 200) { sum += d[p]; cnt++; }
+    const mean = cnt ? sum / cnt : 128;
+    for (let p = 0; p < d.length; p += 4) {
+      const v = Math.max(0, Math.min(255, 128 + (d[p] - mean) * 1.6));
+      const x = (p / 4) % N, y = Math.floor(p / 4 / N), r = Math.hypot(x - N / 2, y - N / 2) / (N * 0.38);
+      d[p] = d[p + 1] = d[p + 2] = v; d[p + 3] = d[p + 3] * Math.max(0, Math.min(1, (1 - r) * 3));
+    }
+    g.putImageData(img, 0, 0);
+    return c;
+  });
+  return RELIEF;
+}
+function featureSprite(t, Rb, variant, rendered = false) {
+  const key = `${t.elevation}|${t.feature || ""}|${t.terrain}|${Rb}|${variant}|${rendered ? 1 : 0}`;
   let c = FEATURES.get(key);
   if (c !== undefined) return c;
   if (FEATURES.size > 900) FEATURES.clear();
-  if (t.elevation === "flat" && !t.feature) { FEATURES.set(key, null); return null; }
-  const w = Math.ceil(Rb * 2.6), h = Math.ceil(Rb * 2.8);
+  if ((t.elevation === "flat" || (t.elevation === "hills" && rendered)) && !t.feature) { FEATURES.set(key, null); return null; }
+  const tall = t.elevation === "mountain" && rendered;  // rendered mountains need a taller canvas
+  const w = Math.ceil(Rb * (tall ? 3.9 : 2.6)), h = Math.ceil(Rb * (tall ? 4.8 : 2.8));
   c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d"), cx = w / 2, cy = h / 2 + Rb * 0.1;
   const rnd = rng(variant * 131 + (t.feature || "").length * 17 + t.elevation.length * 5 + t.terrain.length);
+  const art = (kind) => { const im = featureArt(kind, variant); if (!im) return false; g.drawImage(im, cx - w / 2, cy - w / 2, w, w); return true; };
   if (t.feature === "marsh") paintMarsh(g, cx, cy, Rb, rnd);
-  if (t.elevation === "hills") paintHills(g, cx, cy, Rb, rnd, t.terrain);
-  if (t.feature === "forest") paintForest(g, cx, cy, Rb, rnd, t.terrain);
-  if (t.feature === "jungle") paintJungle(g, cx, cy, Rb, rnd);
-  if (t.elevation === "mountain") paintMountains(g, cx, cy, Rb, rnd, t.terrain);
+  if (t.elevation === "hills" && !rendered) paintHills(g, cx, cy, Rb, rnd, t.terrain);
+  if (t.feature === "forest") { g.filter = forestFilter(t, variant); if (!art("forest")) { g.filter = "none"; paintForest(g, cx, cy, Rb, rnd, t.terrain); } g.filter = "none"; }
+  if (t.feature === "jungle") { g.filter = "saturate(1.7) hue-rotate(18deg) brightness(0.92) contrast(1.1)"; if (!art("jungle")) { g.filter = "none"; paintJungle(g, cx, cy, Rb, rnd); } g.filter = "none"; }
+  if (t.elevation === "mountain") {
+    if (t.terrain === "desert") g.filter = "sepia(0.4) saturate(1.3) brightness(1.05)";
+    const im = featureArt("mountain", variant);  // rendered with the hex centre 62% down the frame
+    if (im) g.drawImage(im, cx - w / 2, cy - w * 0.62, w, w);
+    else { g.filter = "none"; paintMountains(g, cx, cy, Rb, rnd, t.terrain); }
+    g.filter = "none";
+  }
   FEATURES.set(key, c);
   return c;
 }
@@ -549,9 +604,20 @@ function renderChunk(cx, cy, Rb) {
       g.stroke();
     }
   }
-  // 3. features over the ground, back to front
+  // 3. hills shade the ground under them (rendered relief, laid in overlay so the terrain keeps
+  //    its colour), then features over the ground, back to front
+  const relief = hillRelief();
+  if (relief) {
+    g.save(); g.globalCompositeOperation = "overlay";
+    for (const [i, t, x, y] of tiles) {
+      if (t.elevation !== "hills") continue;
+      const im = relief[Math.floor(hash(i, 5) * relief.length)], s = Rb * 2.6;
+      g.drawImage(im, x - s / 2, y - s / 2, s, s);
+    }
+    g.restore();
+  }
   for (const [i, t, x, y] of [...tiles].sort((a, b) => a[3] - b[3])) {
-    const sp = featureSprite(t, Rb, Math.floor(hash(i, 3) * 6));
+    const sp = featureSprite(t, Rb, Math.floor(hash(i, 3) * 6), !!relief);
     if (sp) g.drawImage(sp, x - sp.width / 2, y - sp.height / 2 - Rb * 0.1);
   }
   return c;
