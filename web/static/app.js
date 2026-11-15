@@ -778,6 +778,16 @@ async function refresh(keepSelection = true) {
   invalidateGround(v);
   S.unitsByTile = new Map();
   S.defencesByTile = new Map();  // city defences are part of their city: not drawn or selected
+  // facing: a unit that moved turns toward its last step (client memory only)
+  S.lastTile = S.lastTile || new Map(); S.facing = S.facing || new Map();
+  for (const u of v.units) {
+    const prev = S.lastTile.get(u.id);
+    if (prev != null && prev !== u.tile) {
+      const dx = center(u.tile)[0] - center(prev)[0];
+      if (Math.abs(dx) > 1 && Math.abs(dx) < SQ3 * R0 * 6) S.facing.set(u.id, dx < 0 ? -1 : 1);
+    }
+    S.lastTile.set(u.id, u.tile);
+  }
   for (const u of v.units) {
     if (v.unit_types[u.type]?.fixed) {
       if (!S.defencesByTile.has(u.tile)) S.defencesByTile.set(u.tile, []);
@@ -1714,7 +1724,11 @@ function drawFigures(u, x, y, R, scale = 1) {
   const [sp, [size, n, lift = 0]] = art, model = UNIT_ART[u.type], side = R * size * 2 * scale / 2;  // sprites are rendered at 2x
   const owner = u.owner === "aliens" ? "#c2362b" : OWNER[u.owner] || "#999";
   // team-coloured base under the squad
-  const spacing = size * (n > 4 ? 0.55 : 0.75), spots = formation(n, spacing);
+  // a formation thins out as the unit takes damage (at least one figure stands)
+  const hpFrac = Math.max(0, Math.min(1, (u.hp ?? 100) / (u.max_hp || 100)));
+  const shown = n > 1 ? Math.max(1, Math.ceil(n * hpFrac - 0.01)) : 1;
+  const spacing = size * (n > 4 ? 0.55 : 0.75), spots = formation(n, spacing).slice(0, shown);
+  const face = S.facing ? S.facing.get(u.id) || 1 : 1;
   const half = Math.max(...spots.map((p) => Math.abs(p[0]))) + size * 0.35;
   const bw = R * Math.min(0.62, Math.max(0.3, half)) * scale, bh = bw * 0.42;
   ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.ellipse(x, y, bw, bh, 0, 0, Math.PI * 2); ctx.fill();
@@ -1724,7 +1738,8 @@ function drawFigures(u, x, y, R, scale = 1) {
     const ph = performance.now() / 650 + (u.id || 0) * 1.7 + dx * 3;
     const bob = model === "drone" ? Math.sin(ph) * 0.05 : model === "hover_tank" ? Math.sin(ph * 0.7) * 0.025 : SHIPS.has(model) ? Math.sin(ph * 0.5) * 0.015 : 0;
     const fx = x + dx * R * scale, fy = y + (dy - lift + bob) * R * scale;
-    ctx.drawImage(sp, fx - side / 2, fy - side * 0.94, side, side);
+    if (face < 0) { ctx.save(); ctx.translate(fx, 0); ctx.scale(-1, 1); ctx.drawImage(sp, -side / 2, fy - side * 0.94, side, side); ctx.restore(); }
+    else ctx.drawImage(sp, fx - side / 2, fy - side * 0.94, side, side);
   }
   return true;
 }
@@ -1751,12 +1766,21 @@ function drawBadge(u, x, y, r, R, flag = false) {
   const alien = u.owner === "aliens";
   if (flag) {  // Civ's unit flag: a disc in the owner's colour, a dark rim, a white class icon
     const col = alien ? "#b8322a" : owner;
-    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.arc(x + 1, y + 1.5, r * 1.08, 0, Math.PI * 2); ctx.fill();
+    // the shape tells the class at a glance: shields for melee, discs for ranged and civilians,
+    // diamonds for recon
+    const role = (S.view.unit_types[u.type] || {}).role, shape = role === "melee" ? "shield" : role === "recon" ? "diamond" : "disc";
+    const outline = (k) => {
+      ctx.beginPath();
+      if (shape === "shield") { ctx.moveTo(x - r * k, y - r * 0.85 * k); ctx.lineTo(x + r * k, y - r * 0.85 * k); ctx.lineTo(x + r * k, y + r * 0.1 * k); ctx.quadraticCurveTo(x + r * k, y + r * 0.75 * k, x, y + r * 1.15 * k); ctx.quadraticCurveTo(x - r * k, y + r * 0.75 * k, x - r * k, y + r * 0.1 * k); ctx.closePath(); }
+      else if (shape === "diamond") { ctx.moveTo(x, y - r * 1.15 * k); ctx.lineTo(x + r * 1.1 * k, y); ctx.lineTo(x, y + r * 1.15 * k); ctx.lineTo(x - r * 1.1 * k, y); ctx.closePath(); }
+      else ctx.arc(x, y, r * k, 0, Math.PI * 2);
+    };
+    ctx.save(); ctx.translate(1, 1.5); ctx.fillStyle = "rgba(0,0,0,0.4)"; outline(1.08); ctx.fill(); ctx.restore();
     const fg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
     fg.addColorStop(0, shade(col, 0.3)); fg.addColorStop(1, shade(col, -0.35));
-    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = fg; outline(1); ctx.fill();
     ctx.strokeStyle = "rgba(12,14,18,0.9)"; ctx.lineWidth = Math.max(1.5, r * 0.14); ctx.stroke();
-    ctx.strokeStyle = "rgba(255,245,215,0.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r * 0.84, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,245,215,0.55)"; ctx.lineWidth = 1; outline(0.82); ctx.stroke();
     drawUnitIcon(u, x, y, r * 0.6, "#ffffff");
   } else {
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x + 1, y + r * 0.95, r * 0.9, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();

@@ -73,7 +73,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - [x] 2. Forests, hills, mountains
 - [x] 3. Borders and farms
 - [x] 4. Cities
-- [ ] 5. Units
+- [x] 5. Units
 - [ ] 6. Interface layout
 
 ## Notes
@@ -89,3 +89,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - P2.2 Features: forests and jungles were re-rendered with a stronger, higher sun, a rim light and a lighter forest floor, so crowns catch the light and the hexes read as canopy rather than dark patches; the client tints were rebalanced to match. Mountains now sit on a soft shadow where they meet the ground and are graded to their land: warm sandstone in the desert, cold grey in tundra, pale in snow. Still weak: forests still fill whole hexes edge to edge (Civ's thin out at the borders); all mountains share one boulder model.
 - P2.3 Borders and farms: border edges are now joined into chains per owner. Each corner is inset toward the owner's hexes that touch it, and two passes of corner cutting round the steps, so borders curve around territories as in Civ (about 34 ms for a whole frame with borders). Farm patchworks reach slightly past their hex, so neighbouring farms join into one field. Still weak: the inner glow still follows straight hex edges under the curved line.
 - P2.4 Cities: all eleven renders were redone. Towns fill the whole hex with smaller, denser plots; villages and towns have trees between the houses; some mid-rises have pitched roofs; towers are stepped (base, shaft, crown) with rooftop masts; a warmer, stronger sun. Suburbs are denser too. Still weak: alien hives keep the painted art; every city of a tier looks alike apart from two layouts.
+- P2.5 Units: flags take the unit's class shape: shields for melee, discs for ranged and civilians, diamonds for recon (owner's colour, white icon). Formations thin with damage: figures shown = formation size × health share, at least one (an infantry unit at 45% shows 4 of 8). Units face the way they last moved: the client remembers each unit's last tile and mirrors the figures when the step was to the left. Still weak: no attack or death animation; facing resets on a page reload.
