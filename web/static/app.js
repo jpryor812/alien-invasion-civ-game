@@ -725,6 +725,7 @@ function draw(t = performance.now()) {
     if (S.hover === i) { hexPath(ctx, sx, sy, R - 1); ctx.strokeStyle = "rgba(255,244,214,0.85)"; ctx.lineWidth = 1.6; ctx.stroke(); }
   }
   // 7. cities, units, then banners on top
+  for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawOutskirts(c, i, sx, sy, R); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawCity(c, sx, sy, R, i); }
   for (const [i, sx, sy] of visible) { const us = S.unitsByTile.get(i); if (us) drawUnits(us, sx, sy, R, S.citiesByTile.has(i)); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawBanner(c, sx, sy, R); }
@@ -982,6 +983,89 @@ function drawCity(c, sx, sy, R, i) {
   }
   const k = R / Rb;
   ctx.drawImage(sp, sx - sp.width * k / 2, sy - (sp.height - Rb * 1.45) * k, sp.width * k, sp.height * k);
+  if (c.status === "overrun" && R >= 10) drawHiveLife(sx, sy, R, i, tier);
+}
+// A hive breathes: a slow pulse of light from its heart and spores drifting up from the spires.
+function drawHiveLife(sx, sy, R, i, tier) {
+  const t = performance.now(), pulse = 0.5 + 0.5 * Math.sin(t / 700 + i);
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const gg = ctx.createRadialGradient(sx, sy - R * 0.1, 0, sx, sy - R * 0.1, R * (0.7 + tier * 0.12));
+  gg.addColorStop(0, `rgba(255,110,50,${0.18 + pulse * 0.22})`); gg.addColorStop(1, "rgba(255,60,20,0)");
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(sx, sy - R * 0.1, R * (0.75 + tier * 0.12), R * (0.55 + tier * 0.1), 0, 0, Math.PI * 2); ctx.fill();
+  for (let q = 0; q < 4 + tier * 2; q++) {
+    const h0 = hash(i, q + 40), ph = (t / 3200 + h0) % 1;
+    const x = sx + (hash(i, q + 60) - 0.5) * R * 1.1 + Math.sin(t / 900 + q) * R * 0.06, y = sy - R * 0.2 - ph * R * 1.1;
+    ctx.fillStyle = `rgba(255,190,110,${(1 - ph) * 0.8})`; ctx.beginPath(); ctx.arc(x, y, Math.max(1, R * 0.03 * (1 - ph * 0.5)), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+// Outskirts (visuals pass 2): towns and cities spill suburbs onto open neighbouring land; a hive's
+// creep spreads onto its neighbours instead. Chosen per city from a hash, so they stay put.
+const OUTSKIRTS = new Map();
+function drawOutskirts(c, i, sx, sy, R) {
+  if (R < 9 || c.status === "empty" || c.status === "dormant") return;
+  const tier = cityTier(c.pop || 1), hive = c.status === "overrun";
+  const want = hive ? [1, 2, 3, 4][tier] : [0, 1, 3, 5][tier];
+  if (!want) return;
+  const [cx0, cy0] = center(i), z = R / R0;
+  const options = neighbourEdges(i).map(([n]) => n).filter((n) => {
+    const t = S.tilesByIndex.get(n);
+    return t && !isWater(t) && t.elevation !== "mountain" && !t.improvement && !S.citiesByTile.has(n);
+  }).sort((a, b) => hash(a, i) - hash(b, i)).slice(0, want);
+  const Rb = zoomStep(R), k = R / Rb;
+  for (const n of options) {
+    const variant = Math.floor(hash(n, 11) * 4), key = `${hive ? "h" : "s"}|${tier}|${variant}|${Rb}`;
+    let sp = OUTSKIRTS.get(key);
+    if (!sp) {
+      if (OUTSKIRTS.size > 300) OUTSKIRTS.clear();
+      sp = document.createElement("canvas"); sp.width = Math.ceil(Rb * 2); sp.height = Math.ceil(Rb * 2);
+      const g = sp.getContext("2d"), rnd = rng(variant * 71 + tier * 13 + (hive ? 5 : 1));
+      if (hive) paintCreep(g, sp.width / 2, sp.height / 2, Rb, rnd); else paintSuburb(g, sp.width / 2, sp.height / 2, Rb, tier, rnd);
+      OUTSKIRTS.set(key, sp);
+    }
+    const [nx, ny] = center(n);
+    // sit a little toward the city, so the suburb joins it
+    const x = sx + (nx - cx0) * z * 0.72, y = sy + (ny - cy0) * z * 0.72;
+    ctx.drawImage(sp, x - sp.width * k / 2, y - sp.height * k / 2, sp.width * k, sp.height * k);
+  }
+}
+function paintSuburb(g, cx, cy, R, tier, rnd) {
+  const pg = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 0.6);
+  pg.addColorStop(0, "rgba(122,112,96,0.85)"); pg.addColorStop(0.65, "rgba(112,102,86,0.6)"); pg.addColorStop(1, "rgba(100,90,74,0)");
+  g.fillStyle = pg; g.beginPath(); g.ellipse(cx, cy, R * 0.8, R * 0.58, 0, 0, Math.PI * 2); g.fill();
+  const blocks = [];
+  for (let q = 0; q < 10 + tier * 3; q++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 0.6;
+    blocks.push([cx + Math.cos(a) * R * d, cy + Math.sin(a) * R * d * 0.66, rnd() < 0.2 * tier ? "mid" : rnd() < 0.15 ? "tree" : "house"]);
+  }
+  blocks.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, kind] of blocks) {
+    const [front, side, top] = FACADES[Math.floor(rnd() * FACADES.length)];
+    if (kind === "tree") { g.fillStyle = "#3e6a32"; g.beginPath(); g.arc(x, y - R * 0.05, R * 0.06, 0, Math.PI * 2); g.fill(); continue; }
+    const w = R * (0.14 + rnd() * 0.06), h = kind === "mid" ? R * (0.18 + rnd() * 0.12) : R * (0.08 + rnd() * 0.05);
+    box(g, x, y, w, w * 0.8, h, top, front, side);
+    if (kind === "house") {
+      g.fillStyle = ROOFS[Math.floor(rnd() * ROOFS.length)]; const o = w * 0.28;
+      g.beginPath(); g.moveTo(x - w / 2 - 1, y - h); g.lineTo(x - w / 2 + o, y - h - o * 1.6); g.lineTo(x + w / 2 + o, y - h - o * 1.6); g.lineTo(x + w / 2 + 1, y - h); g.closePath(); g.fill();
+    } else windows(g, x, y, w, h, "rgba(50,60,75,0.5)", rnd);
+  }
+}
+function paintCreep(g, cx, cy, R, rnd) {
+  const cg = g.createRadialGradient(cx, cy, R * 0.05, cx, cy, R * 0.62);
+  cg.addColorStop(0, "rgba(80,18,22,0.85)"); cg.addColorStop(0.6, "rgba(60,14,18,0.55)"); cg.addColorStop(1, "rgba(40,8,10,0)");
+  g.fillStyle = cg; g.beginPath(); g.ellipse(cx, cy, R * 0.66, R * 0.48, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "rgba(255,120,60,0.45)"; g.lineWidth = Math.max(1, R * 0.02);
+  for (let q = 0; q < 6; q++) {
+    const a = rnd() * Math.PI * 2, l = R * (0.3 + rnd() * 0.3);
+    g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + Math.cos(a + 0.5) * l * 0.5, cy + Math.sin(a + 0.5) * l * 0.35, cx + Math.cos(a) * l, cy + Math.sin(a) * l * 0.65); g.stroke();
+  }
+  for (let q = 0; q < 4; q++) {  // small spires and pods
+    const x = cx + (rnd() - 0.5) * R * 0.7, y = cy + (rnd() - 0.5) * R * 0.4, h = R * (0.15 + rnd() * 0.2), w = R * 0.05;
+    const sg = g.createLinearGradient(x - w, 0, x + w, 0); sg.addColorStop(0, "#5a1418"); sg.addColorStop(0.5, "#9b2a2a"); sg.addColorStop(1, "#2e0a0c");
+    g.fillStyle = sg; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x - w * 0.4, y - h * 0.6, x, y - h); g.quadraticCurveTo(x + w * 0.4, y - h * 0.5, x + w, y); g.fill();
+    const eg = g.createRadialGradient(x + R * 0.08, y, 0, x + R * 0.08, y, R * 0.05); eg.addColorStop(0, "#ffb37a"); eg.addColorStop(1, "#7a2a1c");
+    g.fillStyle = eg; g.beginPath(); g.ellipse(x + R * 0.08, y, R * 0.04, R * 0.05, 0, 0, Math.PI * 2); g.fill();
+  }
 }
 function box(g, x, y, w, d, h, top, front, side, line = "rgba(30,26,22,0.55)") {
   // an extruded block seen from above-front: footprint w x d at (x, y) (bottom-centre), height h
