@@ -2068,6 +2068,10 @@ function portraitURL(kind, id, opts = {}) {
   url = c.toDataURL("image/png"); PORTRAITS.set(key, url);
   return url;
 }
+function mixHex(a, b, f) {
+  const p = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)), [x, y] = [p(a), p(b)];
+  return "#" + x.map((v, k) => Math.round(v + (y[k] - v) * f).toString(16).padStart(2, "0")).join("");
+}
 function portraitImg(kind, id, cls = "", opts = {}) {
   return `<img class="portrait ${cls}" alt="" src="${portraitURL(kind, id, opts)}">`;
 }
@@ -2086,9 +2090,12 @@ function shaded(g, x, y, rx, ry, light, dark, rot = 0) {
 function paintHumanBust(g, N, rnd, opts) {
   bustBackground(g, N, "#4b6170", "#141c24");
   g.save(); g.translate(N / 2, N * 0.8); g.scale(1.26, 1.26); g.translate(-N / 2, -N * 0.74);  // a close bust crop
-  const [skin, skinD] = pickOf(rnd, SKIN), hair = pickOf(rnd, HAIR), cloth = pickOf(rnd, CLOTH);
+  const [skin, skinD] = pickOf(rnd, SKIN), hair0 = pickOf(rnd, HAIR), cloth = pickOf(rnd, CLOTH);
   const kid = !!opts.child, cx = N / 2, hy = kid ? N * 0.5 : N * 0.44, hw = kid ? N * 0.2 : N * (0.19 + rnd() * 0.03), hh = kid ? N * 0.22 : N * (0.24 + rnd() * 0.03);
   const style = Math.floor(rnd() * 7), beard = !kid && rnd() < 0.22, glasses = rnd() < 0.15, scarf = rnd() < 0.12;
+  // age (young, grown, older: lines and greying hair) and mood (calm, warm, stern, wry)
+  const age = kid ? 0 : rnd() < 0.28 ? 2 : rnd() < 0.4 ? 0 : 1, mood = Math.floor(rnd() * 4);
+  const hair = age === 2 && rnd() < 0.8 ? mixHex(hair0, "#cfcac2", 0.6 + rnd() * 0.3) : hair0;
   // shoulders and clothes
   const sy = hy + hh * 1.05;
   const cg = g.createLinearGradient(0, sy, 0, N); cg.addColorStop(0, shade(cloth, 0.15)); cg.addColorStop(1, shade(cloth, -0.45));
@@ -2117,16 +2124,28 @@ function paintHumanBust(g, N, rnd, opts) {
     g.fillStyle = "#120c08"; g.beginPath(); g.arc(cx + s * ex, ey, er * 0.36, 0, Math.PI * 2); g.fill();
     g.fillStyle = "rgba(255,255,255,0.85)"; g.beginPath(); g.arc(cx + s * ex - er * 0.25, ey - er * 0.25, er * 0.18, 0, Math.PI * 2); g.fill();
     g.strokeStyle = shade(skinD, -0.35); g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx + s * ex, ey, er * 1.45, er * 0.85, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
-    // brows
-    const tilt = (rnd() - 0.5) * 0.25;
+    // brows: a stern face lowers the inner ends, a warm one lifts them
+    const inner = mood === 2 ? 0.5 : mood === 1 ? -0.2 : mood === 3 && s === 1 ? -0.35 : 0;
+    const xo = cx + s * ex + s * er * 1.4, xi = cx + s * ex - s * er * 1.4;  // outer and inner ends
     g.strokeStyle = shade(hair, -0.1); g.lineWidth = Math.max(2, hw * (0.07 + rnd() * 0.05)); g.lineCap = "round";
-    g.beginPath(); g.moveTo(cx + s * ex - er * 1.4, ey - er * (1.7 + s * tilt)); g.quadraticCurveTo(cx + s * ex, ey - er * 2.3, cx + s * ex + er * 1.4 * 1, ey - er * (1.6 - s * tilt)); g.stroke();
+    g.beginPath(); g.moveTo(xo, ey - er * 1.55); g.quadraticCurveTo(cx + s * ex, ey - er * 2.3, xi, ey - er * (1.75 - inner)); g.stroke();
   }
   // nose and mouth
   g.strokeStyle = shade(skinD, -0.25); g.lineWidth = 1.4;
   g.beginPath(); g.moveTo(cx + hw * 0.02, ey + er * 0.6); g.quadraticCurveTo(cx + hw * 0.16, hy + hh * 0.28, cx - hw * 0.02, hy + hh * 0.32); g.stroke();
-  const mw = hw * (0.28 + rnd() * 0.12), my = hy + hh * 0.52, smile = (rnd() - 0.3) * hh * 0.08;
-  g.strokeStyle = "#7a3a30"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - mw, my); g.quadraticCurveTo(cx, my + smile + 2, cx + mw, my); g.stroke();
+  const mw = hw * (0.28 + rnd() * 0.12), my = hy + hh * 0.52;
+  const smile = mood === 1 ? hh * 0.1 : mood === 2 ? -hh * 0.025 : hh * 0.02, lift = mood === 3 ? hh * 0.05 : mood === 1 ? hh * 0.025 : 0;
+  g.strokeStyle = "#7a3a30"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - mw, my - (mood === 1 ? lift : 0)); g.quadraticCurveTo(cx, my + smile + 2, cx + mw, my - lift); g.stroke();
+  if (age === 2) {  // lines of a long life: forehead, crow's feet, smile folds
+    g.strokeStyle = "rgba(90,45,30,0.28)"; g.lineWidth = 1.1;
+    for (const f of [0.55, 0.68]) { g.beginPath(); g.moveTo(cx - hw * 0.45, hy - hh * f); g.quadraticCurveTo(cx, hy - hh * (f + 0.04), cx + hw * 0.45, hy - hh * f); g.stroke(); }
+    for (const s of [-1, 1]) {
+      for (const d of [-0.12, 0.05]) { g.beginPath(); g.moveTo(cx + s * hw * 0.68, ey + er * d * 4); g.lineTo(cx + s * hw * 0.82, ey + er * d * 6); g.stroke(); }
+      g.beginPath(); g.moveTo(cx + s * hw * 0.22, hy + hh * 0.3); g.quadraticCurveTo(cx + s * hw * 0.38, hy + hh * 0.48, cx + s * hw * 0.3, hy + hh * 0.62); g.stroke();
+    }
+  } else if (mood === 1) {  // dimples on a warm face
+    g.fillStyle = "rgba(120,55,40,0.25)"; for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * (mw + 2), my - lift, 1.4, 0, Math.PI * 2); g.fill(); }
+  }
   g.fillStyle = "rgba(150,70,60,0.35)"; g.beginPath(); g.ellipse(cx, my + 3, mw * 0.7, hh * 0.05, 0, 0, Math.PI); g.fill();
   if (beard) {
     g.fillStyle = shade(hair, 0.05); g.globalAlpha = 0.9;
@@ -2155,6 +2174,21 @@ function paintHumanBust(g, N, rnd, opts) {
     for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * ex, ey, er * 1.9, er * 1.4, 0, 0, Math.PI * 2); g.stroke(); }
     g.beginPath(); g.moveTo(cx - ex + er * 1.9, ey); g.lineTo(cx + ex - er * 1.9, ey); g.stroke();
   }
+  // hair strands catch the light
+  if (style !== 4) {
+    g.strokeStyle = shade(hair, 0.25); g.globalAlpha = 0.35; g.lineWidth = 1;
+    for (let q = 0; q < 14; q++) { const a = Math.PI * (1.1 + rnd() * 0.8), r0 = hw * (0.55 + rnd() * 0.4); g.beginPath(); g.moveTo(cx + Math.cos(a) * r0 * 0.5, hy - hh * 0.5 + Math.sin(a) * hh * 0.3); g.quadraticCurveTo(cx + Math.cos(a) * r0, hy - hh * 0.6 + Math.sin(a) * hh * 0.55, cx + Math.cos(a) * r0 * 1.05, hy - hh * 0.35 + Math.sin(a) * hh * 0.5); g.stroke(); }
+    g.globalAlpha = 1;
+  }
+  // a cool rim light on the shadow side, and a painted brush texture over everything
+  g.strokeStyle = "rgba(150,210,230,0.35)"; g.lineWidth = 2.2; g.beginPath(); g.ellipse(cx, hy, hw * 0.98, hh * 0.98, 0, -Math.PI * 0.35, Math.PI * 0.3); g.stroke();
+  g.globalCompositeOperation = "overlay";
+  for (let q = 0; q < 160; q++) {
+    const x = rnd() * N, y = rnd() * N, l = 2 + rnd() * 5, a = -0.6 + rnd() * 0.5;
+    g.strokeStyle = rnd() < 0.5 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.12)"; g.lineWidth = 1 + rnd() * 1.5;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  g.globalCompositeOperation = "source-over";
   g.restore();
   // vignette
   const vg = g.createRadialGradient(N / 2, N / 2, N * 0.35, N / 2, N / 2, N * 0.72);
@@ -2782,15 +2816,120 @@ const PICTURE = {
   preserving_compound: ["#123020", "#93d46b", "✺"], starmetal: ["#1d2128", "#e6c45c", "✦"], new_elements: ["#0f2238", "#6cbbec", "⚛"],
   exotic_matter: ["#24123a", "#c88df2", "◈"], living_alloy: ["#1f2a2a", "#7fe0c8", "⬢"],
 };
-// Placeholder art until the graphics push: a painted-sky gradient with a glyph.
-function pictureSvg(key, big) {
-  const [bg, glow, glyph] = PICTURE[key] || ["#1d2733", "#d9ae55", "★"];
-  const h = big ? 300 : 150;
-  return `<svg class="evart" viewBox="0 0 600 ${h}" preserveAspectRatio="xMidYMid slice">
-    <defs><radialGradient id="ev-${key}" cx="50%" cy="${big ? 35 : 45}%" r="70%"><stop offset="0" stop-color="${glow}" stop-opacity="0.85"/><stop offset="0.45" stop-color="${bg}"/><stop offset="1" stop-color="#05080b"/></radialGradient></defs>
-    <rect width="600" height="${h}" fill="url(#ev-${key})"/>
-    ${Array.from({ length: 40 }, (_, k) => `<circle cx="${(k * 137) % 600}" cy="${(k * 71) % h}" r="${k % 3 ? 0.8 : 1.4}" fill="#fff" opacity="${0.2 + (k % 5) / 10}"/>`).join("")}
-    <text x="300" y="${h / 2 + (big ? 40 : 22)}" font-size="${big ? 130 : 70}" text-anchor="middle" fill="#fff8e6" opacity="0.92">${glyph}</text></svg>`;
+// Event and Starfall pictures (visuals pass 2): small painted scenes, drawn once per picture and
+// size and cached as images. They reuse the unit renders (web/static/units) for the aliens, so the
+// art matches the map; if those are not loaded yet the scene waits for them and is not cached.
+const SCENES = new Map(), SCENE_IMG = {};
+for (const n of ["alien_warrior", "alien_small", "engineer", "infantry"]) { const im = new Image(); im.src = `units/${n}.png`; SCENE_IMG[n] = im; }
+function pictureSvg(key, big) {  // (name kept for its callers; it now returns a painted image)
+  return `<img class="evart" alt="" src="${sceneURL(key, big)}">`;
+}
+function sceneURL(key, big) {
+  const id = `${key}|${big ? 1 : 0}`;
+  if (SCENES.has(id)) return SCENES.get(id);
+  const W = 600, H = big ? 300 : 170, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d"), rnd = rng(key.length * 131 + key.charCodeAt(0) * 7);
+  const [bg, glow] = PICTURE[key] || ["#1d2733", "#d9ae55"];
+  const ready = paintScene(g, key, W, H, bg, glow, rnd);
+  const url = c.toDataURL("image/png");
+  if (ready) SCENES.set(id, url);
+  return url;
+}
+function sprite(g, name, x, y, h, flip = false) {  // a unit render standing at (x, y), h tall
+  const im = SCENE_IMG[name];
+  if (!im || !im.complete || !im.naturalWidth) return false;
+  const cr = im.crop || (im.crop = cropToContent(im)), w = h * cr.width / cr.height;
+  g.save(); g.translate(x, y); if (flip) g.scale(-1, 1); g.drawImage(cr, -w / 2, -h, w, h); g.restore();
+  return true;
+}
+function paintScene(g, key, W, H, bg, glow, rnd) {
+  const horizon = H * 0.62, shard = !!(PICTURE[key] && ["preserving_compound", "starmetal", "new_elements", "exotic_matter", "living_alloy"].includes(key));
+  // sky: dark at the top, the scene's light low on the horizon
+  const sky = g.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, "#05080d"); sky.addColorStop(0.55, bg); sky.addColorStop(1, glow);
+  g.fillStyle = sky; g.fillRect(0, 0, W, horizon + 2);
+  for (let q = 0; q < 70; q++) { g.fillStyle = `rgba(255,255,255,${0.2 + rnd() * 0.6})`; g.fillRect(rnd() * W, rnd() * horizon * 0.6, rnd() < 0.15 ? 2 : 1, rnd() < 0.15 ? 2 : 1); }
+  // the alien wormhole, faint in every sky
+  const wh = g.createRadialGradient(W * 0.8, H * 0.18, 2, W * 0.8, H * 0.18, H * 0.25);
+  wh.addColorStop(0, "rgba(200,140,255,0.55)"); wh.addColorStop(0.4, "rgba(120,60,200,0.18)"); wh.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = wh; g.beginPath(); g.arc(W * 0.8, H * 0.18, H * 0.25, 0, Math.PI * 2); g.fill();
+  // far hills, then the ground
+  const far = (y0, amp, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 20) g.lineTo(x, y0 - Math.abs(Math.sin(x * 0.013 + rnd())) * amp - rnd() * amp * 0.3); g.lineTo(W, H); g.fill(); };
+  far(horizon, H * 0.12, "rgba(20,26,34,0.85)");
+  const gr = g.createLinearGradient(0, horizon, 0, H); gr.addColorStop(0, "#2a2a26"); gr.addColorStop(1, "#14130f");
+  g.fillStyle = gr; g.fillRect(0, horizon, W, H - horizon);
+  let ready = true;
+  const smoke = (x, y, n, col) => { for (let q = 0; q < n; q++) { const r = 8 + q * 4; g.fillStyle = col.replace("A", String(0.35 - q * 0.025)); g.beginPath(); g.arc(x + Math.sin(q * 0.9) * q * 3, y - q * 11, r, 0, Math.PI * 2); g.fill(); } };
+  if (key === "survivors") {
+    // a gutted school with one lit window and a chimney that should not be smoking
+    const bx = W * 0.32, by = horizon + H * 0.06;
+    g.fillStyle = "#2e2c2a"; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx, by - H * 0.34); g.lineTo(bx + 120, by - H * 0.34); g.lineTo(bx + 140, by - H * 0.24); g.lineTo(bx + 170, by - H * 0.3); g.lineTo(bx + 200, by - H * 0.18); g.lineTo(bx + 200, by); g.fill();
+    for (let r = 0; r < 2; r++) for (let q = 0; q < 6; q++) { g.fillStyle = r === 1 && q === 2 ? "#ffcc77" : "#121212"; g.fillRect(bx + 12 + q * 30, by - H * 0.28 + r * H * 0.12, 14, H * 0.07); }
+    const lw = g.createRadialGradient(bx + 79, by - H * 0.13, 2, bx + 79, by - H * 0.13, 60); lw.addColorStop(0, "rgba(255,190,100,0.35)"); lw.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = lw; g.fillRect(bx, by - H * 0.4, 200, H * 0.4);
+    g.fillStyle = "#3a3633"; g.fillRect(bx + 90, by - H * 0.44, 14, H * 0.12);
+    smoke(bx + 97, by - H * 0.46, 9, "rgba(190,190,195,A)");
+  } else if (key === "outcast") {
+    // a crater ringed with warning marks, and one alien sitting alone in it
+    g.fillStyle = "#0f0c10"; g.beginPath(); g.ellipse(W * 0.5, horizon + H * 0.2, W * 0.28, H * 0.12, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#4a4038"; g.lineWidth = 4; g.beginPath(); g.ellipse(W * 0.5, horizon + H * 0.2, W * 0.28, H * 0.12, 0, Math.PI, 0); g.stroke();
+    for (let q = 0; q < 7; q++) { const a = Math.PI + (q / 6) * Math.PI, x = W * 0.5 + Math.cos(a) * W * 0.3, y = horizon + H * 0.2 + Math.sin(a) * H * 0.13; g.strokeStyle = "#5a3a30"; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 20); g.stroke(); g.fillStyle = "#e0362c"; g.beginPath(); g.arc(x, y - 22, 3.5, 0, Math.PI * 2); g.fill(); }
+    const halo = g.createRadialGradient(W * 0.5, horizon + H * 0.12, 4, W * 0.5, horizon + H * 0.12, 70); halo.addColorStop(0, "rgba(200,140,255,0.35)"); halo.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = halo; g.fillRect(0, 0, W, H);
+    ready = sprite(g, "alien_warrior", W * 0.5, horizon + H * 0.24, H * 0.42) && ready;
+  } else if (key === "wreckage") {
+    // a scout ship split along its spine, still glowing at the seams
+    for (const [dx, rot] of [[-70, -0.12], [70, 0.16]]) {
+      g.save(); g.translate(W * 0.5 + dx, horizon + H * 0.12); g.rotate(rot);
+      const hg = g.createLinearGradient(0, -24, 0, 18); hg.addColorStop(0, "#5d6b78"); hg.addColorStop(1, "#1d242b");
+      g.fillStyle = hg; g.beginPath(); g.ellipse(0, 0, 80, 20, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "rgba(110,220,255,0.85)"; g.lineWidth = 2; g.beginPath(); g.moveTo(dx < 0 ? 70 : -70, -12); g.lineTo(dx < 0 ? 78 : -78, 10); g.stroke();
+      for (let q = 0; q < 4; q++) { g.fillStyle = "rgba(110,220,255,0.6)"; g.fillRect(-50 + q * 26, -6, 8, 3); }
+      g.restore();
+    }
+    smoke(W * 0.5, horizon + H * 0.02, 10, "rgba(120,140,150,A)");
+    for (let q = 0; q < 20; q++) { g.fillStyle = "rgba(160,235,255,0.8)"; g.fillRect(W * 0.5 + (rnd() - 0.5) * 60, horizon - rnd() * H * 0.25, 2, 2); }
+  } else if (key === "cache") {
+    // a collapsed overpass with crates sheltered underneath, lit by a lamp
+    g.fillStyle = "#4a4844"; g.fillRect(W * 0.2, horizon - H * 0.2, 26, H * 0.32); g.fillRect(W * 0.75, horizon - H * 0.2, 26, H * 0.32);
+    g.save(); g.translate(W * 0.2, horizon - H * 0.22); g.rotate(0.12); g.fillStyle = "#5a5853"; g.fillRect(0, 0, W * 0.6, 20); g.fillStyle = "#3b3936"; g.fillRect(0, 20, W * 0.6, 6); g.restore();
+    const lamp = g.createRadialGradient(W * 0.5, horizon + H * 0.05, 4, W * 0.5, horizon + H * 0.05, 120); lamp.addColorStop(0, "rgba(255,220,120,0.45)"); lamp.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = lamp; g.fillRect(0, 0, W, H);
+    for (const [x, y, w] of [[0.42, 0.14, 40], [0.5, 0.16, 46], [0.47, 0.06, 34], [0.58, 0.15, 36]]) { g.fillStyle = "#5b5131"; g.fillRect(W * x, horizon + H * y - w * 0.7, w, w * 0.7); g.strokeStyle = "#2d2818"; g.lineWidth = 2; g.strokeRect(W * x, horizon + H * y - w * 0.7, w, w * 0.7); g.beginPath(); g.moveTo(W * x, horizon + H * y - w * 0.35); g.lineTo(W * x + w, horizon + H * y - w * 0.35); g.stroke(); }
+    g.fillStyle = "#8a6a32"; g.fillRect(W * 0.53, horizon + H * 0.04 - 10, 22, 14);
+  } else if (key === "armoury") {
+    // a bunker door in the hillside, cut open, racks inside catching the torchlight
+    g.fillStyle = "#24231f"; g.beginPath(); g.moveTo(W * 0.2, horizon + 10); g.quadraticCurveTo(W * 0.5, horizon - H * 0.45, W * 0.8, horizon + 10); g.fill();
+    g.fillStyle = "#0c0b09"; g.fillRect(W * 0.42, horizon - H * 0.2, W * 0.16, H * 0.22);
+    const inside = g.createLinearGradient(0, horizon - H * 0.2, 0, horizon); inside.addColorStop(0, "rgba(255,170,90,0.45)"); inside.addColorStop(1, "rgba(255,120,60,0.1)"); g.fillStyle = inside; g.fillRect(W * 0.42, horizon - H * 0.2, W * 0.16, H * 0.22);
+    g.strokeStyle = "#2a1c12"; g.lineWidth = 2; for (let q = 0; q < 6; q++) { g.beginPath(); g.moveTo(W * 0.44 + q * 14, horizon - H * 0.16); g.lineTo(W * 0.44 + q * 14, horizon - H * 0.02); g.stroke(); }
+    g.fillStyle = "#4b4a46"; g.save(); g.translate(W * 0.58, horizon + 2); g.rotate(-0.5); g.fillRect(0, -H * 0.22, 12, H * 0.22); g.restore();
+    g.strokeStyle = "rgba(255,200,120,0.9)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(W * 0.42, horizon - H * 0.2); g.lineTo(W * 0.42, horizon); g.stroke();
+    ready = sprite(g, "engineer", W * 0.33, horizon + H * 0.2, H * 0.36) && ready;
+  } else if (key === "ambush") {
+    // the ground opens: red eyes in the cracks, and the brood climbing out
+    g.fillStyle = "rgba(120,10,10,0.35)"; g.fillRect(0, 0, W, H);
+    g.strokeStyle = "#ff5a3c"; g.lineWidth = 2;
+    for (let q = 0; q < 6; q++) { let x = W * (0.15 + q * 0.14), y = horizon + 6; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (rnd() - 0.5) * 30; y += 10 + rnd() * 10; g.lineTo(x, y); } g.stroke(); }
+    for (let q = 0; q < 10; q++) { const x = rnd() * W, y = horizon + 10 + rnd() * (H - horizon - 20); g.fillStyle = "#ff3b2a"; g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.arc(x + 7, y, 2, 0, Math.PI * 2); g.fill(); }
+    for (const [x, h, f] of [[0.3, 0.3, false], [0.52, 0.38, true], [0.72, 0.28, false]]) ready = sprite(g, "alien_small", W * x, horizon + H * 0.22, H * h, f) && ready;
+  } else if (shard) {
+    // a shard from deep space, still burning in its crater
+    const cx = W * 0.5, cy = horizon + H * 0.14;
+    const burn = g.createRadialGradient(cx, cy - H * 0.1, 4, cx, cy - H * 0.1, H * 0.6); burn.addColorStop(0, glow); burn.addColorStop(0.25, glow.length === 7 ? glow + "66" : glow); burn.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = burn; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#0d0c0b"; g.beginPath(); g.ellipse(cx, cy, W * 0.2, H * 0.08, 0, 0, Math.PI * 2); g.fill();
+    for (let q = 0; q < 5; q++) {  // a cluster of crystal spars
+      const a = -Math.PI / 2 + (q - 2) * 0.32, len = H * (0.25 + (q === 2 ? 0.22 : rnd() * 0.12)), w = 10 + rnd() * 8;
+      const tx = cx + Math.cos(a) * len, ty = cy + Math.sin(a) * len;
+      const cg = g.createLinearGradient(cx, cy, tx, ty); cg.addColorStop(0, shade(glow, -0.5)); cg.addColorStop(1, shade(glow, 0.5));
+      g.fillStyle = cg; g.beginPath(); g.moveTo(cx - w / 2, cy); g.lineTo(tx, ty); g.lineTo(cx + w / 2, cy); g.closePath(); g.fill();
+      g.strokeStyle = "rgba(255,255,255,0.5)"; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, cy); g.lineTo(tx, ty); g.stroke();
+    }
+    for (let q = 0; q < 30; q++) { const a = rnd() * Math.PI * 2, r = 20 + rnd() * H * 0.4; g.fillStyle = shade(glow, 0.4); g.globalAlpha = 0.6; g.fillRect(cx + Math.cos(a) * r, cy - H * 0.1 + Math.sin(a) * r * 0.6, 2, 2); }
+    g.globalAlpha = 1;
+  }
+  // a soft vignette, as on an old painted card
+  const v = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.6);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); g.fillStyle = v; g.fillRect(0, 0, W, H);
+  return ready;
 }
 function showEventCard(ev) {
   const body = $("modal-body");
