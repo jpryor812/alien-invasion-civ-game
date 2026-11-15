@@ -640,3 +640,49 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   burnt out unclaimed. Victories fell from 9/10: shards the aliens claim speed their tech. Slowest
   game 167 s.
 
+## M10 playtest changes (designer 2026-11-15, docs/SPEC_M10.md)
+
+- **Council reach.** A council citizen's full stats count in every active city of its owner,
+  and its military counts toward every city's strength. Tile work stays city-wide.
+- **Connection.** Cities produce without a road. A city joined to the capital earns
+  `economy.connection_gold` (2) a turn, shown as a "connection" line; the capital earns none.
+  Strategic resources and ports still need the city to be connected: that is the remaining value
+  of a road besides gold, speed and convoys.
+- **Per-item production.** `City.progress` holds production per item. An item finishing keeps its
+  overflow for the next item, capped at one turn's production (`City.production_store` now holds
+  that carry for player cities; alien cities still use it as their store). With nothing queued, a
+  turn's production waits for the next item, one turn's worth at most.
+- **Buying.** `Purchase.item` buys any allowed production option; without it, the queue head.
+  The price is the full price times the share of cost not yet produced, at least 1 gold. A bought
+  item leaves the queue if it was in it, and its progress is cleared.
+- **Convoys.** A city may have one convoy: 25% or 50% (`convoys.shares_pct`) of its production
+  or of its positive food surplus, to its owner's or an ally's active city joined by roads,
+  railways or active city tiles. The share is taken at the sender's turn and arrives at the
+  receiver's next city turn (`City.incoming`), standing in for road travel time. A cut route
+  pauses it. AI players do not use convoys yet.
+- **Remnants.** 3-5 per continent (`remnants.*`), placed at the start (seeded per continent) at
+  least 4 hexes from cities and 5 from each other, not on finds. They are shards with
+  `remnant: true`: mined like landed shards, never fade, and do not delay Starfall (the next
+  shard falls when no *falling* shard is active). The client shows a remnant once its hex is
+  explored.
+- **Beacon contact.** Learning `contact.beacon_tech` (beacon_theory) meets every other player at
+  once ("beacon" contact).
+- **Library.** A new building (cost 45, +2 science, maintenance 1, industrial_base) available
+  from turn 1; the school now requires it, and capitals start with both.
+- **Tech costs.** All costs about 25% lower (tier 1: 80, tier 2: 150, tier 3: 280, tier 4: 450,
+  tier 5: 720 and 1150, tier 6: 1150).
+- **Map.** The map wraps east to west (`map.wrap`; even width; `GameState.wrap`, registered with
+  `hexgrid.set_wrap` on creation and load). Each continent's real outline is grown to
+  `map.land_per_continent` (2750) land hexes inside its box, faster where more land surrounds a
+  hex and slower near the box edge (`map.land_edge_pct`), so land is 60% of the map and every
+  continent is the same size. Boxes in a row overlap by a column and the two rows by a row
+  (`map.layout_gap_min`, `map.row_gap`: -1), leaving straits one hex wide that scouts see across;
+  the spare width is one open ocean at a seeded column, the spare height polar sea. Grown land
+  takes the biome of the nearest real biome seed, so large interiors can be one biome. Europe's
+  box was enlarged to 60 x 58 so it can reach the same land.
+- **Fog.** The view sends explored hexes out of sight with their static fields only (terrain,
+  relief, feature, resource, continent, owning city); improvements, routes and units there stay
+  hidden. The client draws explored land clear.
+- **Camera.** After a unit command, if that unit no longer needs orders, the client selects the
+  next unit that does and centres on it.
+

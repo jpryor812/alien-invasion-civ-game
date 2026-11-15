@@ -72,9 +72,20 @@ helping a neighbour vs your own frontier).
   citizen has 6 stat points (+1 in all six domains, +3 in two, or +2 in three) and maybe a trait,
   shown like a recruit's. A grown citizen works one **improved** tile (bare tiles cannot be
   worked), adding half its stats there, or sits on the continent council, adding its full stats to
-  its home city. Example: a mine gives +3 production; a +2 production/science/gold citizen on it
-  makes the tile +4 production, +1 science, +1 gold; on the council it adds +2 of each instead.
-- A city must be reconnected by road or railway to a connected city before it produces.
+  every one of its owner's cities (designer 2026-11-15: the council is territory-wide, tile work
+  is city-wide). Example: a mine gives +3 production; a +2 production/science/gold citizen on it
+  makes the tile +4 production, +1 science, +1 gold; on the council it adds +2 of each to every
+  city instead.
+- Every city produces from the turn it exists (designer 2026-11-15, replacing "a city must be
+  reconnected before it produces"). A road or railway to the capital adds gold each turn and
+  carries strategic resources and convoys; roads still speed units. A convoy sends a share of a
+  city's production or spare food to a friendly city joined to it by road (docs/SPEC_M10.md).
+- Production goes into the item being built and stays with it; switching keeps each item's own
+  progress. Any allowed item can be bought with gold at any time, cheaper for progress made.
+- The world wraps east to west, and is about 60% land: the six continents sit across straits a
+  hex wide. Researching Beacon Theory makes contact with every player. Explored land stays clear
+  of fog; only units out of sight are hidden. Each continent starts with 3-5 meteor remnants to
+  find and mine (docs/SPEC_M10.md).
 - Hex improvements: resource extraction, farmland, military bases, roads, railways, beacons.
 - Resources work as in Civ: developing a resource tile grants the resource and bonus yield.
 - Aliens roam in fog. A large alien force can arrive unseen beside a city. Scouting and beacons
