@@ -35,6 +35,11 @@ map:
     note: Land hexes each continent grows to from its real outline, so land is about 60% of the
       map and every continent has about the same (designer 2026-11-15, SPEC_M10 - "more 60/40
       land/ocean").
+  land_edge_pct:
+    value: [8, 20, 40, 65, 100]
+    status: placeholder
+    note: Growth chance in percent by distance (0, 1, 2, 3, 4+ hexes) from the continent box's
+      inner edge, so grown land never lines up into straight, box-shaped coasts.
   land_fill_pct:
     value: 88
     status: placeholder

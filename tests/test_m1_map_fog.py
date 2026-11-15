@@ -14,7 +14,7 @@ from beacon.view import PlayerView, observe
 # Update deliberately (and say why in the commit) when map generation or the data changes.
 # Last change: SPEC_M10 (designer 2026-11-15) - continents grown to about 60% land, one-hex straits,
 # the map wraps east to west.
-GOLDEN_MAP_SEED_1 = "a60556d1de9df3c26c19be59d3a5c2a6d18c2538d57d3815385b1909eff0a886"
+GOLDEN_MAP_SEED_1 = "22a38a8ccbc597954a86a19f44f2a23959315ee40effed346c0b061a2f57a3f5"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")

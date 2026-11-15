@@ -255,9 +255,13 @@ def _grow_land(
         if not frontier:
             break
         grown = []
+        edge_pct = cfg.t("map.land_edge_pct")  # less growth near the box edge: no straight coasts
         for t in dict.fromkeys(frontier):
             n_land = sum(1 for n in w.nbrs(t) if n in have)
-            if r.randint(1, 100) <= chance[min(n_land, 6)]:
+            col, row = hexgrid.col_row(t, w.width)
+            d_edge = min(col - col0, col1 - 1 - col, row - row0, row1 - 1 - row)
+            pct = chance[min(n_land, 6)] * edge_pct[min(d_edge, len(edge_pct) - 1)] // 100
+            if r.randint(1, 100) <= pct:
                 grown.append(t)
         for t in grown:
             if len(have) >= target:

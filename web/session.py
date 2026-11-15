@@ -247,6 +247,7 @@ class Session:
             {
                 "seed": s.seed,
                 "width": s.width,
+                "wrap": s.wrap,
                 "height": s.height,
                 "year": year(cfg, s.turn),
                 "me": me,

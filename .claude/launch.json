@@ -35,6 +35,23 @@
         "--reveal"
       ],
       "port": 8766
+    },
+    {
+      "name": "beacon-web-check",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8767",
+        "--seed",
+        "2",
+        "--human",
+        "europe"
+      ],
+      "port": 8767
     }
   ]
 }

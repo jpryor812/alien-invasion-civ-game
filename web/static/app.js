@@ -104,8 +104,20 @@ function center(i) {
 }
 function toScreen(wx, wy) { return [(wx - S.cam.x) * S.cam.zoom, (wy - S.cam.y) * S.cam.zoom]; }
 function toWorld(sx, sy) { return [sx / S.cam.zoom + S.cam.x, sy / S.cam.zoom + S.cam.y]; }
+// The world wraps east to west (SPEC_M10): its width in world pixels, and helpers that pick the
+// copy of a place nearest the camera, so things across the seam draw where the player looks.
+const wraps = () => !!(S.view && S.view.wrap);
+const worldW = () => S.view.width * SQ3 * R0;
+function nearX(wx) {
+  if (!wraps()) return wx;
+  const W = worldW(), mid = S.cam.x + canvas.clientWidth / 2 / S.cam.zoom;
+  return wx + Math.round((mid - wx) / W) * W;
+}
+function screenOf(i) { const [wx, wy] = center(i); return toScreen(nearX(wx), wy); }
+function wrapCam() { if (wraps()) { const W = worldW(); S.cam.x = ((S.cam.x % W) + W) % W; } }
 function pick(sx, sy) {
-  const [wx, wy] = toWorld(sx, sy);
+  let [wx, wy] = toWorld(sx, sy);
+  if (wraps()) { const W = worldW(); wx = ((wx % W) + W) % W; }
   const x = wx - SQ3 * R0 / 2, y = wy - R0;
   const q = (SQ3 / 3 * x - y / 3) / R0, r = (2 / 3 * y) / R0, s = -q - r;
   let rq = Math.round(q), rr = Math.round(r); const rs = Math.round(s);
@@ -122,7 +134,8 @@ function neighbourEdges(i) {
   const [c, r] = colRow(i);
   const out = [];
   for (const [dc, dr, edge] of (r & 1 ? DIRS_ODD : DIRS_EVEN)) {
-    const cc = c + dc, rr = r + dr;
+    let cc = c + dc; const rr = r + dr;
+    if (wraps()) cc = (cc + S.view.width) % S.view.width;
     if (cc >= 0 && rr >= 0 && cc < S.view.width && rr < S.view.height) out.push([rr * S.view.width + cc, edge]);
   }
   return out;
@@ -652,8 +665,15 @@ function renderChunk(cx, cy, Rb) {
   return c;
 }
 function drawGround(W, H, R) {
+  if (!wraps()) return drawGroundAt(W, H, R, 0);
+  const Ww = worldW(), [wx0] = toWorld(0, 0), [wx1] = toWorld(W, H);
+  for (let k = Math.floor(wx0 / Ww) - 1; k <= Math.floor(wx1 / Ww) + 1; k++) drawGroundAt(W, H, R, k * Ww);
+}
+function drawGroundAt(W, H, R, shift) {
   const Rb = zoomStep(R), scale = R / Rb;
-  const [wx0, wy0] = toWorld(0, 0), [wx1, wy1] = toWorld(W, H);
+  let [wx0, wy0] = toWorld(0, 0), [wx1, wy1] = toWorld(W, H);
+  wx0 -= shift; wx1 -= shift;
+  if (wx1 < -CHUNK * SQ3 * R0 || wx0 > (S.view.width + CHUNK) * SQ3 * R0) return;
   const cx0 = Math.max(0, Math.floor(wx0 / (CHUNK * SQ3 * R0)) - 1), cx1 = Math.floor(wx1 / (CHUNK * SQ3 * R0)) + 1;
   const cy0 = Math.max(0, Math.floor(wy0 / (CHUNK * 1.5 * R0)) - 1), cy1 = Math.floor(wy1 / (CHUNK * 1.5 * R0)) + 1;
   for (let cy = cy0; cy <= cy1; cy++) {
@@ -668,7 +688,7 @@ function drawGround(W, H, R) {
       }
       if (!entry.canvas) continue;
       const [ox, oy] = chunkOrigin(cx, cy);
-      const [sx, sy] = toScreen(ox, oy);
+      const [sx, sy] = toScreen(ox + shift, oy);
       ctx.drawImage(entry.canvas, sx, sy, entry.canvas.width * scale, entry.canvas.height * scale);
     }
   }
@@ -678,11 +698,14 @@ function visibleTiles(W, H, R) {
   const out = [];
   const [wx0, wy0] = toWorld(-R * 3, -R * 3), [wx1, wy1] = toWorld(W + R * 3, H + R * 3);
   const r0 = Math.max(0, Math.floor((wy0 - R0) / (1.5 * R0)) - 1), r1 = Math.min(S.view.height - 1, Math.ceil((wy1 - R0) / (1.5 * R0)) + 1);
-  const c0 = Math.max(0, Math.floor(wx0 / (SQ3 * R0)) - 1), c1 = Math.min(S.view.width - 1, Math.ceil(wx1 / (SQ3 * R0)) + 1);
+  const wrap = wraps(), Wc = S.view.width;
+  const c0 = wrap ? Math.floor(wx0 / (SQ3 * R0)) - 1 : Math.max(0, Math.floor(wx0 / (SQ3 * R0)) - 1);
+  const c1 = wrap ? Math.ceil(wx1 / (SQ3 * R0)) + 1 : Math.min(Wc - 1, Math.ceil(wx1 / (SQ3 * R0)) + 1);
   for (let r = r0; r <= r1; r++) {
     for (let c = c0; c <= c1; c++) {
-      const i = r * S.view.width + c;
-      const [sx, sy] = toScreen(...center(i));
+      const col = ((c % Wc) + Wc) % Wc, i = r * Wc + col;  // across the seam: the same hex again
+      const [wx, wy] = center(i);
+      const [sx, sy] = toScreen(wx + (c - col) * SQ3 * R0, wy);
       out.push([i, sx, sy, S.tilesByIndex.has(i)]);
     }
   }
@@ -881,13 +904,11 @@ function draw(t = performance.now()) {
   if (z > 0.2) drawBorders(visible, R);
   // 5. fog, and a light veil over remembered city hexes not seen right now
   drawFog(visible, R, t);
-  for (const [i, sx, sy, shown] of visible) {
-    if (shown && !S.tilesByIndex.get(i).visible) { hexPath(ctx, sx, sy, R + 0.6); ctx.fillStyle = "rgba(92,105,118,0.45)"; ctx.fill(); }
-  }
+  // (explored land stays clear: no veil over hexes out of sight, SPEC_M10)
   // 5b. Starfall and exploration finds, drawn over the fog (everyone sees the sky)
   drawStarfall(R, t);
   for (const tile of S.view.sites || []) {
-    const [sx, sy] = toScreen(...center(tile));
+    const [sx, sy] = screenOf(tile);
     if (sx < -R || sy < -R || sx > W + R || sy > H + R) continue;
     drawSite(sx, sy, R, t);
   }
@@ -908,7 +929,7 @@ function draw(t = performance.now()) {
   if (S.selected && S.selected.kind === "unit") {
     const su = S.view.units.find((x) => x.id === S.selected.id);
     if (su && !S.citiesByTile.has(su.tile)) {
-      const [gx, gy] = toScreen(...center(su.tile)), p = 0.5 + 0.5 * Math.sin(t / 300), y0 = gy + R * 0.3;
+      const [gx, gy] = screenOf(su.tile), p = 0.5 + 0.5 * Math.sin(t / 300), y0 = gy + R * 0.3;
       const rg = ctx.createRadialGradient(gx, y0, R * 0.2, gx, y0, R * 0.75);
       rg.addColorStop(0, "rgba(255,220,120,0)"); rg.addColorStop(0.7, `rgba(255,215,106,${0.25 + 0.2 * p})`); rg.addColorStop(1, "rgba(255,215,106,0)");
       ctx.fillStyle = rg; ctx.beginPath(); ctx.ellipse(gx, y0, R * 0.75, R * 0.36, 0, 0, Math.PI * 2); ctx.fill();
@@ -922,7 +943,7 @@ function draw(t = performance.now()) {
   if (S.selected && S.selected.kind === "unit") {
     const u = S.view.units.find((x) => x.id === S.selected.id);
     if (u) {
-      const [sx, sy] = toScreen(...center(u.tile));
+      const [sx, sy] = screenOf(u.tile);
       const p = 0.5 + 0.5 * Math.sin(t / 220);
       hexPath(ctx, sx, sy, R - 1); ctx.strokeStyle = `rgba(255,215,106,${0.55 + 0.45 * p})`; ctx.lineWidth = 2.5 + p * 1.5; ctx.stroke();
     }
@@ -1872,7 +1893,7 @@ mini.addEventListener("click", (e) => {
 function centerOnWorld(wx, wy) {
   S.cam.x = wx - canvas.clientWidth / 2 / S.cam.zoom;
   S.cam.y = wy - canvas.clientHeight / 2 / S.cam.zoom;
-  S.dirty = true;
+  wrapCam(); S.dirty = true;
 }
 function centerOnTile(i) { centerOnWorld(...center(i)); }
 
@@ -2112,18 +2133,20 @@ function renderCityPanel() {
   const groups = { building: [], unit: [], project: [] };
   for (const o of d.options) groups[o.kind].push(o);
   const list = Object.entries(groups).filter(([, v]) => v.length).map(([k, v]) =>
-    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-price="${o.price ?? ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}${o.price ? ` · or buy now for ${o.price} gold` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}${o.price ? ` · ${o.price}g` : ""}</span></div>`).join("")).join("");
+    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-price="${o.price ?? ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}${o.price ? ` · or buy now for ${o.price} gold` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.progress ? `${o.progress} saved · ` : ""}${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}${o.price ? ` <button class="small buyit" data-buy="${esc(o.item)}" ${S.view.economy.gold < o.price ? "disabled" : ""} title="Buy it now (the queue is not changed)">${o.price}g</button>` : ""}</span></div>`).join("")).join("");
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
-    <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.connected ? "connected" : '<span class="bad">not connected: produces nothing</span>'}</div>
+    <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.is_capital ? "capital" : c.connected ? "road to the capital (+gold)" : '<span class="muted">no road to the capital yet</span>'}</div>
     <div class="row muted">HP ${c.hp}/${d.max_hp} · strength ${Math.round(d.strength / 100)}</div>
     <div class="yields">${YIELD_KEYS.map((k) => yieldBox(k, d.totals[k], d.lines)).join("")}</div>
     <div class="row">Focus <select id="focus">${d.focuses.map((f) => `<option ${f === c.focus ? "selected" : ""}>${f}</option>`).join("")}</select></div>
     <h3>Producing</h3>
-    <div class="row">${head ? `${esc(pretty(head.split(":")[1]))} <span class="muted">${c.production_store}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
+    <div class="row">${head ? `${esc(pretty(head.split(":")[1]))} <span class="muted">${(c.progress || {})[head] ?? 0}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
       ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
     ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
     <div class="list" id="prodlist">${list}</div>`}
+    <h3>Convoy</h3>
+    ${convoyHtml(c)}
     <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>
     <div class="muted small">Improved tiles are outlined on the map: green ✓ is worked, gold + is free; click a + to put your best citizen there.</div>
     <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
@@ -2146,7 +2169,22 @@ function renderCityPanel() {
   if ($("changeprod")) $("changeprod").onclick = () => { S.cityListOpen = true; renderCityPanel(); };
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
   if ($("buy")) $("buy").onclick = () => send({ kind: "purchase", city: c.id });
+  side.querySelectorAll("[data-buy]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); send({ kind: "purchase", city: c.id, item: el.dataset.buy }); });
+  if ($("convoy-send")) $("convoy-send").onclick = () => send({ kind: "set_convoy", city: c.id, target: Number($("convoy-to").value), goods: $("convoy-goods").value, pct: Number($("convoy-pct").value) });
+  if ($("convoy-stop")) $("convoy-stop").onclick = () => send({ kind: "set_convoy", city: c.id, target: -1 });
   side.classList.remove("hidden");
+}
+// Convoys (SPEC_M10): send a share of this city's production or spare food each turn to one of
+// your cities, or an ally's, joined to it by road or rail
+function convoyHtml(c) {
+  const me = S.view.me, allies = (S.view.player && S.view.player.allies) || [];
+  const targets = Object.entries(S.view.cities).filter(([id, x]) => Number(id) !== c.id && x.status === "active" && (x.owner === me || allies.includes(x.owner)));
+  const now = c.convoy ? `<div class="row">Sending ${c.convoy.pct}% of its ${c.convoy.kind} to <b>${esc((S.view.cities[String(c.convoy.to)] || {}).name || "?")}</b> <button class="small" id="convoy-stop">Stop</button></div>` : "";
+  if (!targets.length) return now || '<div class="muted small">No other friendly city to send to.</div>';
+  return `${now}<div class="row"><select id="convoy-to">${targets.map(([id, x]) => `<option value="${id}">${esc(x.name)}</option>`).join("")}</select>
+    <select id="convoy-goods"><option value="production">production</option><option value="food">spare food</option></select>
+    <select id="convoy-pct"><option value="25">25%</option><option value="50">50%</option></select>
+    <button class="small" id="convoy-send" title="Needs a road or railway between the two cities">${c.convoy ? "Change" : "Send"}</button></div>`;
 }
 
 // =============================================================================================
@@ -2158,6 +2196,13 @@ async function send(cmd) {
   try { const res = await api("/api/command", cmd); if (res.ok === false) toast(res.error); } catch (err) { toast(err.message); }
   S.busy = false;
   await refresh(true);
+  // Civ's flow (SPEC_M10): once a unit's orders are done, the camera moves on to the next unit
+  // that needs orders and selects it
+  if (cmd.unit != null && S.view) {
+    const still = S.view.pending.some((p) => p.kind === "unit_needs_orders" && p.unit === cmd.unit);
+    const next = S.view.pending.find((p) => p.kind === "unit_needs_orders" && p.unit !== cmd.unit);
+    if (!still && next) await selectUnit(next.unit, true);
+  }
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
@@ -2203,7 +2248,7 @@ canvas.addEventListener("mousemove", (e) => {
   if (drag) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > 4) { drag.moved = true; canvas.classList.add("dragging"); }
-    if (drag.moved) { S.cam.x = drag.cx - dx / S.cam.zoom; S.cam.y = drag.cy - dy / S.cam.zoom; S.dirty = true; }
+    if (drag.moved) { S.cam.x = drag.cx - dx / S.cam.zoom; S.cam.y = drag.cy - dy / S.cam.zoom; wrapCam(); S.dirty = true; }
     return;
   }
   const rect = canvas.getBoundingClientRect();
@@ -2218,7 +2263,7 @@ canvas.addEventListener("wheel", (e) => {
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const [wx, wy] = toWorld(mx, my);
   S.cam.zoom = Math.max(0.3, Math.min(2.6, S.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
-  S.cam.x = wx - mx / S.cam.zoom; S.cam.y = wy - my / S.cam.zoom;
+  S.cam.x = wx - mx / S.cam.zoom; S.cam.y = wy - my / S.cam.zoom; wrapCam();
   S.dirty = true;
 }, { passive: false });
 canvas.addEventListener("contextmenu", (e) => { e.preventDefault(); clearSelection(); });
@@ -3413,7 +3458,7 @@ function drawStarfall(R, t) {
   for (const sh of S.view.shards || []) {
     if (!sh.landed) {
       // the warned landing circle and a falling streak
-      const [cx, cy] = toScreen(...center(sh.center));
+      const [cx, cy] = screenOf(sh.center);
       const rad = sh.radius * R * 1.75;
       ctx.save(); ctx.setLineDash([R * 0.4, R * 0.3]); ctx.lineWidth = 3;
       ctx.strokeStyle = `rgba(200,141,242,${0.55 + 0.35 * Math.sin(t / 250)})`;
@@ -3429,7 +3474,7 @@ function drawStarfall(R, t) {
       ctx.fillStyle = "#fff4d6"; ctx.fillText(wl, cx, cy - rad - 15);
       continue;
     }
-    const [sx, sy] = toScreen(...center(sh.tile));
+    const [sx, sy] = screenOf(sh.tile);
     if (sx < -R * 4 || sy < -R * 4 || sx > W + R * 4 || sy > H + R * 4) continue;
     const pulse = 0.5 + 0.5 * Math.sin(t / 200), gr = Math.max(28, R * 2);
     // a beam of light to the sky, visible through the fog

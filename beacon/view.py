@@ -116,6 +116,22 @@ def observe(state: GameState, cfg: Config, pid: str) -> dict[str, Any]:
         entry = to_dict(state.tiles[i])
         entry["visible"] = i in view.visible
         tiles[str(i)] = entry
+    # explored land stays clear once discovered (designer 2026-11-15, SPEC_M10): what never
+    # changes (terrain, relief, features, resources) and whose land it is; improvements, routes
+    # and units there stay hidden until the hex is in sight again
+    for i in view.explored_tiles():
+        if str(i) in tiles:
+            continue
+        t = state.tiles[i]
+        tiles[str(i)] = {
+            "terrain": t.terrain,
+            "elevation": t.elevation,
+            "feature": t.feature,
+            "resource": t.resource,
+            "continent": t.continent,
+            "city": t.city,
+            "visible": False,
+        }
     cities = {}
     for cid, memory in view.known_cities().items():
         city = state.cities[cid]
