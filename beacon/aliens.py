@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import combat, fog, hexgrid, rng
+from beacon import combat, fog, hexgrid, rng, techfx
 from beacon.cities import alien_effect, max_hp
 from beacon.config import Config
 from beacon.liberation import update_fallen
@@ -285,6 +285,7 @@ def pillage(state: GameState, cfg: Config, unit: Unit) -> Events:
         return []  # the turret must be destroyed first
     if tile.improvement:
         lost, tile.improvement = tile.improvement, None
+        tile.pillaged = lost  # remembered: a nanorepair crew can rebuild it quickly
     elif tile.route:
         lost, tile.route = tile.route, None
     else:
@@ -428,6 +429,9 @@ class Director:
         for u in self.state.units.values():
             if u.owner not in self.state.players or self.state.city_at(u.tile) is not None:
                 continue
+            cls = self.cfg.units[u.type].get("class")
+            if cls and cls in techfx.listed(self.cfg, self.state.players[u.owner], "hunt_immune"):
+                continue  # Stealth Tech
             if self.continent(u.tile) != cont:
                 continue
             d = self.dist(unit.tile, u.tile)

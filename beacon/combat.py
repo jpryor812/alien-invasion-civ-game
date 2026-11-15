@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from beacon import hexgrid, promotions, rng
+from beacon import hexgrid, promotions, rng, techfx
 from beacon.cities import alien_effect
 from beacon.cities import max_hp as city_max_hp
 from beacon.config import Config
@@ -49,6 +49,7 @@ def unit_strength(
     ranged: bool,
     defending: bool,
     target: int | None = None,
+    vs: Unit | City | None = None,
 ) -> Strength:
     spec = cfg.units[unit.type]
     base = spec["ranged_strength"] if ranged else spec["strength"]
@@ -65,6 +66,31 @@ def unit_strength(
     promo = promotions.strength_pct(cfg, unit, defending)
     if promo:
         mods.append(("promotions", promo))
+    # Matchups (designer 2026-11-14): unit classes counter one another.
+    if not defending and vs is not None:
+        key = "city" if isinstance(vs, City) else cfg.units[vs.type].get("class")
+        pct = (spec.get("bonus_vs") or {}).get(key, 0) + promotions.vs_pct(cfg, unit, key)
+        if pct:
+            mods.append((f"vs {key}", pct))
+    if (
+        not defending
+        and not ranged
+        and spec.get("open_attack_pct")
+        and isinstance(vs, Unit)
+        and _open_ground(state, vs.tile)
+    ):
+        mods.append(("open ground", spec["open_attack_pct"]))
+    if defending and spec.get("rough_defence_pct") and not _open_ground(state, unit.tile):
+        mods.append(("rough ground", spec["rough_defence_pct"]))
+    owner = state.players.get(unit.owner)
+    if defending and spec.get("class"):
+        pct = techfx.by_key(cfg, owner, "class_defence_pct").get(spec["class"], 0)
+        if pct:
+            mods.append((f"{spec['class']} tech", pct))  # Reactive Armour
+    if ranged and not defending:
+        pct = techfx.total(cfg, owner, "ranged_attack_pct")
+        if pct:
+            mods.append(("targeting tech", pct))  # AI Targeting
     if not defending and not ranged and target is not None:
         flankers = 0
         for n in hexgrid.neighbours(target, state.width, state.height):
@@ -76,7 +102,9 @@ def unit_strength(
                 ):
                     flankers += 1
         if flankers:
-            mods.append((f"flanking x{flankers}", flankers * cfg.t("combat.flanking_pct")))
+            per = cfg.t("combat.flanking_pct")
+            per += techfx.total(cfg, state.players.get(unit.owner), "flanking_pct")
+            mods.append((f"flanking x{flankers}", flankers * per))
     for source, pct in mods:
         lines.append({"source": source, "kind": "pct", "value": pct})
     wound = _wound_pct(cfg, unit.hp, max_hp(cfg, unit))
@@ -91,6 +119,12 @@ def garrison(state: GameState, cfg: Config, city: City) -> Unit | None:
         if not is_civilian(cfg, unit.type) and unit.owner == city.owner:
             return unit
     return None
+
+
+def _open_ground(state: GameState, tile: int) -> bool:
+    """Flat, unwooded, not a city: where armour shines and infantry has no cover."""
+    t = state.tiles[tile]
+    return t.elevation == "flat" and t.feature is None and state.city_at(tile) is None
 
 
 def garrisons(state: GameState, cfg: Config, city: City) -> list[Unit]:
@@ -114,6 +148,9 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
         lines.append(
             {"source": "capital", "kind": "base", "value": cfg.t("cities.capital.strength")}
         )
+    grid = techfx.total(cfg, state.players.get(city.owner or ""), "city_strength")
+    if grid:
+        lines.append({"source": "defence grid", "kind": "base", "value": grid})
     for b in city.buildings:
         if cfg.buildings[b].get("city_strength"):
             lines.append(
@@ -268,12 +305,14 @@ def _sides(
 ) -> tuple[Strength, Strength, Any]:
     defender = defender_at(state, cfg, unit.owner, target)
     ranged = is_ranged(cfg, unit)
-    att = unit_strength(state, cfg, unit, ranged=ranged, defending=False, target=target)
+    att = unit_strength(
+        state, cfg, unit, ranged=ranged, defending=False, target=target, vs=defender
+    )
     if isinstance(defender, City):
         dfn = city_strength(state, cfg, defender)
     else:
         assert defender is not None
-        dfn = unit_strength(state, cfg, defender, ranged=False, defending=True)
+        dfn = unit_strength(state, cfg, defender, ranged=False, defending=True, vs=unit)
     return att, dfn, defender
 
 

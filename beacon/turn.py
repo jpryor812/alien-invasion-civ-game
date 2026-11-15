@@ -43,10 +43,23 @@ def heal_amount(state: GameState, cfg: Config, unit) -> int:
         owner_city = state.tiles[unit.tile].city
         own = owner_city is not None and state.cities[owner_city].owner == unit.owner
         per = heal["own_territory"] if own else heal["neutral"]
-    return per * unit.count
+    from beacon.promotions import heal_bonus  # promotions imports nothing from turn
+
+    return (per + heal_bonus(cfg, unit)) * unit.count
 
 
 def reset_units(state: GameState, cfg: Config) -> None:
+    # medics heal their side's units on and next to their hex, acted or not
+    medics = [
+        (u.owner, u.tile, cfg.units[u.type]["heal_adjacent"])
+        for u in state.sorted_units()
+        if cfg.units[u.type].get("heal_adjacent")
+    ]
+    for owner, tile, amount in medics:
+        for n in (tile, *hexgrid.neighbours(tile, state.width, state.height)):
+            for u in state.units_at(n):
+                if u.owner == owner and cfg.units[u.type]["role"] != "civilian":
+                    u.hp = min(max_hp(cfg, u), u.hp + amount * u.count)
     for unit in state.sorted_units():
         if not unit.acted:
             unit.hp = min(max_hp(cfg, unit), unit.hp + heal_amount(state, cfg, unit))
@@ -54,7 +67,10 @@ def reset_units(state: GameState, cfg: Config) -> None:
         unit.attacks_left = 1
         if unit.order == "skip":
             unit.order = "none"
-        unit.moves_left = 0 if unit.job is not None else full_moves(cfg, unit.type)
+        from beacon.promotions import moves_bonus
+
+        bonus = moves_bonus(cfg, unit) * cfg.t("movement.scale")  # Blitz, Sea Legs
+        unit.moves_left = 0 if unit.job is not None else full_moves(cfg, unit.type) + bonus
         if unit.job is not None:
             unit.acted = True  # working units do not heal
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from beacon import citizens, tech
+from beacon import citizens, tech, techfx
 from beacon.cities import is_coastal, max_hp
 from beacon.config import YIELDS, Config
 from beacon.recruits import council_lines
@@ -56,12 +56,20 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
     add("population", {"science": city.pop * cfg.t("economy.science_per_pop_pct") // 100})
     for b in city.buildings:
         add(f"building:{b}", cfg.buildings[b]["yields"])
+    owner = state.players.get(city.owner or "")
+    for t, _ in techfx.lines(cfg, owner, "city_yields"):
+        add(f"tech:{t}", cfg.techs[t]["effects"]["city_yields"])
     subtotal = totals(lines)
     for b in city.buildings:
         for y, pct in cfg.buildings[b]["yield_pct"].items():
             bonus = max(0, subtotal[y]) * pct // 100
             if bonus:
                 lines.append((f"building:{b} +{pct}%", y, bonus))
+    for t, _ in techfx.lines(cfg, owner, "yield_pct"):
+        for y, pct in cfg.techs[t]["effects"]["yield_pct"].items():
+            bonus = max(0, subtotal[y]) * pct // 100
+            if bonus:
+                lines.append((f"tech:{t} +{pct}%", y, bonus))
     if city.owner in state.players:
         for y in COUNCIL_YIELDS:
             for source, pct in council_lines(state, city.owner, y):
@@ -150,13 +158,21 @@ def production_options(state: GameState, cfg: Config, city: City) -> list[str]:
     return [i for i in items if item_allowed(state, cfg, city, i) is None]
 
 
-def item_cost(cfg: Config, item: str) -> int:
+def item_cost(cfg: Config, item: str, player: Player | None = None) -> int:
+    """Production cost; units cost less with Mass Production (tech effect unit_cost_pct)."""
     kind, _, ident = item.partition(":")
     if kind == "building":
         return cfg.buildings[ident]["cost"]
     if kind == "unit":
-        return cfg.units[ident]["cost"]
+        pct = 100 + techfx.total(cfg, player, "unit_cost_pct")
+        return cfg.units[ident]["cost"] * pct // 100
     raise ValueError(f"{item} has no cost")
+
+
+def purchase_price(cfg: Config, item: str, player: Player | None) -> int:
+    """Gold to buy an item outright (Automated Markets lowers it: tech effect purchase_pct)."""
+    base = item_cost(cfg, item, player) * cfg.t("economy.purchase_pct") // 100
+    return base * (100 + techfx.total(cfg, player, "purchase_pct")) // 100
 
 
 # -- strategic resources -----------------------------------------------------------------------
@@ -252,7 +268,9 @@ def process_city(
 
     # growth: food brings births, and children grow up faster in a well-fed city
     events.extend(citizens.grow(state, cfg, city, cy.surplus_food))
-    city.food_store += cy.surplus_food
+    growth = techfx.total(cfg, player, "growth_pct")  # Urban Planning
+    surplus = cy.surplus_food
+    city.food_store += surplus * (100 + growth) // 100 if surplus > 0 else surplus
     threshold = growth_threshold(cfg, city.pop)
     if city.food_store >= threshold:
         city.food_store -= threshold
@@ -280,7 +298,7 @@ def process_city(
         if head and head.startswith("unit:"):
             production += sum(v for _, _, v in unit_bonus_lines(cfg, city, production))
         city.production_store += production
-        if head and city.production_store >= item_cost(cfg, head):
+        if head and city.production_store >= item_cost(cfg, head, player):
             if item_allowed(state, cfg, city, head) is not None:
                 city.queue.pop(0)
                 events.append({"kind": "item_dropped", "city": city.id, "item": head})
@@ -289,7 +307,7 @@ def process_city(
                 if done is None:
                     events.append({"kind": "production_stalled", "city": city.id, "item": head})
                 else:
-                    city.production_store -= item_cost(cfg, head)
+                    city.production_store -= item_cost(cfg, head, player)
                     city.queue.pop(0)
                     events.append(done)
 
@@ -319,7 +337,11 @@ def road_upkeep(state: GameState, cfg: Config, pid: str) -> int:
 def unit_upkeep(state: GameState, cfg: Config, pid: str) -> int:
     members = sum(u.count for u in state.units.values() if u.owner == pid)
     cities_n = sum(1 for c in state.cities if c.owner == pid and c.status == ACTIVE)
-    free = cfg.t("economy.free_units_per_city") * cities_n
+    per_city = cfg.t("economy.free_units_per_city")
+    per_city += techfx.total(
+        cfg, state.players.get(pid), "free_upkeep_per_city"
+    )  # Militia Reserves
+    free = per_city * cities_n
     abroad = sum(
         u.count
         for u in state.units.values()
@@ -348,7 +370,8 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
     if player.gold < 0:
         shortfall = -player.gold
         player.gold = 0
-        player.research_progress = max(0, player.research_progress - shortfall)
+        if not techfx.total(cfg, player, "keep_research_on_deficit"):  # Sovereign Bonds
+            player.research_progress = max(0, player.research_progress - shortfall)
         events.append(
             {"turn": state.turn, "kind": "gold_deficit", "player": pid, "shortfall": shortfall}
         )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import fog, tech
+from beacon import fog, tech, techfx
 from beacon.config import Config
 from beacon.state import City, GameState, Job, Unit
 from beacon.tiles import is_passable_land
@@ -15,7 +15,11 @@ def build_problem(state: GameState, cfg: Config, unit: Unit, improvement: str) -
     if improvement not in cfg.improvements:
         return f"unknown improvement {improvement!r}"
     spec = cfg.improvements[improvement]
-    if not cfg.units[unit.type].get("can_build"):
+    tile = state.tiles[unit.tile]
+    if cfg.units[unit.type].get("can_repair") and not cfg.units[unit.type].get("can_build"):
+        if tile.pillaged != improvement:
+            return "repair crews only rebuild what aliens pillaged on this hex"
+    elif not cfg.units[unit.type].get("can_build"):
         return f"{unit.type} cannot build improvements"
     if unit.moves_left <= 0:
         return "no moves left"
@@ -52,7 +56,11 @@ def build_problem(state: GameState, cfg: Config, unit: Unit, improvement: str) -
 
 
 def start_job(state: GameState, cfg: Config, unit: Unit, improvement: str) -> None:
-    unit.job = Job(improvement=improvement, turns_left=cfg.improvements[improvement]["turns"])
+    turns = cfg.improvements[improvement]["turns"]
+    turns += techfx.total(cfg, state.players.get(unit.owner), "build_turns")  # Robotics
+    if cfg.units[unit.type].get("can_repair") and state.tiles[unit.tile].pillaged == improvement:
+        turns = cfg.t("repair.turns")
+    unit.job = Job(improvement=improvement, turns_left=max(1, turns))
     unit.order = "work"
     unit.moves_left = 0
     unit.acted = True
@@ -77,6 +85,8 @@ def progress_jobs(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any
             build(tile, cfg)
         else:
             tile.improvement = imp
+            if tile.pillaged == imp:
+                tile.pillaged = None
         tile.built_by = pid
         fog.touch_built(state)
         unit.job = None

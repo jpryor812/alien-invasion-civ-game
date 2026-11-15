@@ -42,7 +42,13 @@ def due(cfg: Config, unit: Unit) -> int:
 def options(cfg: Config, unit: Unit) -> list[str]:
     """Promotions this unit type may take (every type has the general ones for now)."""
     opts = cfg.t("promotions.options")
-    return sorted(k for k, v in opts.items() if not v.get("units") or unit.type in v["units"])
+    cls = cfg.units[unit.type].get("class")
+    return sorted(
+        k
+        for k, v in opts.items()
+        if (not v.get("units") or unit.type in v["units"])
+        and (not v.get("classes") or cls in v["classes"])
+    )
 
 
 def promote_problem(state: GameState, cfg: Config, unit: Unit, choice: str) -> str | None:
@@ -94,3 +100,21 @@ def upgrade_problem(state: GameState, cfg: Config, unit: Unit) -> str | None:
     if state.players[unit.owner].gold < cost:
         return f"needs {cost} gold"
     return None
+
+
+def _taken(cfg: Config, unit: Unit) -> list[dict]:
+    opts = cfg.t("promotions.options")
+    return [opts[p] for p in unit.promotions if p in opts]
+
+
+def vs_pct(cfg: Config, unit: Unit, key: str | None) -> int:
+    """Promotion bonus against a class (or "city")."""
+    return sum((o.get("vs") or {}).get(key or "", 0) for o in _taken(cfg, unit))
+
+
+def heal_bonus(cfg: Config, unit: Unit) -> int:
+    return sum(o.get("heal", 0) for o in _taken(cfg, unit))
+
+
+def moves_bonus(cfg: Config, unit: Unit) -> int:
+    return sum(o.get("moves", 0) for o in _taken(cfg, unit))

@@ -201,7 +201,10 @@ class Session:
             head = c.queue[0] if c.queue else None
             turns = None
             if head and not head.startswith("project:") and prod > 0:
-                turns = max(0, -(-(economy.item_cost(cfg, head) - c.production_store) // prod))
+                turns = max(
+                    0,
+                    -(-(economy.item_cost(cfg, head, s.players[me]) - c.production_store) // prod),
+                )
             city_rows.append({"id": c.id, "production": prod, "head": head, "turns": turns})
         upkeep = (
             economy.maintenance(s, cfg, me)
@@ -481,7 +484,7 @@ class Session:
         options = []
         for item in economy.production_options(s, cfg, c):
             kind, _, ident = item.partition(":")
-            cost = economy.item_cost(cfg, item) if kind != "project" else None
+            cost = economy.item_cost(cfg, item, s.players[me]) if kind != "project" else None
             options.append(
                 {
                     "item": item,
@@ -497,7 +500,7 @@ class Session:
                     if kind != "project"
                     else "",
                     "info": describe(cfg, kind, ident),
-                    "price": cost * cfg.t("economy.purchase_pct") // 100 if cost else None,
+                    "price": economy.purchase_price(cfg, item, s.players[me]) if cost else None,
                 }
             )
         seen = fog.visible_tiles(s, cfg, me)
@@ -569,6 +572,7 @@ class Session:
                         {"item": u, **describe(cfg, *u.split(":", 1))}
                         for u in sorted(unlocks.get(t, []))
                     ],
+                    "effects": _tech_effects(cfg, t),
                     "turns": None
                     if status == "known" or spec["tree"] == "alien" or not science
                     else -(
@@ -670,7 +674,10 @@ class Session:
             head = c.queue[0] if c.queue else None
             turns = None
             if head and not head.startswith("project:") and prod > 0:
-                turns = max(0, -(-(economy.item_cost(cfg, head) - c.production_store) // prod))
+                turns = max(
+                    0,
+                    -(-(economy.item_cost(cfg, head, s.players[me]) - c.production_store) // prod),
+                )
             surplus = cy.surplus_food
             need = economy.growth_threshold(cfg, c.pop) - c.food_store
             people = citizens.of_city(s, c.id)
@@ -913,6 +920,22 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
         if role == "recon":
             lines.append("Scout: finds lost cities in the fog")
             tags.append("sight")
+        if u.get("class") and u["class"] not in ("civilian",):
+            lines.append(f"Class: {u['class']}")
+        for k, pct in (u.get("bonus_vs") or {}).items():
+            lines.append(f"+{pct}% against {'cities' if k == 'city' else k + ' units'}")
+        if u.get("rough_defence_pct"):
+            lines.append(f"+{u['rough_defence_pct']}% defence on hills, forest, jungle or marsh")
+        if u.get("open_attack_pct"):
+            lines.append(f"+{u['open_attack_pct']}% attacking units on open flat ground")
+        if u.get("heal_adjacent"):
+            lines.append(
+                f"Heals your units on and next to its hex by {u['heal_adjacent']} HP a turn"
+            )
+            tags.append("military")
+        if u.get("can_repair"):
+            lines.append("Rebuilds a pillaged improvement in 1 turn")
+            tags.append("production")
         if u["domain"] == "sea":
             lines.append("Ship: coastal cities only")
         if u.get("requires_resource"):
@@ -979,3 +1002,46 @@ def _source_label(src: str) -> str:
         name = src[9:].split(" ")[0].replace("_", " ").capitalize()
         return f"{name} (+%)" if "%" in src else name
     return src.replace("_", " ").capitalize()
+
+
+EFFECT_TAGS = {
+    "growth_pct": ["food"],
+    "build_turns": ["production"],
+    "unit_cost_pct": ["production", "military"],
+    "free_upkeep_per_city": ["gold", "military"],
+    "flanking_pct": ["military"],
+    "class_defence_pct": ["defence"],
+    "ranged_attack_pct": ["military"],
+    "hunt_immune": ["sight"],
+    "ship_time_pct": ["military"],
+    "city_strength": ["defence"],
+    "keep_research_on_deficit": ["science"],
+    "purchase_pct": ["gold"],
+}
+
+
+def _tech_effects(cfg: Config, t: str) -> dict[str, Any]:
+    """What a tech does besides unlocking things: its effects (beacon/techfx.py) and the rules
+    that key off it (alliances, recruit rarity, radar, the barrage)."""
+    from beacon import techfx
+
+    effects = cfg.techs[t].get("effects") or {}
+    lines = techfx.describe(effects)
+    tags: set[str] = set()
+    for k, v in effects.items():
+        if k in ("yield_pct", "city_yields"):
+            tags.update(v)
+        tags.update(EFFECT_TAGS.get(k, []))
+    if t == cfg.t("trade.alliance_tech"):
+        lines.append("Lets you form alliances (both sides need it)")
+    rarity = cfg.alien("recruits")["rarity_techs"]
+    if t in rarity:
+        lines.append(f"Beacon recruits up to rarity {rarity.index(t) + 1}")
+        tags.add("beacon")
+    if t in cfg.t("endgame.radar_techs"):
+        lines.append("Reveals every alien city to you")
+        tags.add("sight")
+    if t == cfg.t("endgame.barrage_tech"):
+        lines.append("Stops alien reinforcements and unlocks the world barrage")
+        tags.add("military")
+    return {"lines": lines, "tags": sorted(tags)}

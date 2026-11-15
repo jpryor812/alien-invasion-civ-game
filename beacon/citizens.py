@@ -110,13 +110,16 @@ def born(state: GameState, cfg: Config, city: City) -> dict[str, Any]:
 
 
 def grow(state: GameState, cfg: Config, city: City, surplus_food: int) -> Events:
+    from beacon.techfx import total  # techfx imports only config and state
+
     g = cfg.t("citizens.growing_up")
+    faster = 100 + total(cfg, state.players.get(city.owner or ""), "growth_pct")  # Urban Planning
     events: Events = []
     for c in of_city(state, city.id):
         if c.adult:
             continue
         gain = (g["base"] + g["per_food"] * max(0, surplus_food)) * trait(cfg, c, "grow_pct", 100)
-        c.growth += gain // 100
+        c.growth += gain * faster // 10000
         if c.growth >= g["needed"]:
             c.growth = g["needed"]
             c.adult = True

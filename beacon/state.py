@@ -39,6 +39,7 @@ class Tile:
     city: int | None = None  # id of the city whose work area holds this tile
     built_by: str | None = None  # player who built the improvement or route here
     turret: int = 0  # turret level on an improved tile (0: none); see beacon/turrets.py
+    pillaged: str | None = None  # improvement aliens destroyed here (a repair crew restores it)
     turret_hp: int = 0
 
 

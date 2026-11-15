@@ -583,3 +583,30 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Log**: the events of the last 40 turns of this browser session; entries in the side panel and
   the log jump to the place on the map (a flashing hex).
 
+## Filling placeholder content (designer, 2026-11-14)
+
+- **Tech effects** (`beacon/techfx.py`, `effects` in data/techs.yaml): the 16 techs that unlocked
+  nothing now give bonuses. Urban Planning: births and growing up 25% faster. Robotics: engineers
+  build 1 turn faster. Mass Production: units 15% cheaper. Quantum Theory: +10% science. Reactive
+  Armour: armour +15% defence. Militia Reserves: unlocks the home guard and +1 free unit per city.
+  Combined Arms: +10% per flanker. Stealth Tech: alien hunters ignore your recon. AI Targeting:
+  ranged attacks +15%. Orbital Launch: troops by sea arrive 50% sooner. Orbital Defence Grid: +5
+  strength for every city. Sovereign Bonds: +10% gold and an empty treasury no longer drains
+  research. Carbon Markets: +2 gold per city. Automated Markets: buying costs 25% less. Synthetic
+  Biology: +2 food per city. Antimatter Power: +20% production. Tech cards now list effects and the
+  rules a tech switches on (alliances, recruit rarity, radar, the barrage).
+- **Support units**: the medical team heals your units on and next to its hex by 10 HP a turn
+  (whether or not they fought); the nanorepair crew rebuilds an improvement aliens pillaged on its
+  hex in 1 turn (hexes remember what was pillaged). Bots do not use either yet.
+- **Unit classes and matchups**: every unit has a class (infantry, armour, artillery, recon,
+  naval, civilian, light, heavy, defence). Infantry +25% defence on hills, forest, jungle or
+  marsh; armour +25% attacking units on open flat ground; artillery +25% against cities (marines
+  +15%); anti-tank teams +50% against armour and heavy aliens; swarm drones +25% against light
+  units and artillery.
+- **Class promotions**: besides +10% attack or defence, infantry can take Dig in (+20% defence)
+  or Field medic (+10 healing); armour Blitz (+1 move), Breakthrough (+20% vs infantry) or Field
+  medic; artillery Siege master (+25% vs cities) or Barrage (+15% attack); naval Barrage or Sea
+  legs (+1 move); recon Blitz. Bots prefer their class's options.
+- **Batch after the content (10 AI seeds to turn 300)**: 9/10 victories on turns 199-284 (the
+  tenth ends with 2 alien cities left), no defeats, no continent fell. Slowest game 130 s.
+

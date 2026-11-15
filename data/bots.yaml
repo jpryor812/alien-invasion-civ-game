@@ -59,3 +59,14 @@ defences:
     gold_reserve_pct percent of the price (designer 2026-11-14 - city guns upgrade with gold).
   gold_reserve_pct: 300
 
+promotions:
+  status: placeholder
+  note: Promotions the bot prefers by unit class, taken in turn (least-taken first), before the
+    general attack and defence ones (designer 2026-11-14 - unit-specific promotions).
+  prefer:
+    infantry: [dig_in, field_medic]
+    armour: [breakthrough, blitz]
+    artillery: [siege_master, barrage]
+    naval: [barrage, sea_legs]
+    recon: [blitz]
+

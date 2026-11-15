@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import economy, hexgrid, tech
+from beacon import economy, hexgrid, tech, techfx
 from beacon.cities import is_coastal
 from beacon.config import Config
 from beacon.liberation import credit
@@ -423,7 +423,14 @@ def ship_unit(state: GameState, cfg: Config, unit: Unit, city_id: int) -> Events
         unit=unit,
         dest_city=city_id,
         arrive_turn=state.turn
-        + sea_turns(cfg, hexgrid.distance(here.tile, dest.tile, state.width)),
+        + max(
+            1,
+            sea_turns(cfg, hexgrid.distance(here.tile, dest.tile, state.width))
+            * (
+                100 + techfx.total(cfg, state.players[unit.owner], "ship_time_pct")
+            )  # Orbital Launch
+            // 100,
+        ),
     )
     state.shipments[str(shipment.id)] = shipment
     return [

@@ -156,8 +156,8 @@ def _purchase(state: GameState, cfg: Config, cmd: Purchase) -> Events:
     problem = economy.item_allowed(state, cfg, city, item)
     if problem:
         raise CommandError(problem)
-    price = economy.item_cost(cfg, item) * cfg.t("economy.purchase_pct") // 100
     player = state.players[cmd.player]
+    price = economy.purchase_price(cfg, item, player)
     if player.gold < price:
         raise CommandError(f"{item} costs {price} gold; treasury has {player.gold}")
     done = economy.complete_item(state, cfg, city, item)
@@ -595,7 +595,7 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
         ]
         out += [SetFocus(player=pid, city=city.id, focus=f) for f in economy.FOCUSES]
         if city.queue and not city.queue[0].startswith("project:") and city.connected:
-            price = economy.item_cost(cfg, city.queue[0]) * cfg.t("economy.purchase_pct") // 100
+            price = economy.purchase_price(cfg, city.queue[0], player)
             if player.gold >= price:
                 out.append(Purchase(player=pid, city=city.id))
         for t in hexgrid.within(city.tile, cfg.t("cities.attack_range"), state.width, state.height):

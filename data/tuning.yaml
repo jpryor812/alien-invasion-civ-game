@@ -419,10 +419,19 @@ promotions:
     then_pct: 150
   options:
     status: placeholder
-    note: Choices at each promotion. For now every unit has the same two (designer); add `units`
-      to an option to limit it to some unit types (unique benefits later). Percent bonuses add up.
+    note: Choices at each promotion. Every unit has the general two; `classes` limits an option to
+      unit classes (designer 2026-11-14 - unit-specific promotions). Effects - attack_pct,
+      defence_pct, vs {class or city - pct}, heal (extra HP a turn when resting), moves (extra).
+      Bonuses add up.
     attack_10: {note: +10% attack strength., attack_pct: 10}
     defence_10: {note: +10% defence strength., defence_pct: 10}
+    dig_in: {note: +20% defence; infantry hold ground., defence_pct: 20, classes: [infantry]}
+    field_medic: {note: Heals 10 HP more a turn when resting., heal: 10, classes: [infantry, armour]}
+    blitz: {note: +1 move., moves: 1, classes: [armour, recon]}
+    breakthrough: {note: +20% attacking infantry., vs: {infantry: 20}, classes: [armour]}
+    siege_master: {note: +25% against cities., vs: {city: 25}, classes: [artillery]}
+    barrage: {note: +15% ranged attack., attack_pct: 15, classes: [artillery, naval]}
+    sea_legs: {note: +1 move at sea., moves: 1, classes: [naval]}
 
 defences:
   upgrade:
@@ -448,4 +457,11 @@ turrets:
   upgrade_cost_base: 50
   upgrade_cost_step: 30
   max_level: 4
+
+repair:
+  turns:
+    value: 1
+    status: placeholder
+    note: Turns a nanorepair crew takes to rebuild a pillaged improvement (engineers rebuild at
+      the normal pace).
 

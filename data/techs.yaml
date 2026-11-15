@@ -1,7 +1,8 @@
 # Technology (designer 2026-11-14): one branching tree. Two starter branches (Urban Planning,
 # Advanced Manufacturing), each tech opening two more: 2, 4, 8 and 16 techs, then a partial fifth
 # and sixth level. Every tech has exactly one parent. `tier` is the level; cost follows the level.
-# `tree` remains only as a category hint. Formerly: economic, production and military trees.
+# `tree` remains only as a category hint. `effects` are bonuses a known tech gives (beacon/techfx.py;
+# designer 2026-11-14 filled every tech that unlocked nothing). Formerly: economic, production and military trees.
 # Tier 0 is present-day technology, known at the start (2025). Tiers 1-4 are near-future.
 # Cross-tree merges: automated_markets, railguns, hover_armour.
 # Techs with no unlocks yet gain effects in later milestones (trade M6, beacons M5).
@@ -15,7 +16,7 @@ techs:
   vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 3, cost: 380, prereqs: [international_accords], known_at_start: false}
   global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 4, cost: 600, prereqs: [digital_finance], known_at_start: false}
   biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 4, cost: 600, prereqs: [vertical_farming], known_at_start: false}
-  automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false}
+  automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false, effects: {purchase_pct: -25}}
   post_scarcity: {status: placeholder, note: Late economy; effects later., tree: economic, tier: 5, cost: 950, prereqs: [sovereign_bonds], known_at_start: false}
 
   high_speed_rail: {status: placeholder, note: Railways., tree: production, tier: 4, cost: 600, prereqs: [radio_beacon_network], known_at_start: false}
@@ -36,22 +37,22 @@ techs:
   climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 4, cost: 600, prereqs: [vertical_farming], known_at_start: false}
   quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 600, prereqs: [quantum_theory], known_at_start: false}
   directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 5, cost: 950, prereqs: [railguns], known_at_start: false}
-  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 100, prereqs: [], known_at_start: false}
-  sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 4, cost: 600, prereqs: [digital_finance], known_at_start: false}
-  carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false}
-  robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false}
-  mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false}
-  orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 4, cost: 600, prereqs: [signal_amplification], known_at_start: false}
-  militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 4, cost: 600, prereqs: [powered_exoskeletons], known_at_start: false}
-  combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false}
-  stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false}
-  ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 5, cost: 950, prereqs: [quantum_computing], known_at_start: false}
-  quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false}
-  reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false}
+  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 100, prereqs: [], known_at_start: false, effects: {growth_pct: 25}}
+  sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 4, cost: 600, prereqs: [digital_finance], known_at_start: false, effects: {yield_pct: {gold: 10}, keep_research_on_deficit: 1}}
+  carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 5, cost: 950, prereqs: [global_logistics], known_at_start: false, effects: {city_yields: {gold: 2}}}
+  robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false, effects: {build_turns: -1}}
+  mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false, effects: {unit_cost_pct: -15}}
+  orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 4, cost: 600, prereqs: [signal_amplification], known_at_start: false, effects: {ship_time_pct: -50}}
+  militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 4, cost: 600, prereqs: [powered_exoskeletons], known_at_start: false, effects: {free_upkeep_per_city: 1}}
+  combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false, effects: {flanking_pct: 10}}
+  stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 600, prereqs: [drone_warfare], known_at_start: false, effects: {hunt_immune: [recon]}}
+  ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 5, cost: 950, prereqs: [quantum_computing], known_at_start: false, effects: {ranged_attack_pct: 15}}
+  quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 3, cost: 380, prereqs: [applied_ai], known_at_start: false, effects: {yield_pct: {science: 10}}}
+  reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 4, cost: 600, prereqs: [robotics], known_at_start: false, effects: {class_defence_pct: {armour: 15}}}
   deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 4, cost: 600, prereqs: [radio_beacon_network], known_at_start: false}
-  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 950, prereqs: [biotech_medicine], known_at_start: false}
-  orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 5, cost: 950, prereqs: [orbital_launch], known_at_start: false}
-  antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 5, cost: 950, prereqs: [fusion_power], known_at_start: false}
+  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 950, prereqs: [biotech_medicine], known_at_start: false, effects: {city_yields: {food: 2}}}
+  orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 5, cost: 950, prereqs: [orbital_launch], known_at_start: false, effects: {city_strength: 5}}
+  antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 5, cost: 950, prereqs: [fusion_power], known_at_start: false, effects: {yield_pct: {production: 20}}}
 
   # Beacon tree (M5): each tech is one rarity level for recruits (data/aliens.yaml recruits.levels).
   # Costs rise steeply (designer). beacon_theory also unlocks the Beacon building chain (speed).

@@ -641,13 +641,12 @@ class Bot:
         for city guns."""
         for unit in self.view.my_units():
             while promotions.due(self.cfg, unit) > 0:
-                spec = self.cfg.units[unit.type]
-                n_att = unit.promotions.count("attack_10")
-                n_def = unit.promotions.count("defence_10")
-                if spec["role"] == "ranged":
-                    pick = "attack_10"
-                else:
-                    pick = "attack_10" if n_att <= n_def else "defence_10"
+                # the class's preferred promotions, least-taken first (then attack/defence)
+                cls = self.cfg.units[unit.type].get("class") or ""
+                prefs = self.param("promotions.prefer").get(cls, []) + ["attack_10", "defence_10"]
+                allowed = promotions.options(self.cfg, unit)
+                prefs = [p for p in prefs if p in allowed]
+                pick = min(prefs, key=lambda p: (unit.promotions.count(p), prefs.index(p)))
                 if not self.submit(PromoteUnit(player=self.pid, unit=unit.id, promotion=pick)):
                     break
         # City guns are upgraded with gold, the most threatened city first, keeping a reserve.
@@ -688,6 +687,8 @@ class Bot:
                 self.engineer(unit, net, claimed)
             elif spec.get("can_refound"):
                 self.restorer(unit)
+            elif spec["role"] == "civilian":
+                self.submit(SkipUnit(player=self.pid, unit=unit.id))  # medics, repair crews
             elif spec["role"] == "recon" and spec["domain"] == "sea":
                 self.sea_explorer(unit)
             elif spec["role"] == "recon":

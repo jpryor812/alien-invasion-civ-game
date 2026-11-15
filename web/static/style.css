@@ -274,3 +274,6 @@ th.clickable { cursor: pointer; }
 #topbar .stat { font-size: 13px; }
 @media (max-width: 1500px) { #topbar .brand { display: none; } #topbar nav button { padding: 3px 6px; } }
 @media (max-width: 1250px) { #threat { display: none; } #topbar { gap: 8px; } }
+
+.tech .effects { font-size: 10.5px; color: var(--brass-hi); line-height: 1.25; margin-top: 2px; }
+.treecanvas .node .tech { height: 112px; }

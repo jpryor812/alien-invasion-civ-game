@@ -1226,12 +1226,13 @@ function infoHtml(title, info, extra = "") {
 // (2, 4, 8, 16...). Lines join each tech to the one it needs. Present-day tech sits in its own
 // column. Each card shows turns at the current science rate and what it unlocks (hover).
 function techCard(t, d) {
-  const tags = [...new Set([...(t.tree === "beacon" ? ["beacon"] : []), ...t.unlocks.flatMap((u) => u.tags)])];
+  const tags = [...new Set([...(t.tree === "beacon" ? ["beacon"] : []), ...(t.effects ? t.effects.tags : []), ...t.unlocks.flatMap((u) => u.tags)])];
   const when = t.status === "known" ? "Known" : t.status === "researching" ? `Researching · ${t.turns ?? "–"} turns (${d.progress}/${t.cost})`
     : t.turns != null ? `${t.turns} turns · ${t.cost} science` : `${t.cost} science`;
   const un = t.unlocks.map((u) => `<span class="unlock" data-tip="${esc(infoHtml(pretty(u.item.split(":")[1]), u, `<div class="tip-kind">${pretty(u.item.split(":")[0])}</div>`))}">${esc(pretty(u.item.split(":")[1]))}</span>`).join("");
   return `<div class="tech ${t.status}" data-tech="${t.id}" data-tip="${esc(`<div class="tip-title">${esc(pretty(t.id))}</div><div class="tip-note">${esc(t.note)}</div>`)}">
     <div class="name">${esc(pretty(t.id))}</div><div class="meta when">${when}</div>
+    ${t.effects && t.effects.lines.length ? `<div class="effects">${t.effects.lines.map((l) => `<div>• ${esc(l)}</div>`).join("")}</div>` : ""}
     ${un ? `<div class="unlocks">${un}</div>` : ""}<div class="tags">${tagChips(tags)}</div></div>`;
 }
 function techScreen(d) {
@@ -1242,7 +1243,7 @@ function techScreen(d) {
   const roots = tree.filter((t) => !t.prereqs.some((p) => byId[p])).map((t) => t.id);
   const span = {};
   const height = (id) => span[id] ?? (span[id] = Math.max(1, (kids[id] || []).reduce((a, k) => a + height(k), 0)));
-  const COLW = 250, ROWH = 96, CARDH = 84, LEFT = 230;
+  const COLW = 250, ROWH = 124, CARDH = 112, LEFT = 230;
   const pos = {};
   let row = 0;
   const place = (id, top) => {
@@ -1631,7 +1632,11 @@ function citizenRow(p, d) {
   return `<div class="citizen"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div>`;
 }
 
-function promoName(id) { return { attack_10: "+10% attack", defence_10: "+10% defence" }[id] || pretty(id); }
+function promoName(id) {
+  return { attack_10: "+10% attack", defence_10: "+10% defence", dig_in: "Dig in (+20% defence)", field_medic: "Field medic (+10 heal)",
+    blitz: "Blitz (+1 move)", breakthrough: "Breakthrough (+20% vs infantry)", siege_master: "Siege master (+25% vs cities)",
+    barrage: "Barrage (+15% attack)", sea_legs: "Sea legs (+1 move)", gold_upgrade: "Upgraded" }[id] || pretty(id);
+}
 
 // Hexes of units the selected unit can merge with: moving there merges them (no button).
 function mergeTiles() {

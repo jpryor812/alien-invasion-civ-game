@@ -387,3 +387,85 @@ def test_contact_gates_diplomacy_and_is_made_by_sighting(cfg):
     events = contact.check(s, cfg)
     assert [e["kind"] for e in events] == ["contact_made"]
     assert contact.met(s, EU, NA) and contact.met(s, NA, EU)
+
+
+# -- tech effects, support units, matchups, class promotions (designer, 2026-11-14) ---------------
+
+
+def test_every_tech_does_something(cfg):
+    unlocks = {
+        s.get("tech")
+        for table in (cfg.buildings, cfg.units, cfg.improvements)
+        for s in table.values()
+    }
+    special = {
+        cfg.t("trade.alliance_tech"),
+        cfg.t("endgame.barrage_tech"),
+        *cfg.t("endgame.radar_techs"),
+        *cfg.alien("recruits")["rarity_techs"],
+    }
+    for t, spec in cfg.techs.items():
+        if spec["tree"] == "alien" or spec["known_at_start"]:
+            continue
+        assert t in unlocks or t in special or spec.get("effects"), t
+
+
+def test_tech_effects_change_the_rules(cfg):
+    from beacon import combat
+
+    s = arena(cfg)
+    city = city_with_tiles(cfg, s, pop=1)
+    player = s.players[EU]
+    base_cost = economy.item_cost(cfg, "unit:infantry", player)
+    gold = economy.city_yields(s, cfg, city).totals["gold"]
+    player.techs += ["mass_production", "carbon_markets", "orbital_defence_grid"]
+    assert economy.item_cost(cfg, "unit:infantry", player) == base_cost * 85 // 100
+    assert economy.city_yields(s, cfg, city).totals["gold"] == gold + 2
+    assert any(x["source"] == "defence grid" for x in combat.city_strength(s, cfg, city).lines)
+
+
+def test_medics_heal_and_repair_crews_rebuild(cfg):
+    from beacon import aliens
+    from beacon.commands import BuildImprovement
+    from beacon.improvements import progress_jobs
+
+    s = arena(cfg)
+    a = at(5, 5)
+    medic = create_unit(s, cfg, "medical_team", EU, a)
+    hurt = create_unit(s, cfg, "infantry", EU, east(a))
+    hurt.hp, hurt.acted = 50, True  # it fought: no ordinary healing
+    reset_units(s, cfg)
+    assert hurt.hp == 50 + cfg.units["medical_team"]["heal_adjacent"]
+    farm = at(9, 5)
+    s.tiles[farm].improvement, s.tiles[farm].built_by = "farm", EU
+    raider = create_unit(s, cfg, "alien_pillager", ALIENS, farm)
+    aliens.pillage(s, cfg, raider)
+    assert s.tiles[farm].improvement is None and s.tiles[farm].pillaged == "farm"
+    del s.units[str(raider.id)]
+    crew = create_unit(s, cfg, "nanorepair_crew", EU, farm)
+    with pytest.raises(CommandError, match="only rebuild"):
+        apply_command(s, cfg, BuildImprovement(player=EU, unit=crew.id, improvement="mine"))
+    apply_command(s, cfg, BuildImprovement(player=EU, unit=crew.id, improvement="farm"))
+    progress_jobs(s, cfg, EU)
+    assert s.tiles[farm].improvement == "farm" and s.tiles[farm].pillaged is None
+    assert medic.tile == a
+
+
+def test_matchups_and_class_promotions(cfg):
+    from beacon import combat, promotions
+
+    s = arena(cfg)
+    a = at(4, 4)
+    at_team = create_unit(s, cfg, "anti_tank_team", EU, a)
+    brute = create_unit(s, cfg, "alien_brute", ALIENS, east(a, 2))
+    lines = combat.preview_attack(s, cfg, at_team, brute.tile)["attacker"]["lines"]
+    assert {"source": "vs heavy", "kind": "pct", "value": 50} in lines
+    inf = create_unit(s, cfg, "infantry", EU, at(10, 8))
+    s.tiles[inf.tile].feature = "forest"
+    dfn = combat.unit_strength(s, cfg, inf, ranged=False, defending=True)
+    assert any(x["source"] == "rough ground" for x in dfn.lines)
+    assert "dig_in" in promotions.options(cfg, inf) and "blitz" not in promotions.options(cfg, inf)
+    tank = create_unit(s, cfg, "tank", EU, at(12, 2))
+    tank.promotions = ["blitz"]
+    reset_units(s, cfg)
+    assert tank.moves_left == (cfg.units["tank"]["moves"] + 1) * cfg.t("movement.scale")

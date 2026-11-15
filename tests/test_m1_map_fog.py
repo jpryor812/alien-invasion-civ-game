@@ -12,8 +12,8 @@ from beacon.tiles import is_passable_land, is_water
 from beacon.view import PlayerView, observe
 
 # Update deliberately (and say why in the commit) when map generation or the data changes.
-# Last change: continent positions shuffled per game (designer).
-GOLDEN_MAP_SEED_1 = "44599c55bc91d93163428eb76af4d0e34a8201296aee323fc130839d0f390cb8"
+# Last change: tiles remember pillaged improvements (designer).
+GOLDEN_MAP_SEED_1 = "2213ac19e5045ea8c43b039fc50555a178efe8802d58ae1b6a960c198f9bc1aa"
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")
