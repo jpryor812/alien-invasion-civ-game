@@ -30,14 +30,23 @@ const code = (type) => {
   const words = type.replace(/^alien_/, "").split("_");
   return (words.length > 1 ? words.map((w) => w[0]).join("") : words[0].slice(0, 3)).toUpperCase().slice(0, 3);
 };
-// small inline SVG icons for the UI chrome
+// UI icons (visuals pass 2): small bronze medallions, each with a coloured glyph, in the manner of
+// Civ's yield icons. One shared gradient set is defined once in the page (see ICON_DEFS).
+const medal = (glyph, tone) => `<svg class="icon medal" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9.3" fill="url(#md-${tone})" stroke="#3a2a10" stroke-width="0.8"/><circle cx="10" cy="10" r="8.1" fill="none" stroke="#f2d38a" stroke-opacity="0.55" stroke-width="0.7"/>${glyph}</svg>`;
 const ICON = {
-  gold: '<svg class="icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#f2d15c" stroke="#8a6d1c"/><text x="8" y="11.5" font-size="9" text-anchor="middle" fill="#6b5212" font-weight="700">$</text></svg>',
-  science: '<svg class="icon" viewBox="0 0 16 16"><path d="M6 1h4v1H9.5v4l4 7.5c.3.7-.1 1.5-.9 1.5H3.4c-.8 0-1.2-.8-.9-1.5l4-7.5V2H6z" fill="#6cbbec" stroke="#1d4a66" stroke-width=".8"/></svg>',
-  beacon: '<svg class="icon" viewBox="0 0 16 16"><circle cx="8" cy="10" r="2" fill="#c88df2"/><path d="M4 6a5.5 5.5 0 0 1 8 0M2 3.5a9 9 0 0 1 12 0" fill="none" stroke="#c88df2" stroke-width="1.4"/></svg>',
-  turn: '<svg class="icon" viewBox="0 0 16 16"><path d="M4 1.5h8M4 14.5h8M5 2c0 4 6 4 6 6s-6 2-6 6M11 2c0 4-6 4-6 6s6 2 6 6" fill="none" stroke="#d9ae55" stroke-width="1.3"/></svg>',
-  ship: '<svg class="icon" viewBox="0 0 16 16"><path d="M8 1l3 6H5zM2 10h12l-2 4H4z" fill="#a347c9"/></svg>',
+  gold: medal('<circle cx="10" cy="10" r="4.6" fill="#f6dc7a" stroke="#8a6d1c" stroke-width="0.9"/><path d="M10 7.2v5.6M8.3 8.4h2.8a1.1 1.1 0 0 1 0 2.2H9a1.1 1.1 0 0 0 0 2.2h2.8" fill="none" stroke="#7a5c12" stroke-width="0.9"/>', "gold"),
+  science: medal('<path d="M8.4 4.5h3.2M9 4.8v3.6l-3.2 5.6c-.3.6.1 1.3.8 1.3h6.8c.7 0 1.1-.7.8-1.3L11 8.4V4.8" fill="#bfe6fb" stroke="#e8f6ff" stroke-width="0.9" stroke-linejoin="round"/><path d="M7 12.6h6l1 1.8H6z" fill="#3fa0d8"/>', "science"),
+  beacon: medal('<circle cx="10" cy="12.2" r="1.7" fill="#f0dcff"/><path d="M7 9.6a4.2 4.2 0 0 1 6 0M5.2 7.4a6.8 6.8 0 0 1 9.6 0" fill="none" stroke="#f0dcff" stroke-width="1.2" stroke-linecap="round"/><path d="M10 12.2v3.6" stroke="#f0dcff" stroke-width="1.2"/>', "beacon"),
+  turn: medal('<path d="M6.5 4.8h7M6.5 15.2h7M7.3 5c0 3.3 5.4 3.3 5.4 5S7.3 11.7 7.3 15M12.7 5c0 3.3-5.4 3.3-5.4 5s5.4 1.7 5.4 5" fill="none" stroke="#fff1cf" stroke-width="1.1"/><path d="M8.4 14.2h3.2L10 12.4z" fill="#f2d38a"/>', "turn"),
+  ship: medal('<ellipse cx="10" cy="11" rx="6" ry="2.2" fill="#e9c6ff"/><path d="M6.8 10.4a3.2 3 0 0 1 6.4 0z" fill="#fff0ff"/><circle cx="7.4" cy="11.2" r=".6" fill="#7a2fb0"/><circle cx="10" cy="11.6" r=".6" fill="#7a2fb0"/><circle cx="12.6" cy="11.2" r=".6" fill="#7a2fb0"/>', "ship"),
+  food: medal('<path d="M10 15.5V6.5" stroke="#fff3c4" stroke-width="1"/><path d="M10 6c-1.6.4-1.6 2.2 0 2.6 1.6-.4 1.6-2.2 0-2.6zM10 8.6c-1.8.4-1.8 2.3 0 2.7 1.8-.4 1.8-2.3 0-2.7zM10 11.2c-2 .4-2 2.3 0 2.7 2-.4 2-2.3 0-2.7z" fill="#ffe08a"/>', "food"),
+  production: medal('<path d="M10 5.2l1 .2.4 1.2 1.1.6 1.2-.4.7.8-.4 1.2.6 1.1 1.2.4.2 1-.2 1-1.2.4-.6 1.1.4 1.2-.7.8-1.2-.4-1.1.6-.4 1.2-1 .2-1-.2-.4-1.2-1.1-.6-1.2.4-.7-.8.4-1.2-.6-1.1-1.2-.4-.2-1 .2-1 1.2-.4.6-1.1-.4-1.2.7-.8 1.2.4 1.1-.6.4-1.2z" fill="#ffd2a8"/><circle cx="10" cy="10" r="1.9" fill="#8a4a1c"/>', "production"),
 };
+const ICON_DEFS = `<svg width="0" height="0" style="position:absolute"><defs>${Object.entries({
+  gold: ["#d9a93a", "#6b4a10"], science: ["#3a8fc4", "#0f3550"], beacon: ["#9a5ad6", "#33124f"], turn: ["#9a7a3a", "#3a2a10"],
+  ship: ["#8a3ab0", "#2a0f3a"], food: ["#5a9a3a", "#1f3a12"], production: ["#c46a2a", "#4a1f08"],
+}).map(([k, [a, b]]) => `<radialGradient id="md-${k}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></radialGradient>`).join("")}</defs></svg>`;
+document.body.insertAdjacentHTML("afterbegin", ICON_DEFS);
 
 async function api(path, body) {
   const opts = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
@@ -1676,7 +1685,7 @@ async function selectCity(id, centerIt = false) {
 }
 function yieldBox(k, total, lines) {
   const parts = lines.filter((l) => l[1] === k).map((l) => `${pretty(l[0].replace(/^\w+:/, ""))}: ${l[2] >= 0 ? "+" : ""}${l[2]}`);
-  return `<div class="yield y-${k}" title="${esc(parts.join("\n") || "nothing")}"><b>${total}</b>${pretty(k)}</div>`;
+  return `<div class="yield y-${k}" title="${esc(parts.join("\n") || "nothing")}">${ICON[k] || ""}<b>${total}</b>${pretty(k)}</div>`;
 }
 function renderCityPanel() {
   const d = S.city, c = d.city, side = $("side");
@@ -2727,7 +2736,7 @@ function goToEvent(e) {
   if (c && c.owner === S.view.me) selectCity(c.id);
   S.flash = { tile: t, until: performance.now() + 1600 }; S.dirty = true;
 }
-const YIELD_ICON = { food: "🌾", production: "⚙", science: "⚗", gold: "●", beacon: "◈" };
+const YIELD_ICON = { food: ICON.food, production: ICON.production, science: ICON.science, gold: ICON.gold, beacon: ICON.beacon };
 function citiesScreen(d) {
   const key = S.citySort || "name";
   const val = (c) => key === "name" ? c.name : key === "pop" ? -c.pop : -(c.yields[key] ?? 0);

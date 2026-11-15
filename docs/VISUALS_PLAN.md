@@ -43,7 +43,7 @@ Rules for every slice:
 - [x] 3. Cities and alien hives
 - [x] 4. Units
 - [x] 5. Council portraits
-- [ ] 6. Interface skin
+- [x] 6. Interface skin
 
 ## Notes
 
@@ -60,3 +60,4 @@ Rules for every slice:
 - P2.3 Cities: towns and cities spill suburbs onto open neighbouring land (1, 3 or 5 hexes by tier, picked by a hash so they stay put). Suburbs are cached sprites of paving, houses, mid-rises and trees, drawn pulled toward the city so they join it. A hive spreads red creep onto 1-4 neighbours, with veins, small spires and pods. Hives now breathe: a slow pulsing glow from the heart and spores drifting up, drawn each frame (cheap: one gradient and a few dots). Still weak: suburbs ignore roads; city edges are still soft ellipses.
 - P2.4 Units: two more Meshy models (60 credits; 379 left). The scout boat is now a patrol boat and the attack submarine a surfaced submarine; destroyers and railgun cruisers keep the destroyer. The walker was re-rendered with more exposure, so it reads on dark ground. Idle motion: drones bob, hover tanks float, ships rock on the swell (a per-unit phase, no state). Still weak: no facing toward the move direction; land vehicles share the tank model; no attack animation.
 - P2.5 Portraits: citizens now have an age (young, grown, older with forehead lines, crow's feet and greying hair) and a mood (calm, warm with dimples, stern brows, wry half-smile). Hair strands catch the light, a cool rim light sits on the shadow side, and a brush-stroke overlay gives a painted finish. Event and Starfall pictures are now painted scenes instead of glyphs: a ruined school with a smoking chimney, the outcast in a ringed crater (the alien warrior render), split ship wreckage with glowing seams, a lamplit cache under a fallen overpass, a cut-open bunker with an engineer, cracks with red eyes and the brood climbing out (alien renders), and burning crystal shards in their crater, coloured by kind. The aliens' wormhole is in every sky. Still weak: portraits remain stylised busts; scenes are silhouettes rather than full illustrations.
+- P2.6 Skin: a bronze medallion icon set (turn, gold, science, beacon, food, production, mothership; shared gradients defined once) in the top bar, the city panel's yield boxes and the Cities table. One heading face: Cinzel now also sets the tech-tree level heads, seat heads, list groups, table heads and the turn splash. Every pop-up has a gilded header band behind its title, and panel titles have a bronze rule. Still weak: the unit panel's action buttons are text only; there is no sound.
