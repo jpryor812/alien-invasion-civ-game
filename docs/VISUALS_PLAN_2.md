@@ -72,7 +72,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - [x] 1. Terrain textures
 - [x] 2. Forests, hills, mountains
 - [x] 3. Borders and farms
-- [ ] 4. Cities
+- [x] 4. Cities
 - [ ] 5. Units
 - [ ] 6. Interface layout
 
@@ -88,3 +88,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - P2.1 Terrain: a patchwork layer. Each land hex leans toward one of several shades for its terrain (grassland greens and golds, plains ochres, desert sands, tundra greys), filled per hex, blurred so neighbours blend, and laid in soft-light at 60%. Wide grasslands now read as a quilt, as in the references, without hiding the photo detail. The first build of a screen is about 1.35 s, cached after. Still weak: tones change by whole hexes; Civ also shows field-like streaks inside a hex.
 - P2.2 Features: forests and jungles were re-rendered with a stronger, higher sun, a rim light and a lighter forest floor, so crowns catch the light and the hexes read as canopy rather than dark patches; the client tints were rebalanced to match. Mountains now sit on a soft shadow where they meet the ground and are graded to their land: warm sandstone in the desert, cold grey in tundra, pale in snow. Still weak: forests still fill whole hexes edge to edge (Civ's thin out at the borders); all mountains share one boulder model.
 - P2.3 Borders and farms: border edges are now joined into chains per owner. Each corner is inset toward the owner's hexes that touch it, and two passes of corner cutting round the steps, so borders curve around territories as in Civ (about 34 ms for a whole frame with borders). Farm patchworks reach slightly past their hex, so neighbouring farms join into one field. Still weak: the inner glow still follows straight hex edges under the curved line.
+- P2.4 Cities: all eleven renders were redone. Towns fill the whole hex with smaller, denser plots; villages and towns have trees between the houses; some mid-rises have pitched roofs; towers are stepped (base, shaft, crown) with rooftop masts; a warmer, stronger sun. Suburbs are denser too. Still weak: alien hives keep the painted art; every city of a tier looks alike apart from two layouts.
