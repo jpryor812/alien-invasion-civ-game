@@ -2019,6 +2019,23 @@ async function selectUnit(id, centerIt = false) {
   if (centerIt) centerOnTile(S.options.unit.tile);
   renderUnitPanel(); S.dirty = true;
 }
+const ACT_SVG = {
+  fortify: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>',
+  skip: '<path d="M5 6l7 6-7 6zM12 6l7 6-7 6z"/>',
+  build: '<path d="M14 4l6 6-3 3-2-2-8 8-3-3 8-8-2-2z"/>',
+  promote: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6-5.3-3-5.3 3 1.2-6L3.4 9.3l6-.7z"/>',
+  cancel: '<path d="M6 6l12 12M18 6L6 18" stroke-width="3" stroke-linecap="round" fill="none"/>',
+  city: '<path d="M4 20V10l4-3 4 3v-5l4-2 4 2v15z"/>',
+  split: '<path d="M4 12h6M14 12h6M8 8l-4 4 4 4M16 8l4 4-4 4" stroke-width="2.4" fill="none" stroke-linecap="round"/>',
+  ship: '<path d="M12 3v14M7 8h10M5 15c2 4 5 5 7 5s5-1 7-5" stroke-width="2.4" fill="none" stroke-linecap="round"/>',
+  other: '<circle cx="12" cy="12" r="5"/>',
+};
+function actIcon(label) {
+  const k = /^Fortify/.test(label) ? "fortify" : /^Skip/.test(label) ? "skip" : /^Build/.test(label) ? "build" : /^Promote/.test(label) ? "promote"
+    : /^Cancel/.test(label) ? "cancel" : /^Refound/.test(label) ? "city" : /^Split/.test(label) ? "split" : /^Ship/.test(label) ? "ship" : "other";
+  const cap = k === "build" ? `<span class="actcap">${esc(label.replace(/^Build /, "").replace(/ \(.*\)$/, ""))}</span>` : "";
+  return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">${ACT_SVG[k]}</svg>${cap}`;
+}
 function renderUnitPanel() {
   const o = S.options, u = o.unit, spec = o.spec, side = $("side");
   const moves = (u.moves_left / 30).toFixed(1).replace(/\.0$/, "");
@@ -2036,7 +2053,12 @@ function renderUnitPanel() {
     <div class="actions" id="uactions"></div>
     <div class="muted" style="font-size:12px">${spec.fixed ? (spec.no_attack ? "" : "Red hexes can be fired on (hover for the odds).") : "Click a highlighted hex to move; red hexes can be attacked (hover for the odds)."}</div>`;
   const a = $("uactions");
-  const add = (label, fn, title = "") => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.onclick = fn; a.appendChild(b); };
+  // Civ's action strip: round bronze icon buttons stacked above the portrait; the label is the tooltip
+  const add = (label, fn, title = "") => {
+    const b = document.createElement("button"); b.className = "actbtn"; b.onclick = fn;
+    b.innerHTML = actIcon(label); b.title = title ? `${label}: ${title}` : label; b.setAttribute("aria-label", label);
+    a.appendChild(b);
+  };
   const pr = o.promotion;
   if (spec.role !== "civilian") {
     a.insertAdjacentHTML("beforebegin", `<div class="row muted">Experience ${pr.xp} · next promotion at ${pr.next}${pr.taken.length ? ` · ${pr.taken.map(promoName).join(", ")}` : ""}</div>`);

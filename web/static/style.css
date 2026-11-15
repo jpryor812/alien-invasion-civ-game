@@ -404,3 +404,14 @@ th .icon.medal { width: 15px; height: 15px; }
   font-family: var(--display); font-size: 15px; letter-spacing: 0.12em; padding: 5px 0; text-shadow: 0 1px 0 #000; }
 .cgrid .cside { background: linear-gradient(rgba(29,58,70,0.85), rgba(10,26,34,0.9)); border: 1px solid rgba(185,138,62,0.45); border-radius: 4px; padding: 5px 7px; }
 .cside .cname { font-family: var(--display); }
+
+/* -- layout, round 2 pass 2: Civ's action strip, round icon buttons above the unit portrait ------ */
+#side.unitmode #uactions { position: absolute; left: 6px; bottom: 150px; width: 128px; margin: 0; display: flex; flex-wrap: wrap-reverse; gap: 16px 6px; justify-content: flex-start; }
+.actbtn { position: relative; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff3d4;
+  background: radial-gradient(circle at 40% 30%, #4f8193, #1f4250 60%, #0e2530); border: 2px solid var(--bronze-hi);
+  box-shadow: 0 0 0 1px #05090c, 0 3px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.25); }
+.actbtn svg { width: 20px; height: 20px; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.6)); }
+.actbtn:hover:not(:disabled) { background: radial-gradient(circle at 40% 30%, #6aa5ba, #2a5868 60%, #12303c); box-shadow: 0 0 0 1px #05090c, 0 0 10px rgba(233,199,122,0.45); }
+.actbtn.primary { background: radial-gradient(circle at 40% 30%, #d9b060, #8a6420 60%, #4d3712); }
+.actcap { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 1px; font: 600 9px var(--font); color: #f2e6c8; white-space: nowrap; text-shadow: 0 1px 2px #000; pointer-events: none; }
+#side.unitmode .actions { max-height: none; overflow: visible; }

@@ -74,7 +74,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - [x] 3. Borders and farms
 - [x] 4. Cities
 - [x] 5. Units
-- [ ] 6. Interface layout
+- [x] 6. Interface layout
 
 ## Notes
 
@@ -90,3 +90,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 - P2.3 Borders and farms: border edges are now joined into chains per owner. Each corner is inset toward the owner's hexes that touch it, and two passes of corner cutting round the steps, so borders curve around territories as in Civ (about 34 ms for a whole frame with borders). Farm patchworks reach slightly past their hex, so neighbouring farms join into one field. Still weak: the inner glow still follows straight hex edges under the curved line.
 - P2.4 Cities: all eleven renders were redone. Towns fill the whole hex with smaller, denser plots; villages and towns have trees between the houses; some mid-rises have pitched roofs; towers are stepped (base, shaft, crown) with rooftop masts; a warmer, stronger sun. Suburbs are denser too. Still weak: alien hives keep the painted art; every city of a tier looks alike apart from two layouts.
 - P2.5 Units: flags take the unit's class shape: shields for melee, discs for ranged and civilians, diamonds for recon (owner's colour, white icon). Formations thin with damage: figures shown = formation size × health share, at least one (an infantry unit at 45% shows 4 of 8). Units face the way they last moved: the client remembers each unit's last tile and mirrors the figures when the step was to the left. Still weak: no attack or death animation; facing resets on a page reload.
+- P2.6 Layout: the unit's actions are now Civ's strip, round bronze icon buttons stacked above the portrait. Icons: fortify shield, skip chevrons, build hammer (with the improvement named under it), promote star, cancel cross, refound city, split arrows, ship anchor. Each keeps its tooltip, and build buttons keep their yield preview; promotions are gold. Still weak: the ship-abroad picker is a plain select inside the strip; no keyboard hints on the icons.
