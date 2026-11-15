@@ -964,19 +964,66 @@ function drawBorders(visible, R) {
     ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
     ctx.lineTo(bx + (sx - bx) * f, by + (sy - by) * f); ctx.lineTo(ax + (sx - ax) * f, ay + (sy - ay) * f); ctx.closePath(); ctx.fill();
   }
-  // the border line itself, inset a little so two neighbours' borders sit side by side
+  // the border line itself: each owner's edges are joined into chains, inset a little toward the
+  // owner's land (so two neighbours' borders sit side by side) and smoothed, so borders curve as in Civ
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const [own, segs] of lines) {
     const col = own === "aliens" ? "#e0362c" : OWNER[own] || "#999";
+    const chains = borderChains(segs);
     for (const [w, style] of [[Math.max(4, R * 0.2), "rgba(10,12,16,0.45)"], [Math.max(2.5, R * 0.13), col], [Math.max(1, R * 0.04), "rgba(255,250,230,0.8)"]]) {
       ctx.strokeStyle = style; ctx.lineWidth = w; ctx.beginPath();
-      for (const [ax, ay, bx, by, sx, sy] of segs) {
-        const k = 0.07;
-        ctx.moveTo(ax + (sx - ax) * k, ay + (sy - ay) * k); ctx.lineTo(bx + (sx - bx) * k, by + (sy - by) * k);
+      for (const { pts, closed } of chains) {
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+        if (closed) ctx.closePath();
       }
       ctx.stroke();
     }
   }
+}
+// Join border edges (hex corner to hex corner) into chains, inset each corner toward the owner's
+// hexes that touch it, then round the corners (two passes of Chaikin's corner cutting).
+function borderChains(segs) {
+  const key = (x, y) => `${Math.round(x * 4)},${Math.round(y * 4)}`, P = new Map();
+  const node = (x, y) => { const k = key(x, y); if (!P.has(k)) P.set(k, { x, y, cs: [], links: [] }); return k; };
+  for (const [ax, ay, bx, by, sx, sy] of segs) {
+    const a = node(ax, ay), b = node(bx, by);
+    P.get(a).links.push(b); P.get(b).links.push(a); P.get(a).cs.push([sx, sy]); P.get(b).cs.push([sx, sy]);
+  }
+  const used = new Set(), ek = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`), chains = [];
+  const walk = (start) => {
+    const out = [start]; let cur = start;
+    for (;;) {
+      const next = P.get(cur).links.find((n) => !used.has(ek(cur, n)));
+      if (!next) break;
+      used.add(ek(cur, next)); out.push(next); cur = next;
+      if (next === start) break;
+    }
+    return out;
+  };
+  const starts = [...P.keys()].filter((k) => P.get(k).links.length % 2 === 1).concat([...P.keys()]);
+  for (const s0 of starts) {
+    if (P.get(s0).links.every((n) => used.has(ek(s0, n)))) continue;
+    const keys = walk(s0);
+    if (keys.length < 2) continue;
+    const closed = keys[0] === keys[keys.length - 1];
+    let pts = (closed ? keys.slice(0, -1) : keys).map((k) => {
+      const p = P.get(k), cx = p.cs.reduce((a, c) => a + c[0], 0) / p.cs.length, cy = p.cs.reduce((a, c) => a + c[1], 0) / p.cs.length;
+      return [p.x + (cx - p.x) * 0.1, p.y + (cy - p.y) * 0.1];
+    });
+    for (let it = 0; it < 2; it++) {
+      const q = [], n = pts.length;
+      if (!closed) q.push(pts[0]);
+      for (let k = 0; k < (closed ? n : n - 1); k++) {
+        const [x0, y0] = pts[k], [x1, y1] = pts[(k + 1) % n];
+        q.push([x0 * 0.75 + x1 * 0.25, y0 * 0.75 + y1 * 0.25], [x0 * 0.25 + x1 * 0.75, y0 * 0.25 + y1 * 0.75]);
+      }
+      if (!closed) q.push(pts[n - 1]);
+      pts = q;
+    }
+    chains.push({ pts, closed });
+  }
+  return chains;
 }
 function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
@@ -1001,7 +1048,7 @@ function paintImprovement(g, kind, cx, cy, R, variant = 0) {
   if (kind === "farm") {
     // a patchwork of rectangular fields (greens, golds, ploughed browns) at an angle that changes from
     // hex to hex, with hedgerows between fields, crop rows in each and a farmstead
-    g.save(); hexPath(g, cx, cy, R * 0.97); g.clip();
+    g.save(); hexPath(g, cx, cy, R * 1.05); g.clip();  // a little past the hex, so neighbouring farms join
     const cols = ["#7fa83a", "#9bb848", "#c9b04a", "#d9c25a", "#6b8f32", "#b89a4a", "#8a6a3a", "#a9c060"];
     g.translate(cx, cy); g.rotate(-0.6 + rnd() * 1.2);
     const fw = R * (0.42 + rnd() * 0.12), fh = R * (0.3 + rnd() * 0.1);
