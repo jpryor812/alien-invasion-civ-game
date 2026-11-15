@@ -300,6 +300,8 @@ class Session:
         if self.reveal:  # developer view for art testing: every hex, seen
             v["tiles"] = {str(i): {**to_dict(t), "visible": True} for i, t in enumerate(s.tiles)}
             v["explored"] = list(range(len(s.tiles)))
+            v["cities"] = {str(c.id): to_dict(c) for c in s.cities}
+            v["units"] = [to_dict(u) for u in sorted(s.units.values(), key=lambda u: u.id)]
         for key, t in v["tiles"].items():
             if t.get("improvement"):
                 t["yields"] = _tile_yields(cfg, s.tiles[int(key)])  # what the tile gives a city

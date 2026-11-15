@@ -624,7 +624,7 @@ function draw(t = performance.now()) {
   }
   // 7. cities, units, then banners on top
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawCity(c, sx, sy, R, i); }
-  for (const [i, sx, sy] of visible) { const us = S.unitsByTile.get(i); if (us) drawUnits(us, sx, sy, R); }
+  for (const [i, sx, sy] of visible) { const us = S.unitsByTile.get(i); if (us) drawUnits(us, sx, sy, R, S.citiesByTile.has(i)); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawBanner(c, sx, sy, R); }
   // 8. selection pulse
   if (S.selected && S.selected.kind === "unit") {
@@ -812,97 +812,251 @@ function drawResource(res, sx, sy, R) {
   ctx.fillText(res[0].toUpperCase(), x, y + 0.5);
 }
 
+// Cities (visuals pass 1): painted once per look and zoom step, drawn scaled. Four modern tiers by
+// population (houses, mid-rise town, towers, skyscraper metropolis), a domed capitol and flag for
+// capitals, a concrete ring for walls and a dome for plasma shields; alien hives grow organic
+// spires; lost cities are greyed or rubble.
+const CITY_SPRITES = new Map();
+function cityTier(pop) { return pop <= 2 ? 0 : pop <= 5 ? 1 : pop <= 9 ? 2 : 3; }
 function drawCity(c, sx, sy, R, i) {
-  const owner = c.owner ? OWNER[c.owner] : "#888";
-  const rnd = rng(i * 31 + 7);
-  if (c.status === "overrun") {
-    const rg = ctx.createRadialGradient(sx, sy, R * 0.1, sx, sy, R * 0.85);
-    rg.addColorStop(0, "rgba(220,50,40,0.6)"); rg.addColorStop(1, "rgba(90,15,10,0)");
-    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(sx, sy, R * 0.85, 0, Math.PI * 2); ctx.fill();
-    const n = 3 + Math.min(5, Math.floor(c.pop / 2));
-    for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2 + rnd(), d = k === 0 ? 0 : R * (0.25 + rnd() * 0.25);
-      const x = sx + Math.cos(a) * d, y = sy + Math.sin(a) * d * 0.7 + R * 0.15, h = R * (0.35 + rnd() * 0.3);
-      ctx.fillStyle = "#5e1612"; ctx.beginPath(); ctx.moveTo(x - R * 0.1, y); ctx.quadraticCurveTo(x - R * 0.12, y - h * 0.6, x, y - h); ctx.quadraticCurveTo(x + R * 0.1, y - h * 0.5, x + R * 0.1, y); ctx.fill();
-      ctx.fillStyle = "#e0453a"; ctx.beginPath(); ctx.moveTo(x - R * 0.04, y); ctx.quadraticCurveTo(x - R * 0.06, y - h * 0.6, x, y - h); ctx.lineTo(x, y); ctx.fill();
-      ctx.fillStyle = "#ffd27a"; ctx.beginPath(); ctx.arc(x, y - h * 0.55, R * 0.025, 0, Math.PI * 2); ctx.fill();
+  const Rb = zoomStep(R), tier = cityTier(c.pop || 1);
+  const owner = c.owner && c.owner !== "aliens" ? OWNER[c.owner] : "#888";
+  const walls = (c.buildings || []).includes("defence_perimeter"), shield = (c.buildings || []).includes("plasma_shield");
+  const key = `${c.status}|${tier}|${owner}|${c.is_capital ? 1 : 0}|${walls ? 1 : 0}${shield ? 1 : 0}|${Rb}|${i % 3}`;
+  let sp = CITY_SPRITES.get(key);
+  if (!sp) {
+    if (CITY_SPRITES.size > 400) CITY_SPRITES.clear();
+    sp = document.createElement("canvas"); sp.width = Math.ceil(Rb * 3); sp.height = Math.ceil(Rb * 3.6);
+    const g = sp.getContext("2d"), cx = sp.width / 2, cy = sp.height - Rb * 1.45, rnd = rng(i % 3 * 97 + tier * 13 + 7);
+    if (c.status === "overrun") paintHive(g, cx, cy, Rb, tier, rnd);
+    else if (c.status === "empty") paintRuins(g, cx, cy, Rb, rnd);
+    else paintCity(g, cx, cy, Rb, tier, owner, c.is_capital, walls, shield, c.status === "dormant", rnd);
+    CITY_SPRITES.set(key, sp);
+  }
+  const k = R / Rb;
+  ctx.drawImage(sp, sx - sp.width * k / 2, sy - (sp.height - Rb * 1.45) * k, sp.width * k, sp.height * k);
+}
+function box(g, x, y, w, d, h, top, front, side, line = "rgba(30,26,22,0.55)") {
+  // an extruded block seen from above-front: footprint w x d at (x, y) (bottom-centre), height h
+  const o = d * 0.35;
+  g.fillStyle = "rgba(20,16,12,0.32)"; g.beginPath(); g.moveTo(x - w / 2, y); g.lineTo(x + w / 2 + h * 0.45, y - h * 0.1); g.lineTo(x + w / 2 + h * 0.45 + o, y - o - h * 0.1); g.lineTo(x + w / 2 + o, y - o); g.closePath(); g.fill();
+  g.fillStyle = front; g.fillRect(x - w / 2, y - h, w, h);
+  g.fillStyle = side; g.beginPath(); g.moveTo(x + w / 2, y - h); g.lineTo(x + w / 2 + o, y - h - o); g.lineTo(x + w / 2 + o, y - o); g.lineTo(x + w / 2, y); g.closePath(); g.fill();
+  g.fillStyle = top; g.beginPath(); g.moveTo(x - w / 2, y - h); g.lineTo(x - w / 2 + o, y - h - o); g.lineTo(x + w / 2 + o, y - h - o); g.lineTo(x + w / 2, y - h); g.closePath(); g.fill();
+  g.strokeStyle = line; g.lineWidth = 0.7; g.beginPath();
+  g.moveTo(x - w / 2, y); g.lineTo(x - w / 2, y - h); g.lineTo(x - w / 2 + o, y - h - o); g.lineTo(x + w / 2 + o, y - h - o); g.lineTo(x + w / 2 + o, y - o); g.lineTo(x + w / 2, y); g.closePath();
+  g.moveTo(x + w / 2, y); g.lineTo(x + w / 2, y - h); g.lineTo(x - w / 2, y - h); g.moveTo(x + w / 2, y - h); g.lineTo(x + w / 2 + o, y - h - o); g.stroke();
+}
+function windows(g, x, y, w, h, color, rnd) {
+  g.fillStyle = color;
+  const rows = Math.max(1, Math.floor(h / Math.max(2.5, w * 0.22))), cols = Math.max(1, Math.floor(w / 3.2));
+  for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) {
+    if (rnd() < 0.25) continue;
+    g.fillRect(x - w / 2 + (q + 0.3) * (w / cols), y - h + (r + 0.35) * (h / rows), Math.max(1, w / cols * 0.45), Math.max(1, h / rows * 0.35));
+  }
+}
+const FACADES = [["#e8dcc0", "#cdbf9f", "#f4ead2"], ["#c98e6a", "#a8704f", "#d9a582"], ["#b5654e", "#8f4b38", "#c97c64"],
+  ["#c9c4b8", "#a6a195", "#dcd8cd"], ["#d8c08e", "#b49c6c", "#e6d3a8"], ["#9fb0b8", "#7d8f98", "#b7c6cd"]];
+const ROOFS = ["#6e3a2c", "#8a4a35", "#5b5f66", "#4f5a4a", "#7a6450", "#3f4650"];
+function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, rnd) {
+  const spread = [0.8, 0.9, 1.0, 1.1][tier];
+  const rx = R * spread * 1.12, ry = R * spread * 0.8;
+  // the district: worn paving fading into the land, blocks of streets
+  const pg = g.createRadialGradient(cx, cy, R * 0.15, cx, cy, rx);
+  pg.addColorStop(0, dormant ? "rgba(96,92,86,0.95)" : "rgba(122,112,96,0.95)"); pg.addColorStop(0.55, dormant ? "rgba(84,80,74,0.8)" : "rgba(108,98,82,0.8)"); pg.addColorStop(1, "rgba(100,90,74,0)");
+  g.fillStyle = pg; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill();
+  g.save(); g.beginPath(); g.ellipse(cx, cy, rx * 0.86, ry * 0.86, 0, 0, Math.PI * 2); g.clip();
+  g.strokeStyle = "rgba(205,195,175,0.16)"; g.lineWidth = Math.max(1, R * 0.045);
+  for (let k = -2; k <= 2; k++) {
+    const wob = (rnd() - 0.5) * R * 0.08;
+    g.beginPath(); g.moveTo(cx - rx, cy + k * R * 0.27 + wob); g.quadraticCurveTo(cx, cy + k * R * 0.27 - R * 0.08, cx + rx, cy + k * R * 0.27 - R * 0.12 - wob); g.stroke();
+    g.beginPath(); g.moveTo(cx + k * R * 0.36 + wob, cy - ry); g.lineTo(cx + k * R * 0.36 + R * 0.18, cy + ry); g.stroke();
+  }
+  g.restore();
+  if (walls) {  // a concrete perimeter with towers
+    g.strokeStyle = "rgba(30,26,22,0.6)"; g.lineWidth = Math.max(3, R * 0.11);
+    g.beginPath(); g.ellipse(cx, cy + R * 0.06, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = "#9b958a"; g.lineWidth = Math.max(2, R * 0.08);
+    g.beginPath(); g.ellipse(cx, cy + R * 0.04, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = "#c8c1b2"; g.lineWidth = Math.max(1, R * 0.025);
+    g.beginPath(); g.ellipse(cx, cy + R * 0.01, rx * 0.98, ry * 0.98, 0, Math.PI, 0); g.stroke();
+  }
+  // buildings, back to front; taller toward the centre and with the tier
+  const count = [16, 24, 32, 42][tier];
+  const blocks = [];
+  for (let k = 0; k < count; k++) {
+    const a = rnd() * Math.PI * 2, d = Math.pow(rnd(), 0.6) * spread * 0.86;
+    const x = cx + Math.cos(a) * R * d, y = cy + Math.sin(a) * R * d * 0.66 + R * 0.06;
+    const central = 1 - d / spread;
+    let kind = tier === 0 && rnd() < 0.18 ? "tree" : "house";
+    if (tier >= 1 && rnd() < 0.3 + central * 0.6) kind = "mid";
+    if (tier >= 2 && central > 0.3 && rnd() < 0.5) kind = "tower";
+    if (tier >= 3 && central > 0.45 && rnd() < 0.65) kind = "sky";
+    blocks.push([x, y, kind, Math.floor(rnd() * FACADES.length), Math.floor(rnd() * ROOFS.length)]);
+  }
+  blocks.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, kind, fi, ri] of blocks) {
+    const [front, side, top] = FACADES[fi];
+    if (dormant) { box(g, x, y, R * 0.17, R * 0.13, R * 0.1, "#8d8880", "#a39e96", "#76716a"); continue; }
+    if (kind === "tree") {
+      g.fillStyle = "#3e6a32"; g.beginPath(); g.arc(x, y - R * 0.06, R * 0.07, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#5c8a45"; g.beginPath(); g.arc(x - R * 0.02, y - R * 0.08, R * 0.04, 0, Math.PI * 2); g.fill();
+    } else if (kind === "house") {
+      const w = R * ((tier ? 0.14 : 0.17) + rnd() * 0.07), h = R * (0.08 + rnd() * 0.05);
+      box(g, x, y, w, w * 0.8, h, top, front, side);
+      g.fillStyle = ROOFS[ri]; g.strokeStyle = "rgba(30,20,15,0.6)"; g.lineWidth = 0.7;
+      const o = w * 0.28;
+      g.beginPath(); g.moveTo(x - w / 2 - 1, y - h); g.lineTo(x - w / 2 + o, y - h - o * 1.6); g.lineTo(x + w / 2 + o, y - h - o * 1.6); g.lineTo(x + w / 2 + 1, y - h); g.closePath(); g.fill(); g.stroke();
+    } else if (kind === "mid") {
+      const w = R * (0.16 + rnd() * 0.08), h = R * (0.2 + rnd() * 0.16);
+      box(g, x, y, w, w * 0.8, h, top, front, side);
+      windows(g, x, y, w, h, "rgba(50,60,75,0.55)", rnd);
+    } else if (kind === "tower") {
+      const w = R * (0.15 + rnd() * 0.05), h = R * (0.42 + rnd() * 0.22);
+      box(g, x, y, w, w * 0.8, h, "#c3ccd3", "#8e9eac", "#62717e");
+      windows(g, x, y, w, h, "rgba(225,235,245,0.6)", rnd);
+    } else {
+      const w = R * (0.16 + rnd() * 0.05), h = R * (0.72 + rnd() * 0.4);
+      const gl = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
+      gl.addColorStop(0, "#5f7f98"); gl.addColorStop(0.5, "#9cb8cc"); gl.addColorStop(1, "#4a6479");
+      box(g, x, y, w, w * 0.8, h, "#d4e2ec", gl, "#34495b");
+      windows(g, x, y, w, h, "rgba(255,240,190,0.5)", rnd);
+      g.strokeStyle = "#cfd8df"; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y - h); g.lineTo(x, y - h - R * 0.12); g.stroke();
     }
-    return;
   }
-  if (c.status === "empty") {
-    ctx.fillStyle = "rgba(60,55,50,0.5)"; ctx.beginPath(); ctx.ellipse(sx, sy + R * 0.12, R * 0.6, R * 0.38, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#6e675f";
-    for (let k = 0; k < 5; k++) { const x = sx + (rnd() - 0.5) * R, y = sy + (rnd() - 0.4) * R * 0.6; ctx.fillRect(x, y, R * (0.08 + rnd() * 0.12), R * (0.05 + rnd() * 0.15)); }
-    return;
+  if (capital && !dormant) {  // a domed capitol and a flag in the owner's colour
+    const x = cx + R * 0.04, y = cy + R * 0.36, w = R * 0.44;
+    box(g, x, y, w, w * 0.55, R * 0.16, "#f2ede2", "#f7f2e6", "#d3ccbc");
+    g.fillStyle = "#d9d2c2"; for (let q = 0; q < 6; q++) g.fillRect(x - w / 2 + (q + 0.3) * w / 6, y - R * 0.15, w / 16, R * 0.14);
+    g.fillStyle = "#e6e0d2"; g.fillRect(x - R * 0.09, y - R * 0.26, R * 0.18, R * 0.1);
+    const dg = g.createRadialGradient(x - R * 0.05, y - R * 0.36, 1, x, y - R * 0.27, R * 0.15);
+    dg.addColorStop(0, "#ffffff"); dg.addColorStop(1, "#b9b19d");
+    g.fillStyle = dg; g.beginPath(); g.arc(x, y - R * 0.26, R * 0.12, Math.PI, 0); g.fill();
+    g.strokeStyle = "rgba(60,50,40,0.6)"; g.lineWidth = 0.8; g.stroke();
+    g.strokeStyle = "#4a3c28"; g.lineWidth = Math.max(1, R * 0.022); g.beginPath(); g.moveTo(x, y - R * 0.38); g.lineTo(x, y - R * 0.66); g.stroke();
+    g.fillStyle = owner; g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(x, y - R * 0.66); g.quadraticCurveTo(x + R * 0.12, y - R * 0.68, x + R * 0.24, y - R * 0.6); g.lineTo(x, y - R * 0.53); g.closePath(); g.fill(); g.stroke();
   }
-  const dormant = c.status === "dormant";
-  ctx.fillStyle = dormant ? "rgba(90,85,78,0.55)" : "rgba(150,135,110,0.6)";
-  ctx.beginPath(); ctx.ellipse(sx, sy + R * 0.1, R * 0.68, R * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-  const n = 4 + Math.min(7, Math.floor(c.pop / 2));
-  const spots = [];
-  for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2 + rnd() * 0.5, d = R * (0.18 + rnd() * 0.32);
-    spots.push([sx + Math.cos(a) * d, sy + Math.sin(a) * d * 0.62 + R * 0.08]);
+  if (shield && !dormant) {
+    const sg = g.createRadialGradient(cx, cy - R * 0.2, R * 0.3, cx, cy, rx * 1.05);
+    sg.addColorStop(0, "rgba(120,200,255,0.04)"); sg.addColorStop(0.85, "rgba(120,200,255,0.16)"); sg.addColorStop(1, "rgba(170,225,255,0.5)");
+    g.fillStyle = sg; g.beginPath(); g.ellipse(cx, cy + R * 0.1, rx * 1.02, R * spread * 1.15, 0, Math.PI, 0); g.fill();
+    g.strokeStyle = "rgba(190,235,255,0.6)"; g.lineWidth = 1; g.stroke();
   }
-  spots.sort((a, b) => a[1] - b[1]);
-  const roof = dormant ? "#7d7670" : shade(owner, -0.25);
-  for (const [x, y] of spots) {
-    const w = R * (0.13 + rnd() * 0.06), h = R * (0.1 + rnd() * 0.08);
-    ctx.fillStyle = dormant ? "#a39e97" : "#e8dcc4"; ctx.fillRect(x - w / 2, y - h, w, h);
-    ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(x, y - h, w / 2, h);
-    ctx.fillStyle = roof; ctx.beginPath(); ctx.moveTo(x - w * 0.62, y - h); ctx.lineTo(x, y - h - w * 0.55); ctx.lineTo(x + w * 0.62, y - h); ctx.fill();
+}
+function paintHive(g, cx, cy, R, tier, rnd) {
+  const spread = [0.6, 0.75, 0.9, 1.02][tier];
+  const ground = g.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * spread * 1.2);
+  ground.addColorStop(0, "rgba(90,20,24,0.95)"); ground.addColorStop(0.6, "rgba(60,14,18,0.8)"); ground.addColorStop(1, "rgba(40,8,10,0)");
+  g.fillStyle = ground; g.beginPath(); g.ellipse(cx, cy, R * spread * 1.2, R * spread * 0.85, 0, 0, Math.PI * 2); g.fill();
+  // glowing veins across the ground
+  g.strokeStyle = "rgba(255,120,60,0.55)"; g.lineWidth = Math.max(1, R * 0.025);
+  for (let k = 0; k < 9; k++) {
+    const a = rnd() * Math.PI * 2, l = R * spread * (0.6 + rnd() * 0.5);
+    g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + Math.cos(a + 0.4) * l * 0.5, cy + Math.sin(a + 0.4) * l * 0.35, cx + Math.cos(a) * l, cy + Math.sin(a) * l * 0.65); g.stroke();
   }
-  const th = R * (c.is_capital ? 0.62 : 0.4);
-  ctx.fillStyle = dormant ? "#9a948c" : "#f1e7d0"; ctx.fillRect(sx - R * 0.07, sy - th + R * 0.05, R * 0.14, th);
-  ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(sx, sy - th + R * 0.05, R * 0.07, th);
-  ctx.fillStyle = dormant ? "#7d7670" : owner; ctx.beginPath(); ctx.moveTo(sx - R * 0.11, sy - th + R * 0.05); ctx.lineTo(sx, sy - th - R * 0.12); ctx.lineTo(sx + R * 0.11, sy - th + R * 0.05); ctx.fill();
+  const spires = [];
+  for (let k = 0; k < [5, 7, 10, 13][tier]; k++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * spread * 0.8;
+    spires.push([cx + Math.cos(a) * R * d, cy + Math.sin(a) * R * d * 0.6 + R * 0.1, (1 - d / spread) * 0.7 + 0.3]);
+  }
+  spires.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, t] of spires) {
+    const h = R * (0.35 + t * [0.45, 0.6, 0.8, 1.0][tier]) * (0.8 + rnd() * 0.4), w = R * (0.09 + t * 0.07), lean = (rnd() - 0.5) * R * 0.2;
+    g.fillStyle = "rgba(0,0,0,0.35)"; g.beginPath(); g.ellipse(x + w, y, w * 1.6, w * 0.5, 0, 0, Math.PI * 2); g.fill();
+    const sg = g.createLinearGradient(x - w, 0, x + w, 0);
+    sg.addColorStop(0, "#5a1418"); sg.addColorStop(0.45, "#9b2a2a"); sg.addColorStop(1, "#2e0a0c");
+    g.fillStyle = sg; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x - w * 0.6 + lean * 0.5, y - h * 0.6, x + lean, y - h); g.quadraticCurveTo(x + w * 0.6 + lean * 0.5, y - h * 0.5, x + w, y); g.closePath(); g.fill();
+    g.strokeStyle = "rgba(255,170,90,0.7)"; g.lineWidth = Math.max(1, R * 0.02);
+    g.beginPath(); g.moveTo(x - w * 0.2, y - h * 0.1); g.quadraticCurveTo(x + lean * 0.3, y - h * 0.5, x + lean * 0.8, y - h * 0.9); g.stroke();
+    g.fillStyle = "rgba(255,210,120,0.9)"; g.beginPath(); g.arc(x + lean, y - h, Math.max(1.2, R * 0.025), 0, Math.PI * 2); g.fill();
+  }
+  for (let k = 0; k < 4 + tier * 2; k++) {  // egg pods
+    const a = rnd() * Math.PI * 2, d = spread * (0.5 + rnd() * 0.45);
+    const x = cx + Math.cos(a) * R * d, y = cy + Math.sin(a) * R * d * 0.6 + R * 0.15, r = R * (0.05 + rnd() * 0.04);
+    const eg = g.createRadialGradient(x - r * 0.3, y - r * 0.4, 0, x, y, r);
+    eg.addColorStop(0, "#ffb37a"); eg.addColorStop(1, "#7a2a1c");
+    g.fillStyle = eg; g.beginPath(); g.ellipse(x, y, r, r * 1.25, 0, 0, Math.PI * 2); g.fill();
+  }
+}
+function paintRuins(g, cx, cy, R, rnd) {
+  g.fillStyle = "rgba(70,65,60,0.55)"; g.beginPath(); g.ellipse(cx, cy, R * 0.7, R * 0.45, 0, 0, Math.PI * 2); g.fill();
+  for (let k = 0; k < 9; k++) {
+    const x = cx + (rnd() - 0.5) * R * 1.1, y = cy + (rnd() - 0.4) * R * 0.6, w = R * (0.08 + rnd() * 0.1), h = R * (0.05 + rnd() * 0.15);
+    box(g, x, y, w, w * 0.7, h, "#7d776f", "#8f8a82", "#5f5a53");
+  }
 }
 
 function roundRect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
+// Civ-style city banner: a dark plate with owner-coloured end caps (population on the left,
+// production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
+// and the city's health bar beneath.
 function drawBanner(c, sx, sy, R) {
   if (S.cam.zoom < 0.42) return;
-  const owner = c.owner ? OWNER[c.owner] : "#7e858b";
+  const hive = c.status === "overrun";
+  const owner = hive ? "#b8322a" : c.owner ? OWNER[c.owner] : "#7e858b";
   const mine = c.owner === S.view.me;
   const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : "";
-  const label = (c.is_capital ? "★ " : "") + c.name + status;
+  const label = c.name + status;
   const fs = Math.max(10, Math.round(11 * Math.min(1.35, S.cam.zoom)));
-  ctx.font = `500 ${fs}px Roboto, Arial, sans-serif`;
-  const tw = ctx.measureText(label).width;
+  ctx.font = `600 ${fs}px Roboto, Arial, sans-serif`;
+  const tw = ctx.measureText(label).width + (c.is_capital ? fs * 1.1 : 0);
   const info = mine ? S.myCityInfo.get(c.id) : null;
   const prodText = info && info.head ? `${info.turns ?? "–"}` : "";
-  ctx.font = `700 ${fs - 1}px sans-serif`;
-  const pw = prodText ? ctx.measureText(prodText).width + fs * 1.2 : 0;
-  const bh = fs * 1.75, bw = tw + bh + pw + fs * 1.2, bx = sx - bw / 2, by = sy - R * 1.32 - bh;
-  ctx.fillStyle = "rgba(0,0,0,0.4)"; roundRect(bx + 2, by + 3, bw, bh, bh / 2); ctx.fill();
+  const bh = Math.round(fs * 1.7), cap = bh * 1.15, bev = bh * 0.32;
+  const bw = cap + tw + fs * 1.2 + (prodText ? cap : bev * 1.4);
+  const bx = Math.round(sx - bw / 2), by = Math.round(sy - R * 1.05 - bh);
+  const plate = (x, y, w, h) => { ctx.beginPath(); ctx.moveTo(x + bev, y); ctx.lineTo(x + w - bev, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w - bev, y + h); ctx.lineTo(x + bev, y + h); ctx.lineTo(x, y + h / 2); ctx.closePath(); };
+  ctx.fillStyle = "rgba(0,0,0,0.45)"; plate(bx + 2, by + 3, bw, bh); ctx.fill();
   const bg = ctx.createLinearGradient(0, by, 0, by + bh);
-  bg.addColorStop(0, c.status === "overrun" ? "#5a1712" : "#2a3846"); bg.addColorStop(1, c.status === "overrun" ? "#2a0906" : "#141d26");
-  ctx.fillStyle = bg; roundRect(bx, by, bw, bh, bh / 2); ctx.fill();
-  ctx.strokeStyle = mine ? "#f2d38a" : shade(owner, -0.1); ctx.lineWidth = mine ? 1.6 : 1.2; ctx.stroke();
-  ctx.fillStyle = owner; ctx.beginPath(); ctx.arc(bx + bh / 2, by + bh / 2, bh / 2 - 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#0b0f13"; ctx.font = `700 ${fs}px Roboto, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(String(c.pop), bx + bh / 2, by + bh / 2 + 0.5);
-  ctx.fillStyle = "#f6efdc"; ctx.font = `500 ${fs}px Roboto, Arial, sans-serif`; ctx.textAlign = "left";
-  ctx.fillText(label, bx + bh + fs * 0.4, by + bh / 2 + 0.5);
-  if (prodText) {
-    const px = bx + bh + fs * 0.6 + tw + fs * 0.4;
-    ctx.fillStyle = "#e69a5c"; ctx.beginPath(); ctx.arc(px + fs * 0.35, by + bh / 2, fs * 0.32, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#f6efdc"; ctx.font = `700 ${fs - 1}px sans-serif`; ctx.fillText(prodText, px + fs * 0.8, by + bh / 2 + 0.5);
+  bg.addColorStop(0, hive ? "#4d1410" : "#2e3d4b"); bg.addColorStop(0.5, hive ? "#33100c" : "#1c2731"); bg.addColorStop(1, hive ? "#200806" : "#111820");
+  ctx.fillStyle = bg; plate(bx, by, bw, bh); ctx.fill();
+  // owner-coloured caps, clipped to the plate
+  ctx.save(); plate(bx, by, bw, bh); ctx.clip();
+  const capFill = (x, w) => { const cg = ctx.createLinearGradient(0, by, 0, by + bh); cg.addColorStop(0, shade(owner, 0.25)); cg.addColorStop(1, shade(owner, -0.35)); ctx.fillStyle = cg; ctx.fillRect(x, by, w, bh); };
+  capFill(bx, cap);
+  if (prodText) capFill(bx + bw - cap, cap);
+  ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(bx, by, bw, bh * 0.42);
+  ctx.restore();
+  ctx.strokeStyle = mine ? "#e9c77a" : "rgba(10,14,18,0.9)"; ctx.lineWidth = mine ? 1.8 : 1.2; plate(bx, by, bw, bh); ctx.stroke();
+  if (mine) { ctx.strokeStyle = "rgba(255,240,200,0.35)"; ctx.lineWidth = 0.8; plate(bx + 2, by + 2, bw - 4, bh - 4); ctx.stroke(); }
+  // population in a dark disc on the left cap
+  const pcx = bx + cap * 0.55, pcy = by + bh / 2;
+  ctx.fillStyle = "rgba(8,12,16,0.75)"; ctx.beginPath(); ctx.arc(pcx, pcy, bh * 0.36, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff6df"; ctx.font = `700 ${fs}px Roboto, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(c.pop), pcx, pcy + 0.5);
+  // name (with the capital star)
+  let nx = bx + cap + fs * 0.55;
+  ctx.textAlign = "left";
+  if (c.is_capital) { ctx.fillStyle = "#f2cf6e"; ctx.font = `700 ${fs}px sans-serif`; ctx.fillText("★", nx, pcy + 0.5); nx += fs * 1.1; }
+  ctx.font = `600 ${fs}px Roboto, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillText(label, nx + 1, pcy + 1.5);
+  ctx.fillStyle = hive ? "#ffc9b8" : "#f6efdc"; ctx.fillText(label, nx, pcy + 0.5);
+  if (prodText) {  // production turns on the right cap
+    const px = bx + bw - cap * 0.5;
+    ctx.fillStyle = "rgba(8,12,16,0.7)"; ctx.beginPath(); ctx.arc(px, pcy, bh * 0.36, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#e69a5c"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#ffd9b0"; ctx.font = `700 ${fs - 1}px sans-serif`; ctx.textAlign = "center"; ctx.fillText(prodText, px, pcy + 0.5);
   }
   if (c.hp_now != null && c.max_hp) {
-    const f = Math.max(0, Math.min(1, c.hp_now / c.max_hp));
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(bx + bh * 0.6, by + bh + 1, bw - bh * 1.2, 4);
-    ctx.fillStyle = f > 0.5 ? "#82c873" : f > 0.25 ? "#e6c45c" : "#e5705f"; ctx.fillRect(bx + bh * 0.6, by + bh + 1, (bw - bh * 1.2) * f, 4);
+    const f = Math.max(0, Math.min(1, c.hp_now / c.max_hp)), hx = bx + bev, hw = bw - bev * 2;
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(hx, by + bh + 1, hw, 4);
+    ctx.fillStyle = f > 0.5 ? "#82c873" : f > 0.25 ? "#e6c45c" : "#e5705f"; ctx.fillRect(hx, by + bh + 1, hw * f, 4);
   }
 }
 
 function isCivilian(type) { const t = S.view.unit_types[type]; return t && t.role === "civilian"; }
-function drawUnits(us, sx, sy, R) {
+function drawUnits(us, sx, sy, R, inCity = false) {
   const military = us.filter((u) => !isCivilian(u.type));
   const civil = us.filter((u) => isCivilian(u.type));
-  if (military.length) drawBadge(military[0], sx, sy + 0.05 * R, 0.43 * R, R);
+  // a garrison stands at the city's front edge so the city itself stays visible
+  if (military.length) {
+    if (inCity) drawBadge(military[0], sx - 0.42 * R, sy + 0.5 * R, 0.33 * R, R);
+    else drawBadge(military[0], sx, sy + 0.05 * R, 0.43 * R, R);
+  }
   if (civil.length) drawBadge(civil[0], sx + 0.45 * R, sy + 0.42 * R, 0.27 * R, R);
 }
 function drawBadge(u, x, y, r, R) {
