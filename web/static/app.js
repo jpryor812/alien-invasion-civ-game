@@ -148,14 +148,65 @@ const PAINT = {
   desert: { base: "#d9bd80", blobs: ["#e6cc93", "#cba86a", "#efd9a6", "#c49c5e"], fleck: "rgba(255,248,220,0.45)" },
   tundra: { base: "#86896f", blobs: ["#9a9d82", "#6f735c", "#adb09a", "#7b7f63"], fleck: "rgba(235,238,225,0.35)" },
   snow: { base: "#e4ebf0", blobs: ["#ffffff", "#cdd8e1", "#f2f6f9", "#bfcbd6"], fleck: "rgba(255,255,255,0.6)" },
-  coast: { base: "#3a8db2", blobs: ["#46a2c4", "#2f7ea3", "#58b3cf", "#2a7097"], fleck: "rgba(220,245,255,0.25)" },
-  ocean: { base: "#1d4c78", blobs: ["#235985", "#173f66", "#2a6390", "#143a5f"], fleck: "rgba(170,210,255,0.12)" },
+  coast: { base: "#3f97ad", blobs: ["#4cabc0", "#348aa0", "#5fbccc", "#2d7c93"], fleck: "rgba(220,245,255,0.25)" },
+  ocean: { base: "#1f5670", blobs: ["#25637d", "#1a4a62", "#2c6e88", "#164258"], fleck: "rgba(170,220,240,0.14)" },
   beach: { base: "#d8c48e", blobs: ["#e6d6a6", "#c9b27a", "#efe2bd"], fleck: "rgba(255,255,240,0.4)" },
 };
 const TEX = new Map();
+// Photo textures (visuals round 2): CC0 aerial ground from Poly Haven (web/static/terrain), graded
+// per terrain to the map palette, with the painted texture laid softly over them for broad tone
+// variation. Until they load the painted textures stand in, and the ground is rebuilt after.
+const TERRAIN_PHOTO = {
+  grassland: ["grass", "saturate(1.7) brightness(1.22) hue-rotate(12deg)", "rgba(120,175,55,0.2)"],
+  plains: ["grass", "sepia(0.55) saturate(2) hue-rotate(-18deg) brightness(1.3)", "rgba(215,180,80,0.24)"],
+  desert: ["dunes", "sepia(0.65) saturate(1.6) brightness(1.32)", "rgba(230,190,120,0.25)"],
+  beach: ["sand", "sepia(0.45) saturate(1.3) brightness(1.35)", "rgba(240,220,170,0.2)"],
+  tundra: ["tundra", "saturate(0.6) brightness(1.08)", "rgba(140,140,120,0.2)"],
+  snow: ["snow", "brightness(1.45) contrast(0.75) saturate(0.35)", "rgba(240,246,250,0.35)"],
+};
+const PHOTOS = {};
+let photosPending = 0;
+for (const src of new Set(Object.values(TERRAIN_PHOTO).map((p) => p[0]))) {
+  const im = new Image(); photosPending++;
+  im.onload = im.onerror = () => {
+    if (--photosPending === 0) {  // every photo is in: drop painted stand-ins and rebuild the ground
+      for (const k of Object.keys(TERRAIN_PHOTO)) TEX.delete(k);
+      CHUNKS.clear(); if (typeof S !== "undefined") S.dirty = true;
+    }
+  };
+  im.src = `terrain/${src}.jpg`; PHOTOS[src] = im;
+}
+function photoTexture(kind) {
+  const spec = TERRAIN_PHOTO[kind];
+  if (!spec || photosPending) return null;
+  const im = PHOTOS[spec[0]];
+  if (!im.naturalWidth) return null;
+  const N = 512, c = document.createElement("canvas"); c.width = c.height = N;
+  const g = c.getContext("2d");
+  g.filter = spec[1]; g.drawImage(im, 0, 0, N, N); g.filter = "none";
+  g.fillStyle = spec[2]; g.fillRect(0, 0, N, N);
+  return c;
+}
 // A 256px seamless painted texture: soft blobs (drawn wrapped at the edges) plus brush flecks.
 function terrainTexture(kind) {
   if (TEX.has(kind)) return TEX.get(kind);
+  const photo = photoTexture(kind);
+  if (photo) {  // the painted texture adds broad, soft tone variation over the photo
+    const painted = paintedTexture(kind), g = photo.getContext("2d");
+    g.globalAlpha = 0.22; g.globalCompositeOperation = "soft-light";
+    for (const ox of [0, 256]) for (const oy of [0, 256]) g.drawImage(painted, ox, oy);
+    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    TEX.set(kind, photo);
+    return photo;
+  }
+  if (TERRAIN_PHOTO[kind] && photosPending) return paintedTexture(kind);  // a stand-in, not cached
+  const c = paintedTexture(kind);
+  PAINTED.set(kind, c);
+  return c;
+}
+const PAINTED = new Map();
+function paintedTexture(kind) {
+  if (PAINTED.has(kind)) return PAINTED.get(kind);
   const P = PAINT[kind], N = 256, c = document.createElement("canvas");
   c.width = c.height = N;
   const g = c.getContext("2d"), rnd = rng(kind.length * 977 + kind.charCodeAt(0));
@@ -340,8 +391,11 @@ function chunkOrigin(cx, cy) { return [cx * CHUNK * SQ3 * R0 - CHUNK_PAD, cy * C
 // Fill a mask canvas (white where wanted) with a terrain's texture, aligned to the world.
 function texturise(mg, kind, w, h, wx, wy, Rb) {
   mg.globalCompositeOperation = "source-in";
-  const pat = mg.createPattern(terrainTexture(kind), "repeat"), sc = Math.max(0.35, Rb / 40);
-  pat.setTransform(new DOMMatrix().translate(-wx % (256 * sc), -wy % (256 * sc)).scale(sc));
+  const tex = terrainTexture(kind), size = tex.width;
+  // photo tiles (512 px) span about three hexes; painted tiles (256 px) keep their old scale
+  const sc = size === 512 ? Rb / 95 : Math.max(0.35, Rb / 40);
+  const pat = mg.createPattern(tex, "repeat");
+  pat.setTransform(new DOMMatrix().translate(-wx % (size * sc), -wy % (size * sc)).scale(sc));
   mg.fillStyle = pat; mg.fillRect(0, 0, w, h);
   mg.globalCompositeOperation = "source-over";
 }
@@ -486,9 +540,15 @@ function renderChunk(cx, cy, Rb) {
     g.drawImage(L, 0, 0);
   }
   g.restore();
-  // 2. a faint hex grid over the land, as in Civ
-  g.strokeStyle = "rgba(20,25,20,0.07)"; g.lineWidth = 1;
-  for (const [, t, x, y] of tiles) { if (!isWater(t)) { hexPath(g, x, y, Rb - 0.5); g.stroke(); } }
+  // 2. a thin light hex grid over land and water, as in Civ
+  if (Rb >= 13) {
+    g.lineWidth = 1;
+    for (const water of [false, true]) {
+      g.strokeStyle = water ? "rgba(200,235,255,0.13)" : "rgba(255,250,225,0.14)"; g.beginPath();
+      for (const [, t, x, y] of tiles) if (isWater(t) === water) hexSub(g, x, y, Rb - 0.5);
+      g.stroke();
+    }
+  }
   // 3. features over the ground, back to front
   for (const [i, t, x, y] of [...tiles].sort((a, b) => a[3] - b[3])) {
     const sp = featureSprite(t, Rb, Math.floor(hash(i, 3) * 6));

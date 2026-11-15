@@ -48,7 +48,7 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 
 ## Pass 1
 
-- [ ] 1. Terrain textures: Poly Haven CC0 ground textures (grass, dry grass, sand, rock, snow,
+- [x] 1. Terrain textures: Poly Haven CC0 ground textures (grass, dry grass, sand, rock, snow,
       tundra-like soil) prepared as seamless web textures per terrain; a more saturated palette;
       a thin light hex grid over land and water as in the references; water with depth, glints
       and the surf kept.
@@ -79,3 +79,4 @@ scenes for diplomacy (leaders come later, SPEC_M9 steps 4-6).
 ## Notes
 
 (one line per finished slice: what changed, what is still weak)
+- 1 Terrain: six CC0 Poly Haven aerial textures (web/static/terrain, sources in its README) replace the painted ground. Grassland and plains share the drone-shot grass, graded green or gold; desert uses rippled beach sand, beaches flat sand, tundra mossy rocky ground, snow the aerial snow field. Each is graded in code, softened with the old painted tones, and laid world-aligned with one tile per about three hexes. The painted textures stand in until the photos load, then the ground rebuilds. A thin light hex grid now covers land and water as in the references, and water is more teal. Still weak: grassland is fairly uniform (Civ's has more patchwork tone); the first build of a screen takes about 1.6 s while the textures are made.
