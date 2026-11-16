@@ -77,7 +77,7 @@ from beacon.commands import (
     UpgradeDefence,
     UpgradeTurret,
 )
-from beacon.config import Config
+from beacon.config import DOMAINS, Config
 from beacon.state import ACTIVE, EMPTY, City, GameState, Unit
 from beacon.units import full_moves, is_civilian
 
@@ -831,12 +831,15 @@ def _create_leader(state: GameState, cfg: Config, cmd: CreateLeader) -> Events:
 
     if state.turn != 0:
         raise CommandError("the leader is made before the first turn ends")
-    problem = leader.create_problem(cfg, cmd.name, cmd.sex, cmd.look, cmd.age, cmd.traits)
+    skills = {d: int(cmd.skills.get(d, 0)) for d in DOMAINS}
+    problem = leader.create_problem(
+        cfg, cmd.name, cmd.sex, cmd.look, cmd.age, cmd.traits, dict(cmd.skills)
+    )
     if problem:
         raise CommandError(problem)
     old = _leader_of(state, cmd.player)
     old.name, old.sex, old.look, old.start_age = cmd.name.strip(), cmd.sex, cmd.look, cmd.age
-    old.traits, old.custom = sorted(cmd.traits), True
+    old.traits, old.custom, old.skills = sorted(cmd.traits), True, skills
     return [{"kind": "leader_created", "name": old.name}]
 
 

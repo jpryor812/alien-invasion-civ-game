@@ -41,20 +41,45 @@ def generate(cfg: Config, seed: int, pid: str, taken: tuple[str, ...] = ()) -> L
     start = cfg.leader("start")
     traits = sorted(cfg.leader("traits.list"))
     r.shuffle(traits)
+    skills = dict.fromkeys(DOMAINS, 0)
+    for _ in range(start["skill_points"]):  # spread by seed, at most skill_max in any one
+        open_ = [d for d in DOMAINS if skills[d] < start["skill_max"]]
+        skills[r.choice(open_)] += 1
     return Leader(
         name=r.choice([n for n in cfg.leader(f"names.{sex}") if n not in taken]),
         sex=sex,
         look=look,
         start_age=r.randint(start["age_min"], start["age_max"]),
-        skills=dict.fromkeys(DOMAINS, start["skill"]),
+        skills=skills,
         traits=sorted(traits[: start["traits"]]),
     )
 
 
+def skills_problem(cfg: Config, skills: dict[str, int]) -> str | None:
+    start = cfg.leader("start")
+    if set(skills) - set(DOMAINS) or any(not isinstance(v, int) for v in skills.values()):
+        return "skills are the six domains, in whole points"
+    if any(v < 0 or v > start["skill_max"] for v in skills.values()):
+        return f"each skill takes 0 to {start['skill_max']} points"
+    if sum(skills.values()) != start["skill_points"]:
+        return f"spend all {start['skill_points']} skill points"
+    return None
+
+
 def create_problem(
-    cfg: Config, name: str, sex: str, look: str, age: int, traits: tuple[str, ...]
+    cfg: Config,
+    name: str,
+    sex: str,
+    look: str,
+    age: int,
+    traits: tuple[str, ...],
+    skills: dict[str, int] | None = None,
 ) -> str | None:
     start = cfg.leader("start")
+    if skills is not None:
+        why = skills_problem(cfg, skills)
+        if why:
+            return why
     if not name.strip() or len(name) > 40:
         return "a leader needs a name of 1-40 characters"
     if look not in looks(cfg):

@@ -2026,7 +2026,12 @@ function renderChrome() {
 }
 
 function cityName(id) { const c = S.view.cities[id]; return c ? c.name : `city ${id}`; }
-function unitLabel(id) { const u = S.view.units.find((x) => x.id === id); return u ? pretty(u.type) : "A unit"; }
+function unitLabel(id) { const u = S.view.units.find((x) => x.id === id); return u ? unitName(u) : "A unit"; }
+// The band's lead unit is the leader in person (designer 2026-11-16): it carries the leader's name.
+function unitName(u) {
+  if (u.type === "band_leader") return u.owner === S.view.me && S.view.leader ? S.view.leader.name : `${pretty(u.owner)}'s leader`;
+  return pretty(u.type);
+}
 function describePending(p) {
   return {
     choose_research: "Choose research",
@@ -2171,8 +2176,9 @@ function renderUnitPanel() {
   side.classList.add("unitmode");
   const model = UNIT_ART[u.type], col = u.owner === "aliens" ? "#b8322a" : OWNER[u.owner] || "#999";
   side.innerHTML = `
-    <div class="uportrait" style="--c:${col}">${model ? `<img alt="" src="units/${model}.png">` : ""}</div>
-    <div class="title">${esc(pretty(u.type))}${u.count > 1 ? " ×2" : ""}</div>
+    <div class="uportrait" style="--c:${col}">${u.type === "band_leader" && u.owner === S.view.me && S.view.leader ? `<img alt="" class="leaderface" src="leaders/${S.view.leader.look}_${S.view.leader.outfit}_portrait.webp">` : model ? `<img alt="" src="units/${model}.png">` : ""}</div>
+    <div class="title">${esc(unitName(u))}${u.count > 1 ? " ×2" : ""}</div>
+    ${u.type === "band_leader" ? '<div class="muted">Your leader, leading the survivors (20 strength)</div>' : ""}
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
     ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: explore. Abandoned crates may hold weapons, armour or people; somewhere near, the aliens hold your old town.${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
@@ -2449,7 +2455,7 @@ function showTooltip(i, x, y) {
     } else if (S.explored.has(i)) html = '<span class="muted">Mist: explored, not seen now</span>';
     else html = '<span class="muted">Fog: unexplored</span>';
     if (c) html += `<br><b>${esc(c.name)}</b> · ${c.status}${c.owner ? ` · ${pretty(c.owner)}` : ""} · pop ${c.pop}`;
-    for (const u of us) html += `<br>${pretty(u.owner)}: ${pretty(u.type)}${u.count > 1 ? " ×2" : ""} (${u.hp} HP)`;
+    for (const u of us) html += `<br>${pretty(u.owner)}: ${esc(unitName(u))}${u.count > 1 ? " ×2" : ""} (${u.hp} HP)`;
   }
   tip.innerHTML = html;
   tip.classList.remove("hidden");
@@ -2916,7 +2922,16 @@ function leaderScreen(d) {
     </div></div>`;
 }
 function creationScreen(d) {
-  const c = S.creating || (S.creating = { name: d.name, look: d.look, age: d.age, traits: d.traits.map((t) => t.id), agenda: d.agenda });
+  const c = S.creating || (S.creating = { name: d.name, look: d.look, age: d.age, traits: d.traits.map((t) => t.id), agenda: d.agenda,
+    skills: { food: 0, production: 0, military: 0, science: 0, gold: 0, beacon: 0 } });
+  const spent = Object.values(c.skills).reduce((a, b) => a + b, 0), left = d.catalog.skill_points - spent;
+  const ready = c.traits.length === d.catalog.trait_count && c.name.trim() && left === 0;
+  const skillRows = ["food", "production", "military", "science", "gold", "beacon"].map((k) => `<div class="cskill" style="--c:${SKILL_COLOR[k]}">
+    <span class="ico">${ICON[k] || ""}</span><span class="lname">${pretty(k)}</span>
+    <button class="small" data-sk="${k}" data-d="-1" ${c.skills[k] ? "" : "disabled"}>−</button>
+    <span class="pips">${Array.from({ length: d.catalog.skill_max }, (_, i) => `<i class="${i < c.skills[k] ? "on" : ""}"></i>`).join("")}</span>
+    <button class="small" data-sk="${k}" data-d="1" ${c.skills[k] < d.catalog.skill_max && left > 0 ? "" : "disabled"}>+</button>
+    <span class="lval">+${c.skills[k]}</span></div>`).join("");
   const looks = d.catalog.looks.map((l) => `<button class="${l.id === c.look ? "primary" : ""}" data-look="${l.id}">${l.sex === "man" ? "Man" : "Woman"}</button>`).join("");
   const traits = d.catalog.traits.map((t) => `<button class="${c.traits.includes(t.id) ? "primary" : ""}" data-ctrait="${t.id}" data-tip="${esc(t.note)}"><b>${esc(t.name)}</b><span class="muted small">${esc(t.note)}</span></button>`).join("");
   return `<div class="leader">
@@ -2924,14 +2939,16 @@ function creationScreen(d) {
       <div class="lbanner"><div class="lnm">${esc(c.name || "…")}</div><div class="ltl">${esc(d.title)}</div></div></div>
     <div class="lside">
       <h2>Create your leader</h2>
-      <p class="muted">Your leader heads ${esc(d.continent)}'s council. Skills start at +1 and grow with each level; the leader ages but never dies.</p>
+      <p class="muted">Your leader heads ${esc(d.continent)}'s council. Spread ${d.catalog.skill_points} skill points (they grow with each level), choose two traits and an agenda, then press Start. The leader ages but never dies.</p>
       <h3>Name</h3><input id="cname" maxlength="40" value="${esc(c.name)}">
       <h3>Look</h3><div class="row">${looks}</div>
       <h3>Age <span id="cagev">${c.age}</span></h3><input id="cage" type="range" min="${d.catalog.age_min}" max="${d.catalog.age_max}" value="${c.age}">
       <h3>Traits <span class="muted small">(choose ${d.catalog.trait_count}; a third comes at level 5)</span></h3><div class="ctraits">${traits}</div>
+      <h3>Skills <span class="muted small">(${left ? `<b>${left}</b> of ${d.catalog.skill_points} points left to spend` : "all points spent"}; at most ${d.catalog.skill_max} in one; each point adds to every city)</span></h3>
+      <div class="cskills">${skillRows}</div>
       <h3>Agenda <span class="muted small">(public: what you stand for on the council)</span></h3><div class="ctraits">${d.catalog.agendas.map((a) => `<button class="${a.id === c.agenda ? "primary" : ""}" data-cagenda="${a.id}"><b>${esc(a.name)}</b><span class="muted small">${esc(a.note)}</span></button>`).join("")}</div>
-      <div class="row" style="margin-top:14px"><button class="primary" id="ccreate" ${c.traits.length === d.catalog.trait_count && c.name.trim() ? "" : "disabled"}>Lead ${esc(d.continent)}</button>
-        <button id="ckeep">Keep ${esc(d.name)}</button></div>
+      <div class="cstart"><button class="primary big" id="ccreate" ${ready ? "" : "disabled"} title="${ready ? "Save your leader and begin" : left ? `Spend ${left} more skill points` : "Choose a name and two traits"}">Start</button>
+        <span class="muted small">${ready ? `Lead ${esc(d.continent)} as ${esc(c.name.trim())}.` : left ? `Spend ${left} more skill point${left > 1 ? "s" : ""} to start.` : "Choose a name and two traits."}</span></div>
     </div></div>`;
 }
 function wireLeader(body, create) {
@@ -2939,7 +2956,8 @@ function wireLeader(body, create) {
   const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => el.onclick = () => fn(el));
   if (create) {
     const c = S.creating, redraw = () => { body.innerHTML = creationScreen(d); wireLeader(body, true); };
-    $("cname").oninput = (e) => { c.name = e.target.value; body.querySelector(".lnm").textContent = c.name || "…"; $("ccreate").disabled = !(c.traits.length === d.catalog.trait_count && c.name.trim()); };
+    $("cname").oninput = (e) => { c.name = e.target.value; body.querySelector(".lnm").textContent = c.name || "…"; const left = d.catalog.skill_points - Object.values(c.skills).reduce((a, b) => a + b, 0); $("ccreate").disabled = !(c.traits.length === d.catalog.trait_count && c.name.trim() && !left); };
+    on("[data-sk]", (el) => { const k = el.dataset.sk; c.skills[k] = Math.max(0, Math.min(d.catalog.skill_max, c.skills[k] + Number(el.dataset.d))); redraw(); });
     $("cage").oninput = (e) => { c.age = Number(e.target.value); $("cagev").textContent = c.age; };
     $("cage").onchange = redraw;
     on("[data-look]", (el) => { c.look = el.dataset.look; redraw(); });
@@ -2951,11 +2969,14 @@ function wireLeader(body, create) {
     });
     $("ccreate").onclick = () => {
       const sex = d.catalog.looks.find((l) => l.id === c.look).sex;
-      S.creating = null;
-      api("/api/command", { kind: "set_agenda", agenda: c.agenda }).then(() =>
-        act({ kind: "create_leader", name: c.name.trim(), sex, look: c.look, age: c.age, traits: c.traits }, "leader"));
+      api("/api/command", { kind: "set_agenda", agenda: c.agenda })
+        .then(() => api("/api/command", { kind: "create_leader", name: c.name.trim(), sex, look: c.look, age: c.age, traits: c.traits, skills: c.skills }))
+        .then(async (r) => {
+          if (r.ok === false) { toast(r.error); return; }
+          S.creating = null; closeModal(); await refresh(true);  // the game begins
+          splash(`${c.name.trim()} leads ${d.continent}`);
+        });
     };
-    $("ckeep").onclick = () => { S.creating = null; closeModal(); };
     return;
   }
   on("[data-raise]", (el) => act({ kind: "raise_skill", skill: el.dataset.raise }, "leader"));
@@ -3507,7 +3528,7 @@ function unitsScreen(d, filter) {
   const btn = (k, label, n) => `<button class="small ${f === k ? "primary" : ""}" data-ufilter="${k}">${label} (${n})</button>`;
   const count = (k) => d.units.filter((u) => k === "all" || (k === "military" && ["melee", "ranged"].includes(u.role)) || (k === "civilian" && ["civilian", "recon"].includes(u.role)) || (k === "defence" && u.role === "defence") || (k === "orders" && u.doing === "needs orders") || (k === "promote" && u.due > 0) || (k === "abroad" && u.abroad)).length;
   const rows = list.map((u) => `<tr class="clickable" data-gounit="${u.id}" data-tile="${u.tile}">
-      <td><b>${esc(pretty(u.type))}</b>${u.count > 1 ? " ×2" : ""}${u.promotions.filter((p) => p !== "gold_upgrade").length ? ` <span class="good">${"★".repeat(Math.min(3, u.promotions.length))}</span>` : ""}</td>
+      <td><b>${esc(unitName(u))}</b>${u.count > 1 ? " ×2" : ""}${u.promotions.filter((p) => p !== "gold_upgrade").length ? ` <span class="good">${"★".repeat(Math.min(3, u.promotions.length))}</span>` : ""}</td>
       <td>${esc(u.where)}${u.abroad ? ' <span class="muted">(abroad)</span>' : ""}</td>
       <td><div class="bar small"><i style="width:${Math.round(100 * u.hp / u.max_hp)}%"></i></div><span class="small">${u.hp}/${u.max_hp}</span></td>
       <td>${u.role === "defence" ? "—" : `${u.moves}/${u.full_moves}`}</td>

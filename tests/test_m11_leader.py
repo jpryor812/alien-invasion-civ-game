@@ -159,7 +159,9 @@ def test_every_player_gets_a_seeded_leader(cfg):
     assert len({lead.name for lead in leaders}) == len(leaders)
     start = cfg.leader("start")
     for lead in leaders:
-        assert lead.skills == dict.fromkeys(DOMAINS, 1)
+        # 15 points spread by seed, at most 5 in one skill (designer 2026-11-16)
+        assert set(lead.skills) == set(DOMAINS) and sum(lead.skills.values()) == 15
+        assert max(lead.skills.values()) <= 5
         assert len(lead.traits) == start["traits"] and lead.level == 1
         assert start["age_min"] <= lead.start_age <= start["age_max"]
         assert leader.looks(cfg)[lead.look] == lead.sex
@@ -177,16 +179,44 @@ def test_creation_screen_remakes_the_leader_before_the_first_turn(cfg):
         look="woman_1",
         age=42,
         traits=("steady", "visionary"),
+        skills={"science": 5, "production": 4, "military": 3, "food": 3},
     )
+    sk = make.skills
     for bad in (
-        CreateLeader(player=EU, name="X", sex="man", look="woman_1", age=42, traits=make.traits),
-        CreateLeader(player=EU, name="X", sex="woman", look="woman_1", age=90, traits=make.traits),
-        CreateLeader(player=EU, name="X", sex="woman", look="woman_1", age=42, traits=("steady",)),
+        CreateLeader(
+            player=EU, name="X", sex="man", look="woman_1", age=42, traits=make.traits, skills=sk
+        ),
+        CreateLeader(
+            player=EU, name="X", sex="woman", look="woman_1", age=90, traits=make.traits, skills=sk
+        ),
+        CreateLeader(
+            player=EU, name="X", sex="woman", look="woman_1", age=42, traits=("steady",), skills=sk
+        ),
+        # all 15 points must be spent, at most 5 in one skill
+        CreateLeader(
+            player=EU,
+            name="X",
+            sex="woman",
+            look="woman_1",
+            age=42,
+            traits=make.traits,
+            skills={"science": 5},
+        ),
+        CreateLeader(
+            player=EU,
+            name="X",
+            sex="woman",
+            look="woman_1",
+            age=42,
+            traits=make.traits,
+            skills={"science": 6, "gold": 5, "food": 4},
+        ),
     ):
         with pytest.raises(CommandError):
             apply_command(s, cfg, bad)
     apply_command(s, cfg, make)
     lead = s.players[EU].leader
+    assert lead.skills["science"] == 5 and lead.skills["beacon"] == 0
     assert (lead.name, lead.start_age, lead.traits, lead.custom) == (
         "Rhea Calder",
         42,
@@ -225,8 +255,9 @@ def test_achievements_level_the_leader_and_milestones_offer_bonuses(cfg):
     events = leader.end_of_turn(s, cfg)
     assert {"leader_level", "leader_milestone"} <= {e["kind"] for e in events}
     assert lead.level == 2 and leader.points(cfg, lead) == 1
+    before = lead.skills["production"]
     apply_command(s, cfg, RaiseSkill(player=EU, skill="production"))
-    assert lead.skills["production"] == 2
+    assert lead.skills["production"] == before + 1
     with pytest.raises(CommandError, match="no skill points"):
         apply_command(s, cfg, RaiseSkill(player=EU, skill="production"))
     assert lead.choices == ["liberator:1"]
@@ -284,7 +315,8 @@ def test_a_hybrid_averages_its_parents_and_some_cities_refuse_it(cfg):
     s.turn = s.players[EU].leader.due
     born = next(e for e in leader.end_of_turn(s, cfg) if e["kind"] == "leader_child_born")
     child = s.citizens[str(born["citizen"])]
-    assert child.hybrid and sum(child.stats.values()) == (6 + 30) // 2  # designer: the average
+    lead_total = sum(s.players[EU].leader.skills.values())
+    assert child.hybrid and sum(child.stats.values()) == (lead_total + 30) // 2  # the average
     assert child.stats["science"] > child.stats.get("food", 0)
     child.adult = True
     home.refuses_hybrids = True
@@ -329,7 +361,7 @@ def test_ai_leaders_level_spend_points_and_start_families(cfg):
     assert any(lead.level > 1 for lead in leaders)
     for lead in leaders:
         assert leader.points(cfg, lead) == 0 and not lead.choices
-        assert sum(lead.skills.values()) == 6 + lead.spent
+        assert sum(lead.skills.values()) == 15 + lead.spent
     assert any(e["kind"] == "family_started" for e in events)
 
 

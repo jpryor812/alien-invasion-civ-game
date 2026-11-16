@@ -967,3 +967,17 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Later (designer).** Citizens crafting weapons to defend themselves; a Clash-style separate mode
   fed by blueprints and rewards from the main game.
 
+## Leader creation revision (designer 2026-11-16)
+
+- **15 skill points.** At creation the player spreads 15 points over the six skills, at most 5 in
+  one, and must spend them all to start (`start.skill_points`, `start.skill_max`; replaces +1 in
+  every skill). AI leaders get theirs spread one point at a time by seed, under the same cap.
+  Levels still add one point each, with no cap. Hybrids average the leader's current total
+  (now 15 and up) with the alien parent's.
+- **Start.** The creation screen ends with a Start button: it saves the leader (and agenda) and
+  begins the game; the "keep the generated leader" option is gone (closing the screen still keeps
+  it).
+- **The band's leader.** The band's lead unit shows the leader's name and portrait (other
+  players' show as "<continent>'s leader"); it is still the 20-strength band_leader unit, with
+  four 10-strength survivors.
+

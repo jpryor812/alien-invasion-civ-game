@@ -1179,6 +1179,8 @@ class Session:
                 ],
                 "looks": [{"id": k, "sex": v} for k, v in leader.looks(cfg).items()],
                 "traits": [trait_row(t) for t in sorted(traits)],
+                "skill_points": start["skill_points"],
+                "skill_max": start["skill_max"],
                 "age_min": start["age_min"],
                 "age_max": start["age_max"],
                 "trait_count": start["traits"],

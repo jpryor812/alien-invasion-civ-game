@@ -449,6 +449,7 @@ class CreateLeader(Command):
     look: str
     age: int
     traits: tuple[str, ...]
+    skills: dict[str, int]  # the 15 starting points (designer 2026-11-16)
 
 
 @register
