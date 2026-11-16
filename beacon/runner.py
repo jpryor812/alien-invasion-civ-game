@@ -32,11 +32,13 @@ def play(
     continents: list[str] | None = None,
     driver: str = "bot",
     humans: tuple[str, ...] = (),
+    start: str | None = None,
 ) -> tuple[GameState, list[dict[str, Any]], list[dict[str, Any]]]:
     """Play `turns` turns. Every non-human player is driven by `driver` ("bot", the M3-M5 test
     bot, or "ai", the M6 characters). Human seats issue no commands here (a client drives them).
-    Returns final state, event log and command log."""
-    state = new_game(cfg, seed, continents)
+    Returns final state, event log and command log. `start`: survivor or classic (default:
+    data/tuning.yaml start.mode)."""
+    state = new_game(cfg, seed, continents, start or cfg.t("start.mode"))
     for pid in humans:
         state.players[pid].controller = "human"
     take_turn = DRIVERS[driver]
@@ -70,9 +72,10 @@ def replay(
     turns: int,
     log: list[dict[str, Any]],
     continents: list[str] | None = None,
+    start: str | None = None,
 ) -> GameState:
     """Rebuild a game from its seed and accepted commands."""
-    state = new_game(cfg, seed, continents)
+    state = new_game(cfg, seed, continents, start or cfg.t("start.mode"))
     accepted = [e for e in log if e["ok"]]
     i = 0
     for _ in range(turns):
@@ -159,6 +162,8 @@ def summary(
             for pid, p in state.players.items()
             if p.leader is not None
         },
+        # SPEC_M14: when each player took its first town (None: not yet)
+        "first_city_turn": first_city_turns(state),
         "hybrids_voted_out": sum(1 for c in state.citizens.values() if c.banned_until >= 0),
         # SPEC_M13: the council of continents
         "council_sessions": state.council.sessions,
@@ -167,6 +172,19 @@ def summary(
             pid for pid in state.player_ids() if council.objective_met(state, cfg, pid)
         ),
     }
+
+
+def first_city_turns(state: GameState) -> dict[str, int | None]:
+    """The turn each player's first town was freed (survivor start); 0 for a classic start."""
+    out: dict[str, int | None] = {}
+    for pid, p in state.players.items():
+        if p.band_town is None:
+            out[pid] = 0
+        elif not p.founded:
+            out[pid] = None
+        else:
+            out[pid] = state.cities[p.band_town].liberated_turn
+    return out
 
 
 def write_run(out: Path, state: GameState, events: list, log: list, info: dict) -> None:
@@ -198,12 +216,14 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--out", default="")
     run_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
     run_p.add_argument("--human", default="", help="comma-separated player ids left to a human")
+    run_p.add_argument("--start", choices=["survivor", "classic"], default=None)
     batch_p = sub.add_parser("batch")
     batch_p.add_argument("--seeds", default="1-5")
     batch_p.add_argument("--turns", type=int, default=50)
     batch_p.add_argument("--continents", default="")
     batch_p.add_argument("--out", default="runs/batch")
     batch_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
+    batch_p.add_argument("--start", choices=["survivor", "classic"], default=None)
     args = parser.parse_args(argv)
 
     cfg = load()
@@ -211,7 +231,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "run":
         start = time.perf_counter()
         humans = tuple(h for h in args.human.split(",") if h)
-        state, events, log = play(cfg, args.seed, args.turns, continents, args.driver, humans)
+        state, events, log = play(
+            cfg, args.seed, args.turns, continents, args.driver, humans, args.start
+        )
         info = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
         out = Path(args.out or f"runs/seed{args.seed}")
         write_run(out, state, events, log, info)
@@ -221,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
     rows = []
     for seed in _parse_seeds(args.seeds):
         start = time.perf_counter()
-        state, _, log = play(cfg, seed, args.turns, continents, args.driver)
+        state, _, log = play(cfg, seed, args.turns, continents, args.driver, (), args.start)
         row = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
         rows.append(row)
         print(canonical.dumps(row))

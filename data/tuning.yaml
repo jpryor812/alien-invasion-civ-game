@@ -305,6 +305,11 @@ combat:
     neutral: 10
 
 start:
+  mode:
+    value: survivor
+    status: calibrated
+    note: Designer 2026-11-15 (SPEC_M14) - survivor (the band takes its first town) is the normal
+      start; classic gives cities and an army from turn 1.
   units:
     status: placeholder
     note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
@@ -538,3 +543,40 @@ remnants:
     value: 5
     status: placeholder
     note: Fewest hexes between two remnants.
+
+survivor:
+  status: placeholder
+  note: The survivor start (docs/SPEC_M14.md, designer 2026-11-15). Each player's band (band) starts
+    band_distance hexes from its first town, the player's old capital held lightly by the aliens
+    (town_garrison, at town_hp_pct of its HP). Caches hold loot (weights); near_caches of them lie
+    within near_radius of the band and always hold gear, the rest within radius. A unit holds one
+    weapon (weapon or alien_weapon, the better counts) and one armour. Alien hunters ignore band
+    units farther than hunt_radius (one less in forest or hills). If the leader falls before the
+    first town, it escapes to the band's starting hex with escape_survivors survivors. The town's
+    barricades hold (it cannot fall below 1 HP) until the band has found a weapon, armour or another
+    survivor (designer - no capture without an upgrade or an extra citizen). Taking the
+    first town turns survivors without gear into citizens; geared survivors stay as units; the
+    leader leaves the map; scrap becomes production; founding_units join. AI bands storm the town
+    once they have gear, six people or it is ai_attack_turn, attacking only when the unit keeps at
+    least ai_min_hp after the worst counter-blow or the blow takes the town.
+  band: [{type: band_leader, count: 1}, {type: survivor, count: 4}]
+  band_distance: 3
+  town_garrison: [alien_hatchling]
+  town_pop: 2
+  town_hp_pct: 100
+  caches: 8
+  near_caches: 2
+  near_radius: 3
+  radius: 7
+  loot:
+    weapon: {weight: 4, attack: 5}
+    armour: {weight: 3, defence: 5}
+    alien_weapon: {weight: 1, attack: 12}
+    survivor: {weight: 3}
+    scrap: {weight: 3, scrap: 20}
+  hunt_radius: 2
+  escape_survivors: 2
+  founding_units: [engineers, recon_team]
+  ai_attack_turn: 9
+  ai_min_hp: 20
+

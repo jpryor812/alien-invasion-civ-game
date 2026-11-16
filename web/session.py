@@ -63,16 +63,16 @@ PUBLIC_EVENTS = frozenset(
 
 
 class Session:
-    def __init__(self, cfg: Config, seed: int = 1, human: str = "europe"):
+    def __init__(self, cfg: Config, seed: int = 1, human: str = "europe", start: str | None = None):
         self.cfg = cfg
         self.reveal = False  # developer only (web.server --reveal): the whole map, for art
         self.profile_path = profile.PROFILE  # the career profile (tests point it elsewhere)
-        self.new(seed, human)
+        self.new(seed, human, start)
 
     # -- lifecycle ---------------------------------------------------------------------------
 
-    def new(self, seed: int, human: str) -> None:
-        state = new_game(self.cfg, seed)
+    def new(self, seed: int, human: str, start: str | None = None) -> None:
+        state = new_game(self.cfg, seed, start=start or self.cfg.t("start.mode"))
         if human not in state.players:
             raise ValueError(f"unknown player {human!r}")
         state.players[human].controller = "human"
@@ -494,7 +494,14 @@ class Session:
         from beacon import council
 
         rank = [r["player"] for r in mvp.ranking(s, cfg)]
+        player = s.players[me]
+        town = s.cities[player.band_town] if player.band_town is not None else None
         return {
+            # SPEC_M14: the survivor start - explored caches, the band's first town
+            "founded": player.founded,
+            "band_town": None if player.founded or town is None else town.tile,
+            "scrap": player.scrap,
+            "caches": sorted(int(k) for k in s.caches if (bits >> int(k)) & 1),
             "influence": council.influence(cfg, s.players[me]),
             "mvp_rank": rank.index(me) + 1,
             "council_open": bool(s.council.measures),

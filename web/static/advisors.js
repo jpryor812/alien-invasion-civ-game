@@ -25,6 +25,12 @@
     production: { who: "economic", title: "Building your cities",
       body: "Each city builds one thing at a time. Pick from the list; hover an item for what it does. Gold can buy the current item outright.",
       more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favour food, production, science or gold." },
+    survivors: { who: "military", title: "Survivors",
+      body: "You have no city yet: just your leader and four survivors with makeshift weapons. Search the crates nearby for rifles, armour, alien weapons and more people. The aliens hold your old town; its barricades will not fall to a band that has found nothing.",
+      more: "Each find makes the band stronger and opens the town's barricades. Wounded units heal when they rest (fortify). Alien hunters do not chase a band at a distance, and cover (forest, hills) hides you better. Free the town and your survivors become its first citizens; then research and building begin." },
+    first_city: { who: "economic", title: "Your first city",
+      body: "The town is yours, and it is your capital. Your survivors live there now; those carrying gear stay in the field. Choose what it builds and what to research: the real work begins.",
+      more: "Scrap you salvaged went into the city's production. Engineers and a scout have joined you." },
     research: { who: "science", title: "Research",
       body: "Choose what your scientists work on. The tree starts with two branches, Urban Planning and Advanced Manufacturing, and every tech opens two more. Each card shows how many turns it takes and what it unlocks.",
       more: "Urban Planning leads to International Accords (alliances) and Beacon Theory (recruits); Radio Beacons, Deep Space Radar and Orbital Barrage end the war. Advanced Manufacturing leads to science, industry and the army." },
@@ -142,6 +148,8 @@
     const v = S.view;
     if (!v || off()) return;
     if (v.turn <= 1) { trigger("welcome"); trigger("first_moves"); }
+    if (v.founded === false) trigger("survivors");
+    if (v.events.some((e) => e.kind === "first_city" && e.player === v.me)) trigger("first_city");
     if (v.pending.some((p) => p.kind === "choose_research")) trigger("research");
     if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1) trigger("production");
     const known = Object.values(v.cities);

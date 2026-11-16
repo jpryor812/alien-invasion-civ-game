@@ -152,7 +152,7 @@ def test_session_shows_strikes_heat_and_actions(cfg, tmp_path, monkeypatch):
 
     monkeypatch.setattr(session_mod, "SAVE_DIR", tmp_path / "saves")
     monkeypatch.setattr(profile, "PROFILE", tmp_path / "profile.json")
-    sess = Session(cfg, seed=3, human=EU)
+    sess = Session(cfg, seed=3, human=EU, start="classic")
     s = sess.state
     s.turn = 40
     capital = next(c for c in s.cities if c.owner == EU and c.is_capital)

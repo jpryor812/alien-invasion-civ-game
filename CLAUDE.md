@@ -18,7 +18,8 @@ branch that recruits alien characters, and an MVP score.
 - Test: `uv run pytest -q`
 - Lint: `uv run ruff check . && uv run ruff format --check .`
 - One run: `uv run python -m beacon.runner run --seed 1 --turns 100 --out runs/s1`
-  (`--driver ai|bot`, default ai; `--human europe` leaves a seat to a human client)
+  (`--driver ai|bot`, default ai; `--human europe` leaves a seat to a human client;
+  `--start survivor|classic`, default survivor)
 - Batch: `uv run python -m beacon.runner batch --seeds 1-20 --turns 100 --driver ai`
 - Play in the browser: `uv run python -m web.server` then open http://127.0.0.1:8765
 

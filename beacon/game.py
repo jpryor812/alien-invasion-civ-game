@@ -16,6 +16,7 @@ from beacon import (
     rng,
     starfall,
     story,
+    survivors,
     threat,
 )
 from beacon.config import Config
@@ -46,7 +47,11 @@ def assign_characters(cfg: Config, state: GameState) -> None:
         state.players[pid].character = chars[k % len(chars)]
 
 
-def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> GameState:
+def new_game(
+    cfg: Config, seed: int, continents: list[str] | None = None, start: str = "classic"
+) -> GameState:
+    """A new game. `start` is "classic" (cities and an army) or "survivor" (SPEC_M14: a band
+    that must take its first town); the runner and the web session pass cfg's start.mode."""
     continents = sorted(continents or cfg.continent_ids(), key=lambda c: cfg.continents[c]["order"])
     tiles, city_list = mapgen.generate(cfg, seed, continents)
     state = GameState(
@@ -111,8 +116,14 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
         if city.status == ACTIVE and city.owner in state.players:
             role = "capital" if city.is_capital else "known"
             improvements.auto_improve(state, cfg, city, improved[role], city.owner)
+    if start == "survivor":
+        story.place_sites(state, cfg)  # caches avoid finds, so finds come first
+        survivors.setup(state, cfg)
+    elif start != "classic":
+        raise ValueError(f"unknown start {start!r}")
     citizens.assign_all(state, cfg)
-    story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
+    if start == "classic":
+        story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
     starfall.place_remnants(state, cfg)  # meteor remnants (docs/SPEC_M10.md)
     threat.seed_contents(state, cfg)  # what alien cities hold, and their nests (SPEC_M12)
     threat.place_nests(state, cfg)

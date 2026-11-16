@@ -54,6 +54,13 @@ def unit_strength(
     spec = cfg.units[unit.type]
     base = spec["ranged_strength"] if ranged else spec["strength"]
     lines: list[dict[str, Any]] = [{"source": "base", "kind": "base", "value": base}]
+    if unit.gear:  # found weapons and armour (SPEC_M14)
+        from beacon.survivors import gear_bonus
+
+        bonus = gear_bonus(cfg, unit, defending)
+        if bonus:
+            lines.append({"source": "gear", "kind": "base", "value": bonus})
+            base += bonus
     if unit.count > 1:
         lines.append({"source": "stack", "kind": "multiplier", "value": unit.count})
     mods: list[tuple[str, int]] = []
@@ -486,6 +493,10 @@ def attack(state: GameState, cfg: Config, unit: Unit, target: int) -> Events:
     if isinstance(defender, City):
         city = defender
         floor = 0 if land_melee else 1
+        from beacon.survivors import barricades_hold  # a band's first town (SPEC_M14)
+
+        if barricades_hold(state, cfg, city, unit.owner):
+            floor = 1
         city.hp = max(floor, city.hp - to_def)
         city.besieged = True
         city.damage_by[unit.owner] = city.damage_by.get(unit.owner, 0) + to_def

@@ -916,6 +916,11 @@ function draw(t = performance.now()) {
     if (sx < -R || sy < -R || sx > W + R || sy > H + R) continue;
     drawSite(sx, sy, R, t);
   }
+  for (const tile of S.view.caches || []) {  // survivor-start caches (SPEC_M14)
+    const [sx, sy] = screenOf(tile);
+    if (sx < -R || sy < -R || sx > W + R || sy > H + R) continue;
+    drawCache(sx, sy, R, t);
+  }
   // 6. move and attack highlights
   for (const [i, sx, sy] of visible) {
     if (reach.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.stroke(); }
@@ -1616,6 +1621,7 @@ function roundRect(x, y, w, h, r) {
 // Civ-style city banner: a dark plate with owner-coloured end caps (population on the left,
 // production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
 // and the city's health bar beneath.
+const GEAR_NAME = { weapon: "Rifle (+5 attack)", armour: "Body armour (+5 defence)", alien_weapon: "Alien weapon (+12 attack)" };
 const CONTENTS_NAME = { survivors: "survivors", captive: "a captive specialist", lab: "a working lab", cache: "a weapons cache", depot: "a fuel depot", hive_heart: "a hive heart" };
 // An announced alien strike (SPEC_M12): a red arrow from where it gathers to the city, with the
 // turns left in a disc on the city.
@@ -1746,7 +1752,7 @@ function formation(n, sp) {
   return out;
 }
 const UNIT_ART = {
-  infantry: "infantry", militia: "infantry", marines: "infantry", home_guard: "infantry", recon_team: "infantry",
+  infantry: "infantry", militia: "infantry", band_leader: "infantry", survivor: "infantry", marines: "infantry", home_guard: "infantry", recon_team: "infantry",
   anti_tank_team: "infantry", exo_infantry: "walker", xeno_trooper: "infantry", plasma_lancer: "infantry",
   engineers: "engineer", survey_team: "engineer", medical_team: "engineer", nanorepair_crew: "engineer",
   tank: "tank", mech_infantry: "tank", armoured_recon: "tank", hover_tank: "hover_tank", trade_convoy: "tank",
@@ -1975,7 +1981,7 @@ function renderChrome() {
   const gd = e.gold_per_turn;
   $("gold").innerHTML = `${ICON.gold}<b style="color:var(--gold)">${e.gold}</b> <span class="${gd >= 0 ? "good" : "bad"}">(${gd >= 0 ? "+" : ""}${gd})</span>`;
   const rs = v.research;
-  $("science").innerHTML = `${ICON.science}<b style="color:var(--science)">+${e.science_per_turn}</b> · ${rs ? `${esc(pretty(rs.tech))} <span class="muted">(${rs.turns ?? "–"})</span>` : '<span class="bad">choose research</span>'}`;
+  $("science").innerHTML = `${ICON.science}<b style="color:var(--science)">+${e.science_per_turn}</b> · ${rs ? `${esc(pretty(rs.tech))} <span class="muted">(${rs.turns ?? "–"})</span>` : v.founded === false ? '<span class="muted">no city yet</span>' : '<span class="bad">choose research</span>'}`;
   $("beacon").innerHTML = `${ICON.beacon}<b style="color:var(--beacon)">${e.beacon_points}</b>${e.arrival_cost ? `/${e.arrival_cost}` : ""} <span class="muted">rarity ${e.rarity}</span>`;
   for (const [id, y] of [["gold", "gold"], ["science", "science"], ["beacon", "beacon"]]) { $(id).dataset.tip = breakdownHtml(y, e); $(id).removeAttribute("title"); }
   const knownAlien = Object.values(v.cities).filter((c) => c.status === "overrun").length;
@@ -2071,6 +2077,9 @@ function describeEvent(e) {
     shard_claimed: () => e.by === S.view.me ? `You claimed the ${e.name} shard!` : e.by === "aliens" ? `The aliens claimed the ${e.name} shard.` : `${pretty(e.by)} claimed the ${e.name} shard.`,
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
+    loot_found: () => `Cache found: ${(e.result || []).join(", ")}.`,
+    first_city: () => `${cityName(e.city)} is free! Your band settles: ${e.citizens} citizens${e.scrap ? `, ${e.scrap} scrap into production` : ""}. The real work begins.`,
+    leader_escaped: () => "Your leader escaped with two survivors to where the band began.",
     council_session: () => `The council meets: ${(e.measures || []).map(pretty).join(", ")}. Vote this turn.`,
     measure_result: () => `Council: ${pretty(e.measure)} ${e.passed ? "passed" : "failed"}.`,
     chair_elected: () => `${pretty(e.chair)} was elected chair of the council.`,
@@ -2163,6 +2172,8 @@ function renderUnitPanel() {
     <div class="uportrait" style="--c:${col}">${model ? `<img alt="" src="units/${model}.png">` : ""}</div>
     <div class="title">${esc(pretty(u.type))}${u.count > 1 ? " ×2" : ""}</div>
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
+    ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
+    ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: take caches (crates) for weapons, armour and people, then free your first town. Scrap ${S.view.scrap}.</div>` : ""}
     ${spec.fixed ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
     <div class="bar"><i style="width:${Math.round(100 * u.hp / (100 * u.count))}%"></i></div>
@@ -3289,7 +3300,7 @@ $("btn-random").onclick = () => { $("new-seed").value = 1 + Math.floor(Math.rand
 document.querySelectorAll(".title-panel .back").forEach((b) => b.onclick = () => showPanel("title-main"));
 $("btn-start").onclick = async () => {
   $("btn-start").textContent = "Generating the world…";
-  try { await api("/api/new", { seed: Number($("new-seed").value) || 1, human: chosenContinent }); S.shownOutcome = false; S.creationShown = false; await enterGame(); }
+  try { await api("/api/new", { seed: Number($("new-seed").value) || 1, human: chosenContinent, start: $("new-classic") && $("new-classic").checked ? "classic" : "survivor" }); S.shownOutcome = false; S.creationShown = false; await enterGame(); }
   catch (err) { toast(err.message); }
   $("btn-start").textContent = "Begin";
 };
@@ -3303,7 +3314,8 @@ async function enterGame() {
   await refresh(false);
   const capital = Object.values(S.view.cities).find((c) => c.owner === S.view.me && c.is_capital);
   S.cam.zoom = 1.6;
-  if (capital) centerOnTile(capital.tile);
+  const lead = S.view.units.find((u) => u.owner === S.view.me && u.type === "band_leader");  // survivor start
+  if (capital) centerOnTile(capital.tile); else if (lead) { centerOnTile(lead.tile); selectUnit(lead.id); }
   splash(`${S.view.players.find((p) => p.id === S.view.me).name} · ${S.view.year}`);
   try {  // a new game opens the creation screen once (SPEC_M11)
     const d = await api("/api/leader");
@@ -3718,6 +3730,16 @@ function showNewStory() {
     if (ev.tile != null) centerOnTile(ev.tile);
     return showEventCard(ev);
   }
+}
+// A supply cache (SPEC_M14): a battered crate with a glint; any unit stepping on it takes it.
+function drawCache(sx, sy, R, t) {
+  const w = Math.max(10, R * 0.5), h = w * 0.7, x = sx - w / 2, y = sy - h / 2 - R * 0.05;
+  ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.beginPath(); ctx.ellipse(sx, y + h + 2, w * 0.6, h * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#6b5233"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#2e2214"; ctx.lineWidth = Math.max(1, R * 0.03); ctx.strokeRect(x, y, w, h);
+  ctx.beginPath(); ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); ctx.moveTo(x + w / 3, y); ctx.lineTo(x + w / 3, y + h); ctx.moveTo(x + 2 * w / 3, y); ctx.lineTo(x + 2 * w / 3, y + h); ctx.stroke();
+  ctx.fillStyle = `rgba(255,236,170,${0.55 + 0.45 * Math.sin(t / 340 + sx)})`;
+  ctx.beginPath(); ctx.arc(x + w * 0.85, y + h * 0.15, Math.max(1.5, R * 0.05), 0, Math.PI * 2); ctx.fill(); S.dirty = true;
 }
 function drawSite(sx, sy, R, t) {
   const r = Math.max(6, R * 0.28), y = sy - R * 0.1;

@@ -360,7 +360,11 @@ def road_upkeep(state: GameState, cfg: Config, pid: str) -> int:
 
 
 def unit_upkeep(state: GameState, cfg: Config, pid: str) -> int:
-    members = sum(u.count for u in state.units.values() if u.owner == pid)
+    members = sum(
+        u.count
+        for u in state.units.values()
+        if u.owner == pid and not cfg.units[u.type].get("no_upkeep")  # the survivor band
+    )
     cities_n = sum(1 for c in state.cities if c.owner == pid and c.status == ACTIVE)
     per_city = cfg.t("economy.free_units_per_city")
     per_city += techfx.total(

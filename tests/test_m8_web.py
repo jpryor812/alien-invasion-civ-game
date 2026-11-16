@@ -28,7 +28,7 @@ def temp_saves(tmp_path, monkeypatch):
 
 @pytest.fixture
 def sess(cfg):
-    return Session(cfg, seed=3, human=HUMAN)
+    return Session(cfg, seed=3, human=HUMAN, start="classic")  # cities from turn 1
 
 
 def test_view_is_fog_safe(sess, cfg):

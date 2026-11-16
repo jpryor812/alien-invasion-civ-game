@@ -831,3 +831,43 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   points once met (hybrids: while it holds).
 - **Later (designer):** a hidden collaborator who wins with the aliens.
 
+## M14: the survivor start (designer 2026-11-15, docs/SPEC_M14.md)
+
+- **Start modes.** `start.mode` (survivor) is the normal start for the web client and the runner;
+  `new_game(..., start="classic")` keeps the old start, and `new_game` itself defaults to classic so
+  older tests keep their worlds. The runner and session take `--start` / `start`; the New Game
+  screen has a "Classic start" box.
+- **Setup.** The classic start is built, then every player unit is removed and every city a player
+  held becomes alien-held. The old capital is the band's **first town**: population capped at 2,
+  not a capital (it becomes the capital when freed), full HP, garrisoned by one alien hatchling,
+  with no contents and no nests; it neither grows nor spawns until taken. Other formerly held
+  cities get a hive guard. The band (leader 20 attack, four survivors 10, both not buildable, no
+  gold upkeep, vision 2 and 1) stands on a seeded hex 3 from the town.
+- **Caches.** 8 per band within 7 hexes (seeded, on the player's continent, off cities, finds and
+  nests): 2 within 3 hexes always hold a rifle or armour, the rest by weight (weapon 4, armour 3,
+  alien weapon 1, survivor 3, scrap 3). Any player unit stepping on one takes it (after its move,
+  or at turn end). Gear goes to that unit if its slot is free or the find is better, else to the
+  nearest band unit that can use it. Weapons add attack (+5, alien +12), armour defence (+5), as a
+  flat addition to base strength.
+- **Barricades.** The designer's rule ("no capture without a weapon or armour upgrade or an
+  additional citizen") is a rule, not a number: a first town cannot fall below 1 HP until its band
+  has found at least one weapon, armour or survivor (`Player.band_finds`, kept even if units fall).
+  Tuning combat alone could not do it: a passive town always falls to attrition. Scripted assaults
+  on 9 towns: a bare band never takes it in 14 turns; one weapon or one more survivor takes it by
+  turns 3-7.
+- **Founding.** Freeing any city of one's own continent while unfounded founds: the leader leaves
+  the map, survivors without gear join the city's population, geared survivors stay as units,
+  scrap goes into its production store, and engineers, a recon team and the city's defence unit
+  appear. Unfounded players are not "fallen", and have no research prompt (no city, no science).
+- **Escape.** At turn end an unfounded player with no leader unit gets its leader and 2 survivors
+  back near the band's starting hex.
+- **Hiding.** Alien hunters ignore band units farther than 2 hexes (1 in forest or hills). Aliens
+  still see the whole map and still attack adjacent band units opportunistically.
+- **AI bands.** Loot caches they have seen, scout the frontier near home while they have found
+  nothing, and storm the town once they have a find and (gear, six people, or turn 9); a unit
+  attacks only if it keeps 20 HP after the worst counter-blow, or the blow takes the town; else
+  it rests.
+- **Balance (10 seeds, 100 turns).** Every band took its first town: median turn 7, 47 of 60 by
+  turn 10, the last on turn 19. No player city was lost and no continent fell; liberations per
+  game 15-30 (median 22, classic M13 25.5).
+

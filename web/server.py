@@ -72,7 +72,10 @@ class App:
         if path == "/api/end_turn":
             return s.end_turn()
         if path == "/api/new":
-            s.new(int(body.get("seed", 1)), str(body.get("human", s.human)))
+            start = body.get("start")
+            if start not in (None, "survivor", "classic"):
+                raise ValueError("start is survivor or classic")
+            s.new(int(body.get("seed", 1)), str(body.get("human", s.human)), start)
             return {"ok": True}
         if path == "/api/save":
             return {"ok": True, "name": s.save(str(body.get("name", "")))}

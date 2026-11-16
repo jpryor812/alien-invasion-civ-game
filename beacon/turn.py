@@ -21,6 +21,7 @@ from beacon import (
     network,
     recruits,
     starfall,
+    survivors,
     threat,
 )
 from beacon.config import Config
@@ -114,6 +115,8 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     events.extend(recruits.end_of_turn(state, cfg))
     events.extend(leader.end_of_turn(state, cfg))  # births, votes, levels (SPEC_M11)
     events.extend(council.end_of_turn(state, cfg))  # sessions and measures (SPEC_M13)
+    events.extend(survivors.pick_up(state, cfg))  # the survivor start (SPEC_M14)
+    events.extend(survivors.escape(state, cfg))
     reset_units(state, cfg)
     heal_cities(state, cfg)
     state.turn += 1

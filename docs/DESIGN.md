@@ -302,3 +302,13 @@ varied partners.
   top bar shows influence and MVP rank.
 - Noted for later (designer): a hidden collaborator who secretly wins with the aliens.
 
+## M14: the survivor start (designer 2026-11-15, docs/SPEC_M14.md)
+
+- The normal start: no city, just the leader (20 attack) and four survivors (10). Crates nearby
+  hold rifles, armour, alien weapons, more survivors and scrap.
+- The band's first town is its old capital, lightly held. Its barricades hold until the band has
+  found something; then it falls in a few turns (usually by turn 10) and becomes the capital: the
+  survivors move in, scrap becomes production, and research and building begin.
+- If the leader falls first, it escapes with two survivors. A Classic start (cities and an army)
+  remains as an option.
+

@@ -127,6 +127,12 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     events.extend(freed_by_liberation(state, city.id, by))
     from beacon.threat import give_contents  # what the city held (SPEC_M12)
 
+    owner = state.players.get(city.owner or "")
+    if owner is not None and not owner.founded:  # a band's first town (SPEC_M14)
+        from beacon.survivors import found
+
+        events.extend(found(state, cfg, city, city.owner))
+
     events.extend(give_contents(state, cfg, city, by))
     city.resistance, city.armed_by = 0, {}
     return [
@@ -186,6 +192,8 @@ def update_fallen(state: GameState) -> Events:
     events: Events = []
     for pid in state.player_ids():
         player = state.players[pid]
+        if not player.founded:
+            continue  # a survivor band has no city yet (SPEC_M14)
         holds = any(c.owner == pid and c.status == ACTIVE for c in state.cities)
         if not holds and not player.fallen:
             player.fallen = True

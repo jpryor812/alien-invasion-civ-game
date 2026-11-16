@@ -107,6 +107,10 @@ def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
         from beacon.threat import update_intel  # a scout beside an alien city (SPEC_M12)
 
         events.extend(update_intel(state, cfg))
+        if state.caches:
+            from beacon.survivors import pick_up  # caches of the survivor start (SPEC_M14)
+
+            events.extend(pick_up(state, cfg))
     if isinstance(cmd, REPLACE_CITIZENS):
         citizens.assign_all(state, cfg)  # cities, seats or tiles changed: re-place everyone
     for e in events:
@@ -742,7 +746,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for ev in sorted(state.story_events.values(), key=lambda e: e.id):
         if ev.player == pid:
             out.append({"kind": "story_choice", "story": ev.id, "event": ev.event})
-    if player.research is None and tech.available(cfg, player):
+    if player.research is None and tech.available(cfg, player) and player.founded:
         out.append({"kind": "choose_research"})
     for city in state.cities:
         if city.owner == pid and city.status == ACTIVE and not city.queue:

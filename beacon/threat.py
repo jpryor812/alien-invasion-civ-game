@@ -76,8 +76,9 @@ def seed_contents(state: GameState, cfg: Config) -> None:
 
     spec = cfg.alien("contents")
     kinds = sorted(spec)
+    towns = {p.band_town for p in state.players.values()}  # a band's first town (SPEC_M14)
     for city in state.cities:
-        if city.status != OVERRUN:
+        if city.status != OVERRUN or city.id in towns:
             continue
         r = rng.stream(state.seed, "map", "contents", city.id)
         city.contents = rng.weighted_choice(r, kinds, [spec[k]["weight"] for k in kinds])
@@ -282,8 +283,10 @@ def uprisings(state: GameState, cfg: Config) -> Events:
 def place_nests(state: GameState, cfg: Config) -> None:
     ns = cfg.alien("nests")
     taken = {c.tile for c in state.cities} | {s.tile for s in state.sites.values()}
+    taken |= {int(k) for k in state.caches}
+    towns = {p.band_town for p in state.players.values()}
     for city in state.cities:
-        if city.status != OVERRUN:
+        if city.status != OVERRUN or city.id in towns:
             continue
         r = rng.stream(state.seed, "map", "nests", city.id)
         options = [

@@ -98,6 +98,7 @@ class Unit:
     job: Job | None = None
     xp: int = 0  # combats fought (attacking or attacked); see beacon/promotions.py
     promotions: list[str] = field(default_factory=list)
+    gear: list[str] = field(default_factory=list)  # weapon and armour found (SPEC_M14)
 
 
 @dataclass
@@ -162,6 +163,11 @@ class Player:
     objective: str | None = None  # secret objective (only its owner sees it)
     times_chair: int = 0
     temp_effects: list[dict[str, Any]] = field(default_factory=list)  # council measures in force
+    founded: bool = True  # False in the survivor era, until the first town is taken (SPEC_M14)
+    scrap: int = 0  # salvage carried by the band; production in the first city
+    band_home: int | None = None  # the band's starting hex (where a fallen leader escapes to)
+    band_town: int | None = None  # the band's first town (city id)
+    band_finds: int = 0  # weapons, armour and survivors the band has found
 
 
 @dataclass
@@ -380,6 +386,7 @@ class GameState:
     combat_seq: int = 0
     aliens: AlienState = field(default_factory=AlienState)
     council: CouncilState = field(default_factory=CouncilState)  # SPEC_M13
+    caches: dict[str, str] = field(default_factory=dict)  # tile -> loot (survivor start, M14)
     recruits: dict[str, Recruit] = field(default_factory=dict)
     citizens: dict[str, Citizen] = field(default_factory=dict)
     story_events: dict[str, StoryEvent] = field(default_factory=dict)

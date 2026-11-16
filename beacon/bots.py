@@ -736,6 +736,64 @@ class Bot:
         garrisons = {uid: tile for tile, uid in self._garrisons().items()}
         self.play_units(net, claimed, garrisons)
 
+    def band(self, unit: Unit) -> None:
+        """A survivor band: take the caches it has seen nearby, then storm its first town once it
+        has gear, six people, or the attack turn has come."""
+        from beacon import survivors
+
+        town = survivors.town_of(self.state, self.pid)
+        if town is None:
+            self.submit(SkipUnit(player=self.pid, unit=unit.id))
+            return
+        sv = self.cfg.t("survivor")
+        mine = [u for u in self.view.my_units() if survivors.is_band(self.cfg, u)]
+        found = self.state.players[self.pid].band_finds > 0  # the barricades are open
+        ready = found and (
+            any(u.gear for u in mine) or len(mine) >= 6 or self.state.turn >= sv["ai_attack_turn"]
+        )
+        seen = [int(k) for k in self.state.caches if self.view.is_explored(int(k))]
+        cache = self.nearest(unit.tile, seen)
+        near = cache is not None and (not ready or self.dist(unit.tile, cache) <= 1)
+        if near and self.submit(MoveUnit(player=self.pid, unit=unit.id, target=cache)):
+            return
+        if not ready:
+            if not found:  # nothing seen yet: scout for caches nearby
+                home = self.state.players[self.pid].band_home or unit.tile
+                frontier = [t for t in self._frontier() if self.dist(t, home) <= sv["radius"] + 2]
+                target = self.nearest(unit.tile, frontier)
+                if target is not None and self.submit(
+                    MoveUnit(player=self.pid, unit=unit.id, target=target)
+                ):
+                    return
+            self.submit(SkipUnit(player=self.pid, unit=unit.id))
+            return
+        if self.dist(unit.tile, town.tile) > 1:
+            spots = [
+                n
+                for n in hexgrid.neighbours(town.tile, self.w, self.h)
+                if not self.state.units_at(n) and is_passable_land(self.cfg, self.state.tiles[n])
+            ]
+            target = self.nearest(unit.tile, spots)
+            if target is None or not self.submit(
+                MoveUnit(player=self.pid, unit=unit.id, target=target)
+            ):
+                self.submit(SkipUnit(player=self.pid, unit=unit.id))
+                return
+        if (
+            self.alive(unit)
+            and self.dist(unit.tile, town.tile) == 1
+            and unit.attacks_left > 0
+            and combat.attack_problem(self.state, self.cfg, unit, town.tile) is None
+        ):
+            # attack while fit, or when the blow takes the town; otherwise rest and heal
+            p = combat.preview_attack(self.state, self.cfg, unit, town.tile)
+            takes = p["damage_to_defender"]["expected"] >= town.hp
+            fit = unit.hp - p["damage_to_attacker"]["max"] >= sv["ai_min_hp"]
+            if takes or fit:
+                self.submit(Attack(player=self.pid, unit=unit.id, target=town.tile))
+            else:
+                self.submit(Fortify(player=self.pid, unit=unit.id))
+
     def play_units(self, net: set[int], claimed: set[int], garrisons: dict[int, int]) -> None:
         for unit in self.view.my_units():
             if self.cfg.units[unit.type].get("fixed"):
@@ -745,7 +803,9 @@ class Bot:
             if unit.id in self.reserved:
                 continue
             spec = self.cfg.units[unit.type]
-            if spec.get("not_buildable") and spec["role"] == "civilian":
+            if spec.get("survivor") and not self.state.players[self.pid].founded:
+                self.band(unit)  # the survivor start (SPEC_M14)
+            elif spec.get("not_buildable") and spec["role"] == "civilian":
                 self.convoy(unit)
             elif spec.get("can_build"):
                 self.engineer(unit, net, claimed)

@@ -92,7 +92,11 @@ def city_turn(state: GameState, cfg: Config) -> Events:
     events: Events = []
     units = [u for u in state.units.values() if u.owner == ALIENS]
     options = [u for u in unlocked_units(state, cfg) if u in c["spawn_weights"]]
+    # a survivor band's first town neither grows nor spawns until it is taken (SPEC_M14)
+    towns = {p.band_town for p in state.players.values() if not p.founded}
     for city in alien_cities(state):
+        if city.id in towns:
+            continue
         city.food_store += c["food_per_turn"] + alien_effect(state, cfg, "growth")
         cap = c["max_pop"] + alien_effect(state, cfg, "max_pop")
         if city.food_store >= c["growth_threshold"]:
@@ -454,6 +458,12 @@ class Director:
             d = self.dist(unit.tile, u.tile)
             if d > self.d["hunt_radius"]:
                 continue
+            if self.cfg.units[u.type].get("survivor"):  # a band hides (SPEC_M14)
+                sv = self.cfg.t("survivor")
+                tile = self.state.tiles[u.tile]
+                cover = tile.feature is not None or tile.elevation != "flat"
+                if d > sv["hunt_radius"] - (1 if cover else 0):
+                    continue
             weak = combat.unit_strength(self.state, self.cfg, u, ranged=False, defending=True).total
             key = (weak, d, u.id)
             if best is None or key < best[0]:
