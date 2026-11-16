@@ -114,6 +114,7 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     events = _restore(state, cfg, city, city.pop - loss)
     city.hp = cities.max_hp(cfg, city) * cfg.t("cities.liberated_hp_pct") // 100
     city.liberated_turn = state.turn
+    city.funded_pct = 0  # the resistance has done its work
     if city.owner is not None:
         from beacon.improvements import auto_improve  # improvements imports fog, which is light
 

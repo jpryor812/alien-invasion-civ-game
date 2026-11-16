@@ -357,6 +357,11 @@ class Session:
                 else None
             )
             c["continent"] = city.continent
+            if city.status == "overrun":  # the resistance inside (designer 2026-11-16)
+                from beacon import threat
+
+                c["funded_pct"] = city.funded_pct
+                c["fund"] = threat.fund_quotes(s, cfg, me, city)
         return v
 
     def _player_row(self, pid: str) -> dict[str, Any]:

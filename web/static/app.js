@@ -2037,6 +2037,7 @@ function describePending(p) {
   return {
     choose_research: "Choose research",
     choose_production: `${cityName(p.city)}: develop the city`,
+    fund_resistance: `Fund the resistance in ${cityName(p.city)}`,
     unit_needs_orders: `${unitLabel(p.unit)} needs orders`,
     recruit_unseated: "A recruit has no council seat",
     offer_received: "A recruit is offered to you",
@@ -2051,6 +2052,7 @@ function describePending(p) {
 async function resolvePending(p) {
   if (p.kind === "choose_research") return openScreen("techs");
   if (p.kind === "council_vote") return openScreen("council");
+  if (p.kind === "fund_resistance") { centerOnTile(S.view.cities[p.city].tile); return showFundCard(p.city); }
   if (p.kind === "choose_production") { centerOnTile(S.view.cities[p.city].tile); if (window.Builder) return Builder.open(p.city); return selectCity(p.city); }
   if (p.kind === "unit_needs_orders") { const u = S.view.units.find((x) => x.id === p.unit); if (u) centerOnTile(u.tile); return selectUnit(p.unit); }
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
@@ -2098,6 +2100,7 @@ function describeEvent(e) {
     strike_launched: () => `The alien strike on ${cityName(e.city)} has begun.`,
     sabotage: () => `Sabotage at ${cityName(e.city)}: -${e.damage} HP (the saboteur took ${e.hurt}).`,
     resistance_armed: () => `Weapons smuggled into ${cityName(e.city)} (resistance ${e.level}).`,
+    resistance_funded: () => `${e.gold} gold to the resistance in ${cityName(e.city)}: its defence -${e.total_pct}%.`,
     uprising: () => `Uprising in ${cityName(e.city)}! The garrison is hit.`,
     nest_destroyed: () => `An alien nest near ${cityName(e.city)} destroyed.`,
     city_intel: () => `Scouts report ${cityName(e.city)} holds ${CONTENTS_NAME[e.contents] || pretty(e.contents)}.`,
@@ -2318,17 +2321,17 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["story_choice", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["story_choice", "fund_resistance", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
-  choose_research: "Choose research", choose_production: "Develop city", unit_needs_orders: "Unit needs orders",
+  fund_resistance: "Fund the resistance", choose_research: "Choose research", choose_production: "Develop city", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
   recruit_unseated: "Seat a recruit", council_vote: "Council vote", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
 function nextAction() {
   if (!S.view) return null;
   for (const kind of ACTION_ORDER) {
-    const p = S.view.pending.find((x) => x.kind === kind);
+    const p = S.view.pending.find((x) => x.kind === kind && !(kind === "fund_resistance" && S.fundSkipped === x.city));
     if (p) return p;
   }
   return null;
@@ -2409,6 +2412,7 @@ async function onClick(e) {
     return selectUnit(next.id);
   }
   if (city && city.owner === S.view.me) return selectCity(city.id);
+  if (city && city.fund && city.fund.length) return showFundCard(city.id);  // an alien-held city
   const tt = S.tilesByIndex.get(i);
   if (tt && tt.turret && tt.built_by === S.view.me) return showTurretPanel(i);
   clearSelection();
@@ -2933,10 +2937,10 @@ function creationScreen(d) {
       <h3>Look</h3><div class="row">${looks}</div>
       <h3>Age <span id="cagev">${c.age}</span></h3><input id="cage" type="range" min="${d.catalog.age_min}" max="${d.catalog.age_max}" value="${c.age}">
       <h3>Traits <span class="muted small">(choose ${d.catalog.trait_count}; a third comes at level 5)</span></h3><div class="ctraits">${traits}</div>
-      <h3>Skills <span class="muted small">(${left ? `<b>${left}</b> of ${d.catalog.skill_points} points left to spend` : "all points spent"}; at most ${d.catalog.skill_max} in one; each point adds to every city)</span></h3>
+      <h3>Skills <span class="cleft${left ? "" : " done"}" title="Skill points left to spend">${left ? `${left} point${left > 1 ? "s" : ""} left` : "✓ all spent"}</span> <span class="muted small">(${d.catalog.skill_points} in all; at most ${d.catalog.skill_max} in one; each point adds to every city)</span></h3>
       <div class="cskills">${skillRows}</div>
       <h3>Agenda <span class="muted small">(public: what you stand for on the council)</span></h3><div class="ctraits">${d.catalog.agendas.map((a) => `<button class="${a.id === c.agenda ? "primary" : ""}" data-cagenda="${a.id}"><b>${esc(a.name)}</b><span class="muted small">${esc(a.note)}</span></button>`).join("")}</div>
-      <div class="cstart"><button class="primary big" id="ccreate" ${ready ? "" : "disabled"} title="${ready ? "Save your leader and begin" : left ? `Spend ${left} more skill points` : "Choose a name and two traits"}">Start</button>
+      <div class="cstart"><span class="cleft big${left ? "" : " done"}" title="Skill points left to spend">${left}<small>/${d.catalog.skill_points} left</small></span><button class="primary big" id="ccreate" ${ready ? "" : "disabled"} title="${ready ? "Save your leader and begin" : left ? `Spend ${left} more skill points` : "Choose a name and two traits"}">Start</button>
         <span class="muted small">${ready ? `Lead ${esc(d.continent)} as ${esc(c.name.trim())}.` : left ? `Spend ${left} more skill point${left > 1 ? "s" : ""} to start.` : "Choose a name and two traits."}</span></div>
     </div></div>`;
 }
@@ -2944,7 +2948,14 @@ function wireLeader(body, create) {
   const d = S.leaderData;
   const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => el.onclick = () => fn(el));
   if (create) {
-    const c = S.creating, redraw = () => { body.innerHTML = creationScreen(d); wireLeader(body, true); };
+    // redraw keeps every scroll position (designer 2026-11-16: no jump to the top on a click)
+    const c = S.creating, redraw = () => {
+      const chain = []; for (let el = body; el; el = el.parentElement) chain.push([el, el.scrollTop]);
+      const side = body.querySelector(".lside"), sideTop = side ? side.scrollTop : 0;
+      body.innerHTML = creationScreen(d); wireLeader(body, true);
+      for (const [el, top] of chain) el.scrollTop = top;
+      const side2 = body.querySelector(".lside"); if (side2) side2.scrollTop = sideTop;
+    };
     $("cname").oninput = (e) => { c.name = e.target.value; body.querySelector(".lnm").textContent = c.name || "…"; const left = d.catalog.skill_points - Object.values(c.skills).reduce((a, b) => a + b, 0); $("ccreate").disabled = !(c.traits.length === d.catalog.trait_count && c.name.trim() && !left); };
     on("[data-sk]", (el) => { const k = el.dataset.sk; c.skills[k] = Math.max(0, Math.min(d.catalog.skill_max, c.skills[k] + Number(el.dataset.d))); redraw(); });
     $("cage").oninput = (e) => { c.age = Number(e.target.value); $("cagev").textContent = c.age; };
@@ -3692,6 +3703,31 @@ function paintScene(g, key, W, H, bg, glow, rnd) {
   const v = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.6);
   v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.55)"); g.fillStyle = v; g.fillRect(0, 0, W, H);
   return ready;
+}
+// Fund the resistance (designer 2026-11-16): gold sent to the people of an alien-held city cuts
+// its defence. At the band's first town the whole starting treasury halves it.
+function showFundCard(cityId) {
+  const c = S.view.cities[String(cityId)];
+  if (!c) return;
+  const first = S.view.pending.some((p) => p.kind === "fund_resistance" && p.city === cityId);
+  const gold = S.view.economy.gold, strength = Math.round(c.strength / 100);
+  const offers = (c.fund || []).map((q, k) => `<button class="${k ? "" : "primary"}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defence falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
+  const body = $("modal-body");
+  const text = first
+    ? `Your old town is held by the aliens, but its people have not given up. They are hiding weapons and waiting for a signal. Send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury) and they will rise when you attack: the town's defence falls by half and its barricades open.`
+    : `The people of ${esc(c.name)} want to fight back. Gold buys them weapons: its defence falls while they hold out, until the city is free. Stronger cities need more gold for the same effect.`;
+  body.innerHTML = `<div class="evcard">${pictureSvg("survivors", false)}<h2>Fund the resistance in ${esc(c.name)}</h2>
+    <p class="evbody">${text}</p>${c.funded_pct ? `<div class="evresult"><span class="tag">Already funded: -${c.funded_pct}%</span></div>` : ""}
+    <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">Not now</button></div>
+    <div class="muted small">Treasury: ${gold} gold · defence strength now ${strength}</div></div>`;
+  document.querySelector(".modal-box").classList.add("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "event";
+  body.querySelectorAll("[data-fund]").forEach((el) => el.onclick = async () => {
+    closeModal(); await send({ kind: "fund_resistance", city: cityId, gold: Number(el.dataset.fund) });
+    const now = S.view.cities[String(cityId)];
+    if (now && now.funded_pct) toast(`The resistance in ${now.name} is armed: its defence is down ${now.funded_pct}%. Attack!`);
+  });
+  $("fund-no").onclick = () => { if (first) S.fundSkipped = cityId; closeModal(); renderChrome(); };
 }
 function showEventCard(ev) {
   const body = $("modal-body");

@@ -258,6 +258,19 @@ resistance:
   hp_pct: 40
   garrison_damage: 30
 
+funding:
+  status: placeholder
+  note: Designer 2026-11-16 - gold sent to an alien city's resistance weakens it. Its defence
+    strength falls by the funded percent (funding adds up, to at most max_pct) until it is freed,
+    and a band's first town no longer holds its barricades. At the band's first town first_gold
+    buys first_pct (a tutorial step - the starting treasury halves the town). Elsewhere one percent
+    costs strength x pct_cost_tenths / 10 gold (about 500 gold for 25% against a 40-strength city).
+  first_gold: 100
+  first_pct: 50
+  pct_cost_tenths: 5
+  max_pct: 50
+  amounts: [100, 250, 500]
+
 nests:
   status: placeholder
   note: Each alien city has min to max nests within radius hexes (seeded, on open land). Each nest

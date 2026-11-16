@@ -48,6 +48,7 @@ from beacon.commands import (
     DeclineOffer,
     Fortify,
     FundProject,
+    FundResistance,
     HoldFire,
     ImproveTile,
     MergeUnits,
@@ -860,6 +861,16 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for deal in sorted(state.deals.values(), key=lambda d: d.id):
         if deal.receiver == pid and not deal.active:
             out.append({"kind": "deal_received", "deal": deal.id})
+    player = state.players.get(pid)  # the first town's resistance: a tutorial step (2026-11-16)
+    if player is not None and not player.founded and player.band_town is not None:
+        town = state.cities[player.band_town]
+        if (
+            town.status == "overrun"
+            and town.funded_pct == 0
+            and str(town.id) in player.known_cities
+            and player.gold >= cfg.alien("funding.first_gold")
+        ):
+            out.append({"kind": "fund_resistance", "city": town.id})
     from beacon.council import unvoted  # SPEC_M13
 
     if unvoted(state, pid, cfg):
@@ -987,6 +998,17 @@ def _arm_resistance(state: GameState, cfg: Config, cmd: ArmResistance) -> Events
     if problem:
         raise CommandError(problem)
     return threat.arm(state, cfg, unit, city)
+
+
+@handles(FundResistance)
+def _fund_resistance(state: GameState, cfg: Config, cmd: FundResistance) -> Events:
+    from beacon import threat
+
+    city = _alien_city(state, cmd.city)
+    problem = threat.fund_problem(state, cfg, cmd.player, city, cmd.gold)
+    if problem:
+        raise CommandError(problem)
+    return threat.fund(state, cfg, cmd.player, city, cmd.gold)
 
 
 # -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------

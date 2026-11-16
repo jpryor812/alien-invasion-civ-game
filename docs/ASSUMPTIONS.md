@@ -1019,3 +1019,15 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   Needs tuning (alien strength or unit costs) once the designer has played it.
 - The AI re-chooses a filler project (wealth, research) every turn instead of keeping it, since
   projects never finish and buildings no longer empty the queue.
+
+## Funding the resistance (designer 2026-11-16)
+- Any player may send gold to the resistance in an alien-held city it has found (no unit needed:
+  word reaches them). The city's defence strength falls by the funded percent (the last step of
+  city_strength, after garrisons), up to 50% in all, until the city is freed.
+- The band's first town: 100 gold (the whole starting treasury) buys 50% and opens its
+  barricades. A to-do item and a dialog offer it once the band has found the town; "Not now"
+  hides it for the session. Elsewhere 1% costs strength x 0.5 gold (a 40-strength city: 20 gold
+  a percent, so 500 gold buys 25%); offers are 100, 250 and 500 gold. Placeholder.
+- AI bands fund their first town as soon as they know it, then attack.
+- Leader creation keeps its scroll position on every click and shows the points left beside the
+  Skills heading and the Start button.

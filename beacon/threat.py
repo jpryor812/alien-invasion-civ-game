@@ -367,3 +367,70 @@ def nest_turn(state: GameState, cfg: Config) -> Events:
             city.hp = min(max_hp(cfg, city, state), city.hp + n * ns["heal"])
         city.production_store += n * ns["production"]
     return events
+
+
+# -- funding the resistance with gold (designer 2026-11-16) ---------------------------------------
+
+
+def _first_town(state: GameState, pid: str, city: City) -> bool:
+    p = state.players.get(pid)
+    return p is not None and not p.founded and p.band_town == city.id
+
+
+def fund_pct(state: GameState, cfg: Config, pid: str, city: City, gold: int) -> int:
+    """Percent of defence strength `gold` takes off the city (before the cap)."""
+    f = cfg.alien("funding")
+    if _first_town(state, pid, city):
+        return min(f["first_pct"], gold * f["first_pct"] // f["first_gold"])
+    from beacon.combat import city_strength
+
+    total = city_strength(state, cfg, city).total * 100 // max(1, 100 - city.funded_pct)
+    per_pct = max(1, total // 100 * f["pct_cost_tenths"] // 10)  # gold per percent
+    return gold // per_pct
+
+
+def fund_quotes(state: GameState, cfg: Config, pid: str, city: City) -> list[dict[str, int]]:
+    """What each offered amount would buy now (the first town: just its one offer)."""
+    f = cfg.alien("funding")
+    room = f["max_pct"] - city.funded_pct
+    amounts = [f["first_gold"]] if _first_town(state, pid, city) else f["amounts"]
+    out = []
+    for gold in amounts:
+        pct = min(room, fund_pct(state, cfg, pid, city, gold))
+        if pct > 0:
+            out.append({"gold": gold, "pct": pct})
+    return out
+
+
+def fund_problem(state: GameState, cfg: Config, pid: str, city: City, gold: int) -> str | None:
+    if city.status != OVERRUN:
+        return f"{city.name} is not held by the aliens"
+    player = state.players.get(pid)
+    if player is None or str(city.id) not in player.known_cities:
+        return "you have not found that city"
+    if gold <= 0:
+        return "send some gold"
+    if player.gold < gold:
+        return f"needs {gold} gold; treasury has {player.gold}"
+    if city.funded_pct >= cfg.alien("funding.max_pct"):
+        return "its resistance has all the help it can use"
+    if fund_pct(state, cfg, pid, city, gold) <= 0:
+        return "too little gold to make a difference"
+    return None
+
+
+def fund(state: GameState, cfg: Config, pid: str, city: City, gold: int) -> Events:
+    pct = min(cfg.alien("funding.max_pct") - city.funded_pct, fund_pct(state, cfg, pid, city, gold))
+    state.players[pid].gold -= gold
+    city.funded_pct += pct
+    return [
+        {
+            "turn": state.turn,
+            "kind": "resistance_funded",
+            "player": pid,
+            "city": city.id,
+            "gold": gold,
+            "pct": pct,
+            "total_pct": city.funded_pct,
+        }
+    ]

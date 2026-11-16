@@ -221,6 +221,9 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
             {"source": f"garrison:{guard.type}", "kind": "flat_hundredths", "value": extra}
         )
         total += extra
+    if city.funded_pct and city.owner == ALIENS:  # a funded resistance (designer 2026-11-16)
+        lines.append({"source": "resistance", "kind": "pct", "value": -city.funded_pct})
+        total = total * (100 - city.funded_pct) // 100
     return Strength(total=total, lines=lines)
 
 

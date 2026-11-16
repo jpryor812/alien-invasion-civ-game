@@ -945,10 +945,22 @@ class Bot:
             self.submit(SkipUnit(player=self.pid, unit=unit.id))
             return
         sv = self.cfg.t("survivor")
+        from beacon import threat
+        from beacon.commands import FundResistance
+
+        first = self.cfg.alien("funding.first_gold")  # arm the town's people (designer 2026-11-16)
+        if (
+            town.funded_pct == 0
+            and threat.fund_problem(self.state, self.cfg, self.pid, town, first) is None
+        ):
+            self.submit(FundResistance(player=self.pid, city=town.id, gold=first))
         mine = [u for u in self.view.my_units() if survivors.is_band(self.cfg, u)]
-        found = self.state.players[self.pid].band_finds > 0  # the barricades are open
+        found = self.state.players[self.pid].band_finds > 0 or town.funded_pct > 0  # gates open
         ready = found and (
-            any(u.gear for u in mine) or len(mine) >= 6 or self.state.turn >= sv["ai_attack_turn"]
+            any(u.gear for u in mine)
+            or len(mine) >= 6
+            or town.funded_pct > 0  # the people rise with it
+            or self.state.turn >= sv["ai_attack_turn"]
         )
         seen = [int(k) for k in self.state.caches if self.view.is_explored(int(k))]
         cache = self.nearest(unit.tile, seen)

@@ -367,6 +367,16 @@ class ArmResistance(Command):
     city: int
 
 
+@register
+@dataclass(frozen=True)
+class FundResistance(Command):
+    """Send gold to the resistance in an alien city: its defence falls (designer 2026-11-16)."""
+
+    kind: ClassVar[str] = "fund_resistance"
+    city: int
+    gold: int
+
+
 # -- the city builder (docs/SPEC_M16.md) -----------------------------------------------------------
 
 

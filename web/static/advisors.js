@@ -23,14 +23,17 @@
       body: "Click a unit, then a highlighted hex to move it. Your scouts see furthest: send them into the fog to find the cities the aliens hold. The big button at the bottom right always names the next thing that needs you (choose research, unit needs orders...) and takes you there; once nothing is left it says <b>Next turn</b>.",
       more: "Enter does the same as the button; Shift+Enter or Shift-click ends the turn anyway. Space jumps to the next unit that needs orders. F fortifies, S skips. Right-click clears the selection; drag or use the arrow keys to pan, and the mouse wheel to zoom." },
     production: { who: "economic", title: "Building your cities",
-      body: "Each city builds one thing at a time. Pick from the list; hover an item for what it does. Gold can buy the current item outright.",
+      body: "Develop city opens the city view. Buildings, walls and farms cost materials up front; then the city's engineers build them, and more engineers build faster. Production trains units and new engineers.",
       more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favour food, production, science or gold." },
     survivors: { who: "military", title: "Survivors",
       body: "You have no city yet: just your leader and four survivors with makeshift weapons. Scout the land around you: abandoned crates may hold rifles, armour, alien weapons, or more people. Somewhere near, the aliens hold your old town.",
       more: "Wounded units heal when they rest (fortify). Alien hunters do not chase a band at a distance, and cover (forest, hills) hides you better. Free the town and your survivors become its first citizens; then research and building begin." },
+    resistance: { who: "military", title: "A friend inside",
+      body: "You have found your old town. Its people are ready to rise against the aliens if someone pays for their weapons. Send them your 100 gold: the town's defence falls by half and your band can take it.",
+      more: "Later you can fund the resistance in any alien city you have found (click it on the map). Stronger cities need more gold: perhaps 500 gold for a quarter of their defence." },
     first_city: { who: "economic", title: "Your first city",
       body: "The town is yours, and it is your capital. Your survivors live there now; those carrying gear stay in the field. Rebuild the radio tower first: it is cheap, and until it stands you cannot reach the other continents or the council.",
-      more: "Scrap you salvaged went into the city's production. Engineers and a scout have joined you." },
+      more: "Scrap you salvaged went into the city's production. A scout has joined you, and the town has a crew of two engineers: open Develop city to put them to work." },
     research: { who: "science", title: "Research",
       body: "Choose what your scientists work on. The tree starts with two branches, Urban Planning and Advanced Manufacturing, and every tech opens two more. Each card shows how many turns it takes and what it unlocks.",
       more: "Urban Planning leads to International Accords (alliances) and Beacon Theory (recruits); Radio Beacons, Deep Space Radar and Orbital Barrage end the war. Advanced Manufacturing leads to science, industry and the army." },
@@ -38,8 +41,8 @@
       body: "Twelve of your continent's cities are held by the aliens. Find them in the fog, shell them with artillery and take them with a melee unit: a freed city is yours again, with its farms and some of its people.",
       more: "Freed cities always belong to their continent, but you get the credit. Damage counts for everyone who helped, so shared sieges share the credit." },
     roads: { who: "economic", title: "Roads come first",
-      body: "A city produces nothing until a road (or railway) joins it to your capital. Use engineers: move them onto the gap and build a road.",
-      more: "Engineers also build farms, mines and resource extractors. Strategic resources like oil only count once improved, in a connected city." },
+      body: "Roads join your cities. Train a road crew in a city and move it onto the gap to build a road.",
+      more: "Farms, mines and extractors are built by each city's engineers from Develop city (the Land tab). Strategic resources like oil only count once improved, in a connected city." },
     aliens_seen: { who: "military", title: "The enemy",
       body: "Aliens roam the fog. They raid roads, attack weak cities and land reinforcements from the mothership. Keep a soldier in every city near them.",
       more: "Fortified units, hills and forests all defend better. A unit that neither moves nor attacks heals 20 HP a turn in your territory and 10 outside. Two units of the same type can merge into one stack with double strength." },
@@ -149,6 +152,7 @@
     if (!v || off()) return;
     if (v.turn <= 1) { trigger("welcome"); trigger("first_moves"); }
     if (v.founded === false) trigger("survivors");
+    if ((v.pending || []).some((p) => p.kind === "fund_resistance")) trigger("resistance");
     if (v.events.some((e) => e.kind === "first_city" && e.player === v.me)) trigger("first_city");
     if (v.pending.some((p) => p.kind === "choose_research")) trigger("research");
     if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1) trigger("production");

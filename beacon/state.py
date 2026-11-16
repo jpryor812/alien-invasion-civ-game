@@ -72,6 +72,7 @@ class City:
         default_factory=list
     )  # works the crew builds, in order: {id, what, left, total, paid} (SPEC_M17)
     resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
+    funded_pct: int = 0  # its defence strength cut by gold sent to the resistance (2026-11-16)
     armed_by: dict[str, int] = field(default_factory=dict)  # resistance levels, by player
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
     buildings: list[str] = field(default_factory=list)
