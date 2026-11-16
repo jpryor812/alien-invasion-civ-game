@@ -1,0 +1,28 @@
+# Hex improvements, built by engineers over `turns` turns. A tile has at most one `tile`
+# improvement and one `route`. move_cost is in movement sub-points and applies when both hexes of a
+# step have that route. Optional: requires_resource (only on a resource that names this
+# improvement), requires_route, vision (sight radius kept by the improvement), defense_pct.
+
+improvements:
+  farm: {status: placeholder, note: Fields., kind: tile, turns: 3, tech: null, yields: {food: 1}, terrains: [grassland, plains, desert, tundra], elevations: [flat]}
+  mine: {status: placeholder, note: Hill mining., kind: tile, turns: 4, tech: null, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
+  lumber_camp: {status: placeholder, note: "Cuts timber in a forest or jungle (SPEC_M16).", kind: tile, turns: 3, tech: null, yields: {production: 1}, terrains: [grassland, plains, tundra], elevations: [flat, hills], requires_feature: [forest, jungle]}
+  extractor: {status: placeholder, note: Wells and lumber camps; only on a resource that needs it., kind: tile, turns: 4, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], requires_resource: true}
+  radio_beacon: {status: placeholder, note: Keeps nearby hexes permanently revealed (DESIGN.md 5)., kind: tile, turns: 3, tech: radio_beacon_network, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], vision: 2}
+  military_base: {status: placeholder, note: Fortified position., kind: tile, turns: 3, tech: fortification_doctrine, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], defense_pct: 25}
+  road: {status: placeholder, note: One third of a move per step (Civ V)., kind: route, turns: 1, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 10}
+  railway: {status: placeholder, note: One tenth of a move per step., kind: route, turns: 2, tech: high_speed_rail, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 3, requires_route: road}
+
+  # Promoted in M5 from the proposed content (commit 0b79762).
+  solar_array: {status: placeholder, note: Solar panels on open flat land., kind: tile, turns: 3, tech: industrial_base, yields: {production: 1}, terrains: [grassland, plains, desert], elevations: [flat]}
+  wind_turbines: {status: placeholder, note: Turbines on high ground., kind: tile, turns: 3, tech: industrial_base, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
+  minefield: {status: placeholder, note: Defensive mines on flat ground., kind: tile, turns: 2, tech: mechanized_warfare, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat], defense_pct: 15}
+  sensor_mast: {status: placeholder, note: Tall mast for wide sight., kind: tile, turns: 3, tech: radio_beacon_network, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills], vision: 3}
+  hydroponic_plot: {status: placeholder, note: Desert and tundra growing beds., kind: tile, turns: 3, tech: vertical_farming, yields: {food: 2}, terrains: [desert, tundra], elevations: [flat]}
+  geothermal_vent: {status: placeholder, note: Heat from the ground on hills., kind: tile, turns: 3, tech: fusion_power, yields: {production: 2}, terrains: [grassland, plains, desert, tundra], elevations: [hills]}
+  hyperloop: {status: placeholder, note: Fast rail on top of a railway., kind: route, turns: 4, tech: nanofabrication, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 1, requires_route: railway}
+
+  # Designer 2026-11-14: a turret on an improved tile fires at enemies next to it; aliens must
+  # destroy it before pillaging. Strength, HP and gold upgrades are in data/tuning.yaml (turrets).
+  turret: {status: placeholder, note: Guards an improved tile; fires at adjacent enemies and must be destroyed before the tile can be pillaged., kind: turret, turns: 2, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills]}
+  sea_bridge: {status: placeholder, note: A road over shallow water - joins continents for armies, roads and convoys; anyone can cross, aliens too (designer 2026-11-15 SPEC_M11)., kind: bridge, turns: 6, tech: robotics, yields: {}, terrains: [coast], elevations: [flat], move_cost: 10}

@@ -1,0 +1,67 @@
+# Unit types. moves are move points (x movement.scale sub-points). strength defends and attacks in
+# melee; ranged_strength and range are for ranged attacks (0 = none). vision is sight radius.
+# Optional: requires_resource (one strategic resource per unit member).
+# class (designer 2026-11-14): infantry, armour, artillery, recon, naval, civilian, light, heavy or
+# defence. Matchups: rough_defence_pct (defending on hills, forest, jungle or marsh),
+# open_attack_pct (attacking a unit on open flat ground), bonus_vs {class or city: pct}.
+# Alien units: optional alien_tech (data/aliens.yaml) unlocks them; cost is alien production.
+
+units:
+  recon_team: {status: placeholder, note: Scouts., faction: player, domain: land, role: recon, cost: 40, moves: 3, strength: 10, ranged_strength: 0, range: 0, vision: 2, tech: modern_warfare, class: recon}
+  drone_recon: {status: placeholder, note: Fast aerial scouts on the ground grid., faction: player, domain: land, role: recon, cost: 60, moves: 5, strength: 8, ranged_strength: 0, range: 0, vision: 3, tech: drone_warfare, class: recon}
+  infantry: {status: placeholder, note: Line infantry., faction: player, domain: land, role: melee, cost: 60, moves: 2, strength: 30, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare, class: infantry, rough_defence_pct: 25}
+  mech_infantry: {status: placeholder, note: Armoured carriers., faction: player, domain: land, role: melee, cost: 110, moves: 3, strength: 42, ranged_strength: 0, range: 0, vision: 1, tech: mechanized_warfare, class: infantry, rough_defence_pct: 25}
+  exo_infantry: {status: placeholder, note: Powered-armour troops., faction: player, domain: land, role: melee, cost: 160, moves: 3, strength: 60, ranged_strength: 0, range: 0, vision: 1, tech: powered_exoskeletons, requires_resource: rare_earths, class: infantry, rough_defence_pct: 25}
+  tank: {status: placeholder, note: Main battle tank., faction: player, domain: land, role: melee, cost: 140, moves: 4, strength: 50, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare, requires_resource: oil, class: armour, open_attack_pct: 25}
+  hover_tank: {status: placeholder, note: Future armour., faction: player, domain: land, role: melee, cost: 240, moves: 5, strength: 85, ranged_strength: 0, range: 0, vision: 1, tech: hover_armour, requires_resource: rare_earths, class: armour, open_attack_pct: 25}
+  artillery: {status: placeholder, note: Field guns., faction: player, domain: land, role: ranged, cost: 90, moves: 2, strength: 15, ranged_strength: 38, range: 2, vision: 1, tech: modern_warfare, class: artillery, bonus_vs: {city: 25}}
+  railgun_artillery: {status: placeholder, note: Electromagnetic guns., faction: player, domain: land, role: ranged, cost: 200, moves: 2, strength: 22, ranged_strength: 65, range: 3, vision: 1, tech: railguns, requires_resource: aluminum, class: artillery, bonus_vs: {city: 25}}
+  engineers: {status: placeholder, note: Build improvements and routes., faction: player, domain: land, role: civilian, cost: 50, moves: 2, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: industrial_base, can_build: true, class: civilian}
+  # Designer 2026-11-14: continents must be found by sea, so an early cheap scout boat.
+  scout_boat: {status: placeholder, note: Fast unarmed boat for exploring the oceans and meeting other continents., faction: player, domain: sea, role: recon, cost: 40, moves: 5, strength: 4, ranged_strength: 0, range: 0, vision: 2, tech: modern_warfare, class: recon}
+  destroyer: {status: placeholder, note: Surface combatant., faction: player, domain: sea, role: melee, cost: 120, moves: 5, strength: 45, ranged_strength: 0, range: 0, vision: 2, tech: modern_warfare, class: naval}
+  railgun_cruiser: {status: placeholder, note: Long-range warship., faction: player, domain: sea, role: ranged, cost: 230, moves: 5, strength: 40, ranged_strength: 70, range: 3, vision: 2, tech: railguns, requires_resource: aluminum, class: naval}
+
+  alien_drone: {status: placeholder, note: Fast skirmisher., faction: alien, domain: land, role: melee, cost: 25, moves: 3, strength: 20, ranged_strength: 0, range: 0, vision: 2, tech: null, class: light}
+  alien_warrior: {status: placeholder, note: Line fighter., faction: alien, domain: land, role: melee, cost: 40, moves: 2, strength: 38, ranged_strength: 0, range: 0, vision: 1, tech: null, class: infantry}
+  alien_spitter: {status: placeholder, note: Ranged bio-artillery., faction: alien, domain: land, role: ranged, cost: 45, moves: 2, strength: 18, ranged_strength: 36, range: 2, vision: 1, tech: null, alien_tech: spitter_glands, class: artillery}
+  alien_hive_guard: {status: placeholder, note: City garrison., faction: alien, domain: land, role: melee, cost: 50, moves: 1, strength: 40, ranged_strength: 0, range: 0, vision: 1, tech: null, class: infantry}
+  alien_brute: {status: placeholder, note: Heavy assault form., faction: alien, domain: land, role: melee, cost: 70, moves: 2, strength: 68, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: brute_strain, class: heavy}
+  alien_titan: {status: placeholder, note: Siege titan., faction: alien, domain: land, role: melee, cost: 120, moves: 2, strength: 95, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: hive_titans, class: heavy}
+
+  # Promoted in M5 from the proposed content (commit 0b79762).
+  militia: {status: placeholder, note: Cheap garrison for lost cities., faction: player, domain: land, role: melee, cost: 30, moves: 2, strength: 20, ranged_strength: 0, range: 0, vision: 1, tech: industrial_base, class: infantry, rough_defence_pct: 25}
+  marines: {status: placeholder, note: Assault troops, amphibious once transport arrives in M6., faction: player, domain: land, role: melee, cost: 90, moves: 2, strength: 34, ranged_strength: 0, range: 0, vision: 1, tech: modern_warfare, class: infantry, rough_defence_pct: 25, bonus_vs: {city: 15}}
+  armoured_recon: {status: placeholder, note: Fast armoured scout., faction: player, domain: land, role: recon, cost: 90, moves: 4, strength: 14, ranged_strength: 0, range: 0, vision: 3, tech: mechanized_warfare, class: recon}
+  self_propelled_howitzer: {status: placeholder, note: Mobile heavy gun., faction: player, domain: land, role: ranged, cost: 150, moves: 3, strength: 18, ranged_strength: 52, range: 3, vision: 1, tech: mechanized_warfare, requires_resource: oil, class: artillery, bonus_vs: {city: 25}}
+  rocket_battery: {status: placeholder, note: Multiple rocket launcher., faction: player, domain: land, role: ranged, cost: 180, moves: 2, strength: 16, ranged_strength: 56, range: 4, vision: 1, tech: mechanized_warfare, requires_resource: oil, class: artillery, bonus_vs: {city: 25}}
+  anti_tank_team: {status: placeholder, note: Cheap missile team., faction: player, domain: land, role: ranged, cost: 75, moves: 2, strength: 12, ranged_strength: 44, range: 2, vision: 1, tech: modern_warfare, class: artillery, bonus_vs: {armour: 50, heavy: 50}}
+  medical_team: {status: placeholder, note: Heals your units on its hex and next to it by heal_adjacent HP a turn., heal_adjacent: 10, faction: player, domain: land, role: civilian, cost: 60, moves: 2, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: biotech_medicine, class: civilian}
+  survey_team: {status: placeholder, note: Pushes back fog cheaply., faction: player, domain: land, role: civilian, cost: 50, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 3, tech: industrial_base, class: civilian}
+  swarm_drones: {status: placeholder, note: Many light drones., faction: player, domain: land, role: melee, cost: 120, moves: 4, strength: 55, ranged_strength: 0, range: 0, vision: 1, tech: drone_warfare, class: light, bonus_vs: {light: 25, artillery: 25}}
+  walker: {status: placeholder, note: Legged heavy mech that handles rough ground., faction: player, domain: land, role: melee, cost: 200, moves: 3, strength: 75, ranged_strength: 0, range: 0, vision: 1, tech: powered_exoskeletons, requires_resource: rare_earths, class: armour, open_attack_pct: 25}
+  plasma_cannon: {status: placeholder, note: Directed-energy artillery., faction: player, domain: land, role: ranged, cost: 260, moves: 2, strength: 26, ranged_strength: 80, range: 3, vision: 1, tech: directed_energy, requires_resource: aluminum, class: artillery, bonus_vs: {city: 25}}
+  nanorepair_crew: {status: placeholder, note: Rebuilds a pillaged improvement in 1 turn (only what was there)., can_repair: true, faction: player, domain: land, role: civilian, cost: 90, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: nanofabrication, class: civilian}
+  attack_submarine: {status: placeholder, note: Naval hunter., faction: player, domain: sea, role: melee, cost: 180, moves: 5, strength: 55, ranged_strength: 0, range: 0, vision: 2, tech: railguns, class: naval}
+  alien_hatchling: {status: placeholder, note: Cheap filler., faction: alien, domain: land, role: melee, cost: 15, moves: 2, strength: 12, ranged_strength: 0, range: 0, vision: 1, tech: null, class: light}
+  alien_pillager: {status: placeholder, note: Raider for roads and improvements., faction: alien, domain: land, role: melee, cost: 35, moves: 3, strength: 16, ranged_strength: 0, range: 0, vision: 2, tech: null, class: light}
+  alien_sporecaster: {status: placeholder, note: Ranged spore harassment., faction: alien, domain: land, role: ranged, cost: 60, moves: 2, strength: 16, ranged_strength: 42, range: 3, vision: 1, tech: null, alien_tech: spore_clouds, class: artillery}
+  alien_wraith: {status: placeholder, note: Fast flanker., faction: alien, domain: land, role: melee, cost: 60, moves: 4, strength: 40, ranged_strength: 0, range: 0, vision: 2, tech: null, alien_tech: phase_skin, class: light}
+  alien_shieldbearer: {status: placeholder, note: Heavy garrison., faction: alien, domain: land, role: melee, cost: 65, moves: 1, strength: 55, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: hardened_carapace, class: heavy}
+  alien_leviathan: {status: placeholder, note: Late-game colossus., faction: alien, domain: land, role: melee, cost: 180, moves: 2, strength: 120, ranged_strength: 0, range: 0, vision: 1, tech: null, alien_tech: leviathan_bio, class: heavy}
+
+  # City defence (designer, 2026-11-14): never move, stand only on a city tile, in their own slot
+  # beside a field unit. Every own military unit in a city lends the city garrison strength.
+  city_artillery: {status: placeholder, note: Fixed city guns. Fire at range but never move., faction: player, domain: land, role: ranged, cost: 70, moves: 0, strength: 20, ranged_strength: 32, range: 2, vision: 2, tech: modern_warfare, fixed: true, class: defence}
+  home_guard: {status: placeholder, note: Fixed city defenders. Only protect; never move or attack., faction: player, domain: land, role: melee, cost: 45, moves: 0, strength: 34, ranged_strength: 0, range: 0, vision: 1, tech: militia_reserves, fixed: true, no_attack: true, class: defence}
+  uav_patrol: {status: placeholder, note: "Drones that circle their city on their own. Cannot be ordered or fight; see 4 hexes and warn of alien strikes on the city (designer 2026-11-16).", faction: player, domain: land, role: civilian, cost: 60, moves: 0, strength: 0, ranged_strength: 0, range: 0, vision: 4, tech: drone_warfare, fixed: true, no_attack: true, air: true, detects_strikes: true, class: civilian}
+
+  # M6: carries traded goods overland to a port; aliens capture it unless a military unit escorts.
+  trade_convoy: {status: placeholder, note: Overland trade carrier (made by deals; not buildable)., faction: player, domain: land, role: civilian, cost: 0, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true, class: civilian}
+  # SPEC_M14 (designer 2026-11-15): the survivor band. Not buildable; no gold upkeep.
+  band_leader: {status: calibrated, note: The leader on foot in the survivor era (designer - 20 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 20, ranged_strength: 0, range: 0, vision: 2, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
+  survivor: {status: calibrated, note: A civilian survivor with whatever they could find (designer - 10 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 10, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
+
+  # M7: alien-tree units (espionage).
+  xeno_trooper: {status: placeholder, note: Infantry in alien alloy., faction: player, domain: land, role: melee, cost: 150, moves: 2, strength: 70, ranged_strength: 0, range: 0, vision: 1, tech: xeno_metallurgy, class: infantry, rough_defence_pct: 25}
+  plasma_lancer: {status: placeholder, note: Plasma artillery., faction: player, domain: land, role: ranged, cost: 200, moves: 2, strength: 24, ranged_strength: 76, range: 3, vision: 1, tech: plasma_weaving, class: artillery, bonus_vs: {city: 25}}

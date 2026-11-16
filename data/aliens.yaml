@@ -1,0 +1,271 @@
+# The alien faction (docs/SPEC_M4.md). Integers only; *_permille values are per thousand.
+
+progress:
+  status: placeholder
+  note: Progress per turn = max(floor, base + per_city x alien cities + per_pop_pct% of alien
+    population). More cities, faster progress (the tipping point, DESIGN.md 9).
+  base: 2
+  per_city: 0
+  per_pop_pct: 15
+  floor: 8
+  # 2026-11-14 retune: per_city 1 and per_pop_pct 20 were set for 24 alien cities; with 84 (every
+  # lost city alien-held) alien tech ran three times faster. Now about 40 a turn at the start.
+
+# Bought in `order` with progress. Effects add up. Units unlock through `alien_tech` in units.yaml.
+techs:
+  chitin_walls: {status: placeholder, note: Walls., order: 1, cost: 150, effects: {city_strength: 4, city_hp: 25}}
+  spitter_glands: {status: placeholder, note: Unlocks spitters., order: 2, cost: 300, effects: {}}
+  deep_mines: {status: placeholder, note: Mines., order: 3, cost: 450, effects: {production: 2}}
+  brood_chambers: {status: placeholder, note: Growth., order: 4, cost: 650, effects: {growth: 2, max_pop: 2}}
+  regeneration: {status: placeholder, note: Faster healing., order: 5, cost: 850, effects: {heal: 10}}
+  brute_strain: {status: placeholder, note: Unlocks brutes., order: 6, cost: 1100, effects: {}}
+  hardened_carapace: {status: placeholder, note: Stronger walls., order: 7, cost: 1400, effects: {city_strength: 8, city_hp: 50}}
+  hive_titans: {status: placeholder, note: Unlocks titans., order: 8, cost: 1800, effects: {}}
+  # Promoted in M5 from the proposed content (commit 0b79762).
+  spore_clouds: {status: placeholder, note: Unlocks sporecasters., order: 9, cost: 2200, effects: {}}
+  phase_skin: {status: placeholder, note: Unlocks wraiths., order: 10, cost: 2600, effects: {}}
+  leviathan_bio: {status: placeholder, note: Unlocks leviathans., order: 11, cost: 3000, effects: {}}
+  bio_forges: {status: placeholder, note: Organic industry in every city., order: 12, cost: 3400, effects: {production: 3}}
+  mycelial_network: {status: placeholder, note: Shared healing through the root network., order: 13, cost: 3800, effects: {heal: 15}}
+  deep_brood: {status: placeholder, note: Faster growth and larger cities., order: 14, cost: 4200, effects: {growth: 3, max_pop: 2}}
+  void_shield: {status: placeholder, note: Energy barrier over alien cities., order: 15, cost: 4600, effects: {city_strength: 12, city_hp: 100}}
+  living_metal: {status: placeholder, note: Armour grown into the walls., order: 16, cost: 5000, effects: {city_hp: 150, city_strength: 4}}
+  swarm_minds: {status: placeholder, note: One mind across every hive., order: 17, cost: 5400, effects: {growth: 4, production: 2}}
+  dark_matter_heart: {status: placeholder, note: A dark-matter core in each city., order: 18, cost: 5800, effects: {production: 6}}
+
+cities:
+  status: placeholder
+  note: Alien cities work no tiles. Production per turn = base + per_pop x pop (+ techs); they
+    rebuild their garrison first, then spawn units by weight while fewer than max_units_nearby
+    alien units stand within nearby_radius and the aliens field fewer than units_per_city_pct
+    of their city count in total (reinforcements and surges ignore the cap).
+  base_production: 2
+  production_per_pop: 1
+  food_per_turn: 2
+  growth_threshold: 20
+  max_pop: 6
+  max_units_nearby: 3
+  nearby_radius: 3
+  units_per_city_pct: 45
+  # 2026-11-14 retune: was 110 with 24 alien cities (a cap of 26 units); 45 of 84 cities is 37.
+  garrison: alien_hive_guard
+  spawn_weights: {alien_drone: 3, alien_warrior: 4, alien_spitter: 2, alien_brute: 3, alien_titan: 1,
+                  alien_hatchling: 2, alien_pillager: 2, alien_sporecaster: 2, alien_wraith: 2,
+                  alien_shieldbearer: 1, alien_leviathan: 1}
+
+fortress:
+  status: placeholder
+  note: Alien city strength gets base_strength (+ wall techs), then a hardening percent of
+    per_lost_share_pct of the share of starting cities lost, plus per_interval_pct every
+    interval_turns, capped (DESIGN.md 9, "harden into fewer, stronger fortresses"; designer, "as
+    time goes on"). Scaling by share, not count, keeps the last cities of a small invasion hard.
+  base_strength: 4
+  per_lost_share_pct: 80
+  interval_turns: 20
+  per_interval_pct: 5
+  cap_pct: 70
+
+reinforcements:
+  status: placeholder
+  note: The mothership adds per_turn to a store; at cost a group lands beside a seeded alien city
+    (or on open land at least landing_distance from player cities if a continent has none).
+    Never stops in M4; the M7 barrage stops it.
+  per_turn: 1
+  cost: 15
+  units: [alien_warrior, alien_drone]
+  landing_distance: 4
+
+director:
+  status: placeholder
+  note: Orders for alien units. A siege attacks once alien strength within gather_radius of the
+    target is siege_ratio_pct of the city's defence. Opportunistic attacks need expected damage
+    dealt of at least attack_ratio_pct of damage taken (or a kill). Patrols roam to seeded
+    points within patrol_radius. Recently liberated cities (within retake_turns) and capitals
+    score higher as targets. For the first grace_turns turns aliens only patrol; no player city is
+    besieged before city_grace_turns (designer 2026-11-14 - at least 25 turns to warm up). Hunters
+    stalk lone player units (scouts, engineers, stragglers) within hunt_radius, weakest first. A
+    unit that starts a siege gathers a cohort of cohort_min to cohort_max nearby aliens (seeded)
+    onto the same city; sieges favour weak cities (defence_per_strength). Raids (weight raised
+    from 2 to 4) skip land within raid_safe_radius of a player city and treat each turret level
+    as turret_penalty extra hexes away; a turret must be destroyed before its tile is pillaged.
+    When a Starfall shard lands, the nearest free alien on that continent goes to mine it with
+    shard_escort escorts (docs/SPEC_M9.md).
+  weights: {siege: 6, raid: 4, patrol: 3, hunt: 3}
+  raid_safe_radius: 2
+  shard_escort: 2
+  turret_penalty: 3
+  grace_turns: 8
+  city_grace_turns: 25
+  hunt_radius: 8
+  cohort_min: 2
+  cohort_max: 5
+  cohort_radius: 6
+  siege_ratio_pct: 100
+  gather_radius: 3
+  attack_ratio_pct: 100
+  patrol_radius: 6
+  raid_radius: 10
+  retake_turns: 20
+  value_base: 20
+  value_capital: 30
+  value_per_pop: 5
+  value_retake: 10
+  defence_per_strength: 2
+  distance_penalty: 2
+
+decay:
+  status: placeholder
+  note: Each turn an unreached dormant or empty city falls with chance (per thousand) base +
+    per_interval x (turn // interval_turns) + near x (alien cities within near_radius), capped;
+    never while a player military unit is within guard_radius (DESIGN.md 5).
+  base_permille: 0
+  interval_turns: 25
+  per_interval_permille: 1
+  near_permille: 0
+  near_radius: 6
+  cap_permille: 4
+  guard_radius: 2
+
+surge:
+  status: placeholder
+  note: Fires when alien cities drop below city_pct of their starting count, or one player has
+    liberated lead more cities than the average; lands size units of the best unlocked types
+    distance hexes from that player's frontier city, then waits cooldown turns.
+  city_pct: 40
+  lead: 4
+  size: 3
+  cooldown: 15
+  distance: 3
+
+# Proposed alien techs, not yet in play. The loader reads only the active sections above, so
+# balance runs and tests are unaffected. Move an entry up to activate it. Every number stays tagged.
+
+# -- Recruits (M5, docs/SPEC_M5.md) ------------------------------------------------------------
+# A recruit scores in six domains. While seated on a council, a score of N gives the patron +N%
+# in that domain: food, production, science and beacon yields in every city, military combat
+# strength of every unit. Built from the proposed recruit pool (commit 0b79762); gold is a
+# council domain too (designer, 2026-11-13).
+
+recruits:
+  status: placeholder
+  note: Council seats (designer, 2026-11-13) - two per domain (gold added), three general. Lifespans are
+    clamped to 50-100 turns (designer). Rarity levels come from beacon-tree techs, listed in
+    order; each level sets the beacon points one arrival costs (steep), the score budget, and the
+    per-thousand chances of a legendary or an immortal recruit.
+  domains: [food, production, military, science, gold, beacon]
+  seats_per_domain: 2
+  general_seats: 3
+  min_lifespan: 50
+  max_lifespan: 100
+  max_traits: 2
+  rarity_techs: [beacon_theory, signal_amplification, harmonic_lattice, deep_resonance, stellar_chorus]
+  levels:
+    - {arrival_cost: 40, budget: 10, legendary_permille: 0, immortal_permille: 20}
+    - {arrival_cost: 70, budget: 13, legendary_permille: 0, immortal_permille: 40}
+    - {arrival_cost: 120, budget: 17, legendary_permille: 30, immortal_permille: 60}
+    - {arrival_cost: 200, budget: 22, legendary_permille: 60, immortal_permille: 90}
+    - {arrival_cost: 320, budget: 28, legendary_permille: 100, immortal_permille: 120}
+  names:
+    first: [Ash, Bel, Cor, Dra, Esk, Fen, Gal, Hy, Ith, Jor, Kel, Lum, Mor, Nyx, Oss, Pell, Quen,
+            Ryn, Sel, Tor, Ul, Vey, Wren, Xal, Yss, Zor]
+    second: [ath, bri, cal, dun, eth, fyr, gon, hal, iel, jun, kor, lis, mon, nar, oth, phy, qua,
+             rix, sul, tha, une, vor, wyn, xis, yra, zel]
+
+# Traits (designer: this list is fixed). yield_pct scales the recruit's own score in a domain;
+# lifespan_delta shifts its lifespan; betrayal_permille is the chance per turn it betrays;
+# immortal stops ageing; sale_pct (unused for now) adds to the gold it fetches when sold.
+recruit_traits:
+  loyal: {status: placeholder, note: Stays with its patron., effects: {betrayal_permille: 0}}
+  ambitious: {status: placeholder, note: Wants more than it is given., effects: {yield_pct: {beacon: 20}, betrayal_permille: 5}}
+  traitor: {status: placeholder, note: May turn on its patron., effects: {betrayal_permille: 60}}
+  immortal: {status: placeholder, note: Does not age., effects: {immortal: true}}
+  short_lived: {status: placeholder, note: Burns bright and fast., effects: {lifespan_delta: -20, yield_pct: {science: 20}}}
+  berserker: {status: placeholder, note: Fights hardest in the front line (was production; military fits)., effects: {yield_pct: {military: 25}}}
+  scholar: {status: placeholder, note: Loves study., effects: {yield_pct: {science: 25}}}
+  engineer: {status: placeholder, note: Loves building., effects: {yield_pct: {production: 25}}}
+  charismatic: {status: placeholder, note: Draws others to the cause., effects: {yield_pct: {beacon: 25}}}
+  cautious: {status: placeholder, note: Slow to act and slow to age., effects: {lifespan_delta: 10}}
+  greedy: {status: placeholder, note: Wants a larger share., effects: {yield_pct: {gold: 25}, betrayal_permille: 10}}
+
+# Character types: weight (how often), focus (domains its points go to), lifespan (turns, inside
+# 50-100) and the traits it may roll.
+recruit_types:
+  soldier: {status: placeholder, note: Common fighter., weight: 3, focus: [military, production], lifespan: [55, 85], traits: [berserker, cautious, loyal]}
+  scientist: {status: placeholder, note: Common researcher., weight: 3, focus: [science, beacon], lifespan: [60, 90], traits: [scholar, cautious, loyal]}
+  engineer: {status: placeholder, note: Common builder., weight: 3, focus: [production, science], lifespan: [55, 85], traits: [engineer, greedy, loyal]}
+  mystic: {status: placeholder, note: Rare beacon adept., weight: 2, focus: [beacon, food], lifespan: [50, 75], traits: [charismatic, ambitious, short_lived]}
+  merchant: {status: placeholder, note: Trader and deal-maker., weight: 2, focus: [gold, production], lifespan: [55, 85], traits: [greedy, ambitious, traitor]}
+  drifter: {status: placeholder, note: Unpredictable wanderer with something in every domain., weight: 1, focus: [food, production, military, science, gold, beacon], lifespan: [50, 70], traits: [traitor, short_lived, berserker]}
+
+# Named legends (fixed), with the proposal's scores.
+legendary_recruits:
+  ilyrath_unbroken: {status: placeholder, note: The last to hold a fallen wall., name: Ilyrath the Unbroken, scores: {production: 12, food: 8, gold: 10}, lifespan: 100, traits: [immortal, loyal]}
+  oss_vanthe_archivist: {status: placeholder, note: Keeper of every lost record., name: Oss Vanthe the Archivist, scores: {science: 16, beacon: 8, food: 6}, lifespan: 100, traits: [scholar, immortal]}
+  quen_morrow_forgemaster: {status: placeholder, note: Builder of the first engines., name: Quen Morrow the Forgemaster, scores: {production: 14, science: 8, gold: 8}, lifespan: 100, traits: [engineer, ambitious]}
+  mireth_calla_echo: {status: placeholder, note: Voice that carries across the fog., name: Mireth Calla the Echo, scores: {beacon: 15, gold: 9, food: 6}, lifespan: 90, traits: [charismatic, traitor]}
+
+# -- M12: a readable alien that reacts to you (docs/SPEC_M12.md, designer 2026-11-15) ----------
+
+plans:
+  status: placeholder
+  note: A siege of a player city is announced as a strike plan strike_turns ahead; the committed
+    units gather where the plan formed and besiege on the launch turn. Each point of the target
+    owner's heat adds heat_value_pct percent to a city's value as a target, and every
+    heat_per_extra heat adds one unit to the cohort (up to extra_max).
+  strike_turns: 3
+  heat_value_pct: 2
+  heat_per_extra: 25
+  extra_max: 3
+
+heat:
+  status: placeholder
+  note: Attention a player draws from the aliens each turn - per_pop for each citizen, per active
+    convoy, plus the listed buildings (beacons, industry, labs, ports).
+  per_pop: 1
+  per_convoy: 2
+  buildings: {beacon_i: 3, beacon_ii: 4, beacon_iii: 5, beacon_iv: 6, beacon_v: 8, factory: 3,
+              autonomous_factory: 4, research_lab: 2, quantum_lab: 3, port: 1, shipyard: 2,
+              fusion_plant: 3, radio_tower: 1, sensor_array: 2}
+
+contents:
+  status: placeholder
+  note: What each alien-held city holds, seeded by weight at the start. Seeing the city tells its
+    rumour (a category); a recon unit beside it or a spy tells the truth. Freeing the city gives
+    the reward. hive_heart cities get an extra garrison unit (guard).
+  survivors: {rumour: people, weight: 5, pop: 2}
+  captive: {rumour: people, weight: 3, citizen_points: 9}
+  lab: {rumour: knowledge, weight: 3, science: 60}
+  cache: {rumour: arms, weight: 3, units: [infantry, infantry]}
+  depot: {rumour: wealth, weight: 3, gold: 120}
+  hive_heart: {rumour: danger, weight: 2, science: 100, guard: alien_brute, alien_tech: true}
+
+sabotage:
+  status: placeholder
+  note: Engineers or recon beside an alien city may sabotage it once a turn - it loses hp_pct of
+    its maximum hit points; the saboteur takes damage_min to damage_max (seeded, combat stream).
+  hp_pct: 15
+  damage_min: 5
+  damage_max: 25
+
+resistance:
+  status: placeholder
+  note: A unit beside an alien city may smuggle in weapons for gold (one level a turn, up to
+    max_level). Each turn an armed city rises with chance level x uprising_pct; an uprising
+    costs it hp_pct of its maximum hit points and its garrison garrison_damage, and uses one level.
+  gold: 40
+  max_level: 3
+  uprising_pct: 15
+  hp_pct: 40
+  garrison_damage: 30
+
+nests:
+  status: placeholder
+  note: Each alien city has min to max nests within radius hexes (seeded, on open land). Each nest
+    adds heal hit points to its city a turn and production to its store. A player military unit
+    ending a turn on a nest destroys it.
+  min: 1
+  max: 2
+  radius: 3
+  heal: 5
+  production: 1
+

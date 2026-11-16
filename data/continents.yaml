@@ -1,0 +1,382 @@
+# The six continents, drawn from real geography (designer decision 2026-11-14, replacing the
+# procedural blobs of 2026-11-13). Each continent is fitted into its own box on the map at its
+# own scale, so every continent has a similar amount of land; distances are true within a
+# continent but not between continents.
+#
+# All coordinates are whole degrees, [longitude, latitude] (east and north positive).
+# geo:
+#   size: [cols, rows] of the continent's box. Where the boxes sit is shuffled every game
+#     (designer 2026-11-14): two rows of three in seeded order with seeded ocean gaps, so knowing
+#     a friend's continent does not tell you where it is.
+#   x_scale_pct: cosine of the mid-latitude in percent, so shapes are not stretched east-west.
+#   size_pct: fitted size in percent of the largest that fits the box (evens out land).
+#   outline: the main landmass. islands: other landmasses, each joined to the main one by the
+#     shortest causeway. lakes: water cut out of the land.
+#   biome_seeds: [biome, lon, lat]; each land hex takes the biome of its nearest seed, with some
+#     seeded blending at the borders (map.biome_blend_pct).
+#   ridges: polylines of mountains or hills.
+# cities: 15 real cities; the first `cities.known_count` are known at the start and the first is
+#   the capital. The rest start lost (dormant, ruined or held by aliens; seeded each game).
+# resources are relative weights.
+
+continents:
+  north_america:
+    status: placeholder
+    note: Temperate and prairie core, boreal north, arid south-west, tropical isthmus.
+    name: North America
+    order: 0
+    resources: {wheat: 15, cattle: 15, fish: 10, timber: 10, gold_ore: 5, coffee: 3, oil: 12, aluminum: 8, uranium: 5, rare_earths: 4}
+    geo:
+      size: [66, 54]
+      x_scale_pct: 66
+      size_pct: 100
+      outline: [[-166, 66], [-162, 70], [-156, 71], [-148, 70], [-141, 70], [-130, 70],
+        [-120, 69], [-110, 68], [-100, 68], [-95, 68], [-90, 69], [-82, 68], [-86, 65],
+        [-94, 61], [-94, 58], [-92, 57], [-85, 55], [-82, 53], [-80, 51], [-79, 55], [-77, 58],
+        [-78, 61], [-75, 62], [-70, 61], [-65, 60], [-62, 57], [-58, 54], [-56, 52], [-60, 50],
+        [-66, 50], [-70, 48], [-65, 48], [-61, 46], [-66, 44], [-70, 43], [-70, 42], [-74, 40],
+        [-75, 38], [-76, 35], [-78, 34], [-81, 31], [-80, 27], [-80, 25], [-82, 26], [-83, 29],
+        [-85, 30], [-89, 30], [-90, 29], [-94, 29], [-97, 27], [-98, 24], [-97, 21], [-96, 19],
+        [-94, 18], [-91, 19], [-90, 21], [-87, 21], [-88, 18], [-88, 16], [-84, 15], [-83, 11],
+        [-80, 9], [-77, 8], [-79, 7], [-81, 7], [-86, 10], [-88, 13], [-91, 14], [-94, 16],
+        [-97, 16], [-102, 18], [-105, 20], [-106, 23], [-109, 26], [-112, 29], [-115, 32],
+        [-113, 29], [-110, 24], [-110, 23], [-112, 25], [-115, 28], [-117, 32], [-118, 34],
+        [-121, 35], [-122, 37], [-124, 40], [-124, 43], [-124, 46], [-125, 48], [-123, 49],
+        [-127, 51], [-130, 55], [-133, 57], [-137, 59], [-140, 60], [-146, 61], [-150, 60],
+        [-152, 58], [-158, 57], [-163, 55], [-158, 59], [-162, 59], [-164, 60], [-166, 62],
+        [-164, 64], [-161, 65]]
+      islands: []
+      lakes: []
+      biome_seeds: [[arctic, -155, 70], [arctic, -112, 69], [boreal, -150, 64], [boreal, -128, 62],
+        [boreal, -105, 60], [boreal, -88, 58], [boreal, -72, 56], [boreal, -62, 53],
+        [temperate, -80, 40], [temperate, -88, 36], [temperate, -73, 45], [temperate, -123, 46],
+        [temperate, -88, 46], [prairie, -100, 46], [prairie, -98, 37], [prairie, -112, 52],
+        [arid, -113, 36], [arid, -106, 30], [arid, -117, 41], [arid, -112, 27],
+        [savanna, -102, 23], [tropical, -90, 16], [tropical, -83, 10], [tropical, -96, 18],
+        [wetland, -81, 27], [wetland, -91, 31]]
+      ridges:
+        - {kind: mountain, points: [[-155, 62], [-146, 63], [-138, 61]]}
+        - {kind: mountain, points: [[-129, 61], [-121, 55], [-116, 50], [-112, 46], [-109, 43], [-106, 39], [-106, 35]]}
+        - {kind: mountain, points: [[-121, 49], [-122, 44], [-121, 40], [-119, 37]]}
+        - {kind: hills, points: [[-108, 30], [-105, 25], [-101, 20]]}
+        - {kind: hills, points: [[-84, 34], [-80, 37], [-77, 40], [-74, 42], [-71, 44]]}
+        - {kind: hills, points: [[-92, 15], [-86, 13]]}
+    cities:
+      - {name: New York, lon: -74, lat: 41}
+      - {name: Los Angeles, lon: -118, lat: 34}
+      - {name: Mexico City, lon: -99, lat: 19}
+      - {name: Chicago, lon: -88, lat: 42}
+      - {name: Dallas, lon: -97, lat: 33}
+      - {name: Atlanta, lon: -84, lat: 34}
+      - {name: Miami, lon: -80, lat: 26}
+      - {name: Denver, lon: -105, lat: 40}
+      - {name: Seattle, lon: -122, lat: 48}
+      - {name: Winnipeg, lon: -97, lat: 50}
+      - {name: Calgary, lon: -114, lat: 51}
+      - {name: Anchorage, lon: -150, lat: 61}
+      - {name: Montreal, lon: -72, lat: 47}
+      - {name: Monterrey, lon: -101, lat: 26}
+      - {name: Panama City, lon: -80, lat: 9}
+
+  south_america:
+    status: placeholder
+    note: Rainforest heartland, savanna and pampas, the Andes down the west.
+    name: South America
+    order: 1
+    resources: {wheat: 8, cattle: 14, fish: 10, timber: 12, gold_ore: 8, coffee: 12, oil: 10, aluminum: 6, uranium: 3, rare_earths: 5}
+    geo:
+      size: [60, 62]
+      x_scale_pct: 94
+      size_pct: 100
+      outline: [[-77, 8], [-76, 10], [-75, 11], [-72, 12], [-71, 11], [-68, 11], [-64, 11],
+        [-62, 11], [-61, 9], [-58, 7], [-55, 6], [-52, 5], [-51, 4], [-50, 1], [-48, -1],
+        [-44, -3], [-40, -3], [-37, -5], [-35, -6], [-35, -9], [-37, -11], [-39, -13],
+        [-39, -17], [-40, -20], [-41, -22], [-43, -23], [-45, -24], [-48, -26], [-49, -29],
+        [-50, -31], [-52, -33], [-54, -34], [-56, -35], [-58, -34], [-57, -37], [-58, -38],
+        [-62, -39], [-62, -41], [-65, -41], [-64, -43], [-65, -45], [-68, -47], [-66, -48],
+        [-68, -50], [-69, -52], [-71, -54], [-74, -52], [-75, -48], [-74, -44], [-74, -41],
+        [-74, -37], [-72, -33], [-71, -29], [-71, -24], [-70, -19], [-72, -17], [-75, -15],
+        [-77, -12], [-79, -8], [-81, -6], [-81, -4], [-80, -2], [-81, 0], [-80, 1], [-78, 3],
+        [-77, 4], [-78, 6], [-78, 7]]
+      islands: []
+      lakes: []
+      biome_seeds: [[tropical, -62, -4], [tropical, -70, 0], [tropical, -52, -2], [tropical, -73, -8],
+        [tropical, -76, 6], [savanna, -48, -12], [savanna, -56, -15], [savanna, -66, 8],
+        [arid, -40, -8], [wetland, -57, -18], [temperate, -47, -25], [temperate, -56, -31],
+        [temperate, -73, -40], [prairie, -61, -35], [arid, -70, -22], [arid, -67, -45],
+        [arid, -80, -6], [boreal, -72, -51]]
+      ridges:
+        - {kind: mountain, points: [[-73, 9], [-76, 4], [-78, -1], [-77, -8], [-73, -14], [-69, -17], [-68, -22], [-69, -28], [-70, -34], [-71, -40], [-72, -46], [-73, -50]]}
+        - {kind: hills, points: [[-45, -20], [-48, -17], [-43, -15]]}
+        - {kind: hills, points: [[-63, 5], [-58, 3]]}
+    cities:
+      - {name: Sao Paulo, lon: -47, lat: -24}
+      - {name: Buenos Aires, lon: -58, lat: -35}
+      - {name: Bogota, lon: -74, lat: 5}
+      - {name: Lima, lon: -77, lat: -12}
+      - {name: Santiago, lon: -71, lat: -33}
+      - {name: Caracas, lon: -67, lat: 10}
+      - {name: Manaus, lon: -60, lat: -3}
+      - {name: Recife, lon: -35, lat: -8}
+      - {name: Brasilia, lon: -48, lat: -16}
+      - {name: La Paz, lon: -68, lat: -17}
+      - {name: Asuncion, lon: -58, lat: -25}
+      - {name: Guayaquil, lon: -80, lat: -2}
+      - {name: Belem, lon: -48, lat: -1}
+      - {name: Georgetown, lon: -58, lat: 7}
+      - {name: Comodoro Rivadavia, lon: -67, lat: -46}
+
+  europe:
+    status: placeholder
+    note: Dense temperate farmland, cold north, steppe in the east.
+    name: Europe
+    order: 2
+    resources: {wheat: 16, cattle: 14, fish: 12, timber: 10, gold_ore: 4, coffee: 0, oil: 6, aluminum: 8, uranium: 6, rare_earths: 3}
+    geo:
+      size: [60, 58]
+      x_scale_pct: 60
+      size_pct: 100
+      outline: [[-6, 36], [-2, 37], [0, 39], [0, 40], [1, 41], [3, 42], [3, 43], [5, 43], [8, 44],
+        [9, 44], [11, 43], [12, 42], [14, 41], [16, 38], [16, 39], [17, 40], [18, 40], [16, 42],
+        [14, 44], [12, 45], [14, 46], [15, 45], [17, 43], [20, 42], [19, 40], [21, 38], [22, 36],
+        [24, 38], [23, 40], [24, 41], [26, 41], [28, 41], [28, 43], [29, 45], [31, 47], [33, 45],
+        [35, 45], [37, 47], [39, 47], [38, 45], [40, 44], [44, 44], [47, 43], [47, 45], [49, 46],
+        [52, 47], [55, 51], [59, 52], [60, 55], [60, 60], [60, 65], [60, 69], [56, 69], [50, 68],
+        [44, 69], [41, 67], [35, 69], [30, 70], [25, 71], [20, 70], [16, 69], [13, 67], [12, 66],
+        [10, 64], [5, 62], [5, 60], [6, 58], [7, 58], [9, 58], [11, 60], [12, 58], [12, 57],
+        [13, 56], [14, 56], [16, 56], [17, 58], [19, 59], [18, 61], [18, 63], [20, 64], [22, 66],
+        [25, 66], [26, 65], [24, 64], [22, 63], [21, 61], [23, 60], [25, 60], [28, 61], [30, 60],
+        [28, 60], [26, 60], [24, 59], [23, 58], [24, 58], [23, 57], [21, 57], [21, 56], [20, 55],
+        [19, 54], [16, 54], [14, 54], [12, 54], [11, 54], [10, 55], [10, 57], [8, 57], [8, 56],
+        [9, 55], [9, 54], [8, 54], [7, 53], [5, 53], [4, 52], [3, 51], [2, 51], [1, 50], [0, 50],
+        [-1, 50], [-2, 49], [-5, 48], [-4, 48], [-2, 47], [-1, 46], [-1, 44], [-2, 43], [-3, 43],
+        [-6, 44], [-8, 44], [-9, 43], [-9, 42], [-9, 40], [-10, 39], [-9, 38], [-9, 37], [-7, 37]]
+      islands:
+        - [[-6, 50], [-3, 51], [1, 51], [2, 53], [0, 54], [-1, 55], [-2, 56], [-2, 58], [-3, 59],
+          [-5, 59], [-6, 57], [-6, 56], [-5, 55], [-3, 55], [-3, 53], [-5, 53], [-4, 52],
+          [-5, 52], [-3, 51], [-5, 51]]
+        - [[-6, 52], [-6, 54], [-6, 55], [-8, 55], [-9, 54], [-10, 54], [-10, 53], [-10, 52],
+          [-10, 51], [-8, 52]]
+      lakes: []
+      biome_seeds: [[arctic, 27, 71], [boreal, 52, 67], [boreal, 25, 65], [boreal, 15, 64],
+        [boreal, 40, 63], [boreal, 55, 60], [boreal, 33, 59], [temperate, 2, 47],
+        [temperate, 10, 51], [temperate, 20, 51], [temperate, -2, 53], [temperate, 15, 46],
+        [temperate, 38, 55], [prairie, 35, 49], [prairie, 46, 52], [prairie, 26, 45],
+        [prairie, -4, 40], [wetland, 27, 52], [wetland, 5, 52], [savanna, 14, 41],
+        [savanna, 22, 39], [savanna, -6, 38]]
+      ridges:
+        - {kind: mountain, points: [[-1, 43], [2, 42]]}
+        - {kind: mountain, points: [[6, 44], [7, 46], [10, 47], [14, 47]]}
+        - {kind: mountain, points: [[7, 60], [9, 62], [13, 64], [17, 67], [20, 69]]}
+        - {kind: mountain, points: [[40, 44], [44, 43], [46, 43]]}
+        - {kind: hills, points: [[18, 49], [22, 49], [25, 47], [25, 45], [22, 45]]}
+        - {kind: hills, points: [[9, 44], [12, 43], [15, 41], [16, 39]]}
+        - {kind: hills, points: [[17, 44], [20, 43], [23, 42]]}
+        - {kind: hills, points: [[59, 53], [59, 58], [59, 62], [59, 67]]}
+        - {kind: hills, points: [[-6, 40], [-3, 38]]}
+    cities:
+      - {name: London, lon: 0, lat: 52}
+      - {name: Berlin, lon: 13, lat: 53}
+      - {name: Rome, lon: 12, lat: 42}
+      - {name: Paris, lon: 2, lat: 48}
+      - {name: Madrid, lon: -4, lat: 40}
+      - {name: Marseille, lon: 5, lat: 43}
+      - {name: Warsaw, lon: 21, lat: 52}
+      - {name: Stockholm, lon: 18, lat: 59}
+      - {name: Oslo, lon: 11, lat: 60}
+      - {name: Athens, lon: 24, lat: 38}
+      - {name: Kyiv, lon: 31, lat: 50}
+      - {name: Moscow, lon: 38, lat: 56}
+      - {name: Bucharest, lon: 26, lat: 44}
+      - {name: Vienna, lon: 16, lat: 48}
+      - {name: Kazan, lon: 49, lat: 56}
+
+  asia:
+    status: placeholder
+    note: The largest and most varied continent, from the Arctic to the tropics.
+    name: Asia
+    order: 3
+    resources: {wheat: 14, cattle: 8, fish: 12, timber: 8, gold_ore: 5, coffee: 4, oil: 14, aluminum: 6, uranium: 5, rare_earths: 10}
+    geo:
+      size: [76, 58]
+      x_scale_pct: 70
+      size_pct: 79
+      outline: [[26, 40], [27, 38], [28, 37], [31, 36], [33, 36], [36, 37], [36, 35], [35, 33],
+        [34, 31], [33, 30], [34, 28], [35, 29], [35, 28], [37, 25], [39, 22], [41, 18], [43, 16],
+        [43, 13], [45, 13], [49, 14], [52, 16], [55, 17], [57, 19], [59, 21], [60, 23], [59, 24],
+        [56, 25], [56, 26], [55, 25], [54, 24], [52, 24], [51, 26], [50, 27], [48, 29], [48, 30],
+        [50, 30], [51, 28], [54, 27], [57, 27], [58, 26], [62, 25], [64, 25], [67, 25], [69, 23],
+        [69, 22], [71, 21], [73, 21], [73, 19], [74, 16], [75, 13], [76, 10], [78, 8], [79, 9],
+        [80, 11], [80, 13], [80, 16], [82, 17], [85, 20], [87, 22], [89, 22], [90, 22], [92, 22],
+        [92, 21], [94, 19], [94, 16], [96, 16], [98, 16], [98, 13], [98, 10], [99, 8], [100, 6],
+        [100, 5], [101, 3], [103, 1], [104, 2], [103, 4], [102, 6], [101, 7], [100, 8], [99, 10],
+        [100, 13], [101, 13], [103, 12], [103, 10], [105, 9], [107, 10], [109, 12], [109, 14],
+        [109, 16], [107, 17], [106, 19], [107, 21], [108, 22], [110, 21], [112, 22], [114, 22],
+        [117, 23], [119, 25], [120, 26], [121, 28], [122, 30], [122, 31], [121, 33], [120, 35],
+        [121, 36], [123, 37], [121, 38], [119, 37], [118, 39], [120, 40], [121, 41], [122, 40],
+        [124, 40], [125, 38], [127, 37], [126, 35], [127, 34], [129, 35], [130, 37], [129, 39],
+        [128, 40], [130, 41], [131, 43], [133, 43], [136, 44], [139, 47], [140, 49], [141, 52],
+        [138, 54], [135, 55], [137, 56], [141, 59], [143, 59], [148, 59], [152, 59], [155, 60],
+        [157, 58], [156, 55], [157, 51], [159, 53], [160, 55], [162, 56], [163, 58], [165, 60],
+        [170, 60], [174, 62], [178, 63], [180, 65], [180, 68], [175, 70], [170, 70], [160, 70],
+        [152, 71], [145, 72], [140, 73], [130, 71], [128, 73], [120, 73], [113, 74], [104, 77],
+        [98, 76], [87, 75], [80, 73], [74, 73], [70, 73], [67, 70], [66, 69], [60, 69], [60, 65],
+        [60, 60], [60, 55], [59, 52], [55, 51], [52, 47], [49, 46], [47, 45], [47, 43], [44, 43],
+        [41, 42], [40, 41], [37, 41], [35, 42], [33, 42], [31, 41], [29, 41], [27, 41]]
+      islands:
+        - [[130, 31], [131, 34], [133, 34], [135, 34], [136, 35], [137, 37], [139, 38], [140, 40],
+          [140, 41], [142, 41], [142, 39], [141, 37], [140, 35], [139, 35], [137, 34], [135, 33],
+          [132, 33], [131, 31]]
+        - [[80, 10], [82, 8], [81, 6], [80, 6]]
+      lakes:
+        - [[47, 45], [49, 46], [52, 47], [53, 46], [51, 45], [52, 43], [53, 42], [54, 41],
+          [54, 38], [54, 37], [51, 37], [49, 38], [49, 40], [50, 41], [48, 42], [47, 43]]
+      biome_seeds: [[arctic, 102, 76], [arctic, 145, 72], [prairie, 66, 51], [prairie, 86, 49],
+        [boreal, 88, 64], [boreal, 115, 62], [boreal, 145, 63], [boreal, 70, 60], [boreal, 132, 55],
+        [boreal, 160, 58], [boreal, 88, 33], [prairie, 72, 50], [prairie, 100, 48],
+        [arid, 105, 42], [arid, 47, 24], [arid, 54, 20], [arid, 58, 31], [arid, 82, 39],
+        [arid, 62, 41], [arid, 40, 31], [temperate, 115, 35], [temperate, 127, 37],
+        [temperate, 137, 37], [temperate, 106, 29], [temperate, 33, 39], [temperate, 125, 45],
+        [temperate, 80, 28], [tropical, 103, 15], [tropical, 101, 4], [tropical, 76, 11],
+        [tropical, 110, 21], [savanna, 77, 20], [savanna, 96, 21], [wetland, 89, 24],
+        [wetland, 47, 31]]
+      ridges:
+        - {kind: mountain, points: [[73, 35], [78, 32], [84, 29], [88, 28], [96, 28]]}
+        - {kind: mountain, points: [[67, 35], [73, 36]]}
+        - {kind: mountain, points: [[70, 41], [78, 42], [85, 43], [92, 43]]}
+        - {kind: mountain, points: [[78, 36], [90, 36], [98, 35]]}
+        - {kind: mountain, points: [[41, 43], [45, 42], [47, 41]]}
+        - {kind: hills, points: [[45, 36], [50, 32], [56, 28]]}
+        - {kind: hills, points: [[86, 50], [95, 48], [100, 50]]}
+        - {kind: hills, points: [[60, 52], [61, 58], [62, 64]]}
+        - {kind: hills, points: [[74, 16], [76, 11]]}
+        - {kind: hills, points: [[31, 38], [37, 39], [42, 40]]}
+        - {kind: hills, points: [[127, 67], [135, 63], [145, 61]]}
+        - {kind: hills, points: [[104, 21], [107, 15]]}
+        - {kind: hills, points: [[136, 36], [140, 39]]}
+    cities:
+      - {name: Beijing, lon: 116, lat: 40}
+      - {name: Delhi, lon: 77, lat: 29}
+      - {name: Tokyo, lon: 140, lat: 36}
+      - {name: Shanghai, lon: 121, lat: 31}
+      - {name: Mumbai, lon: 73, lat: 19}
+      - {name: Bangkok, lon: 101, lat: 14}
+      - {name: Kolkata, lon: 88, lat: 23}
+      - {name: Tehran, lon: 51, lat: 36}
+      - {name: Riyadh, lon: 47, lat: 25}
+      - {name: Istanbul, lon: 29, lat: 41}
+      - {name: Almaty, lon: 77, lat: 43}
+      - {name: Ulaanbaatar, lon: 107, lat: 48}
+      - {name: Novosibirsk, lon: 83, lat: 55}
+      - {name: Yakutsk, lon: 130, lat: 62}
+      - {name: Khabarovsk, lon: 135, lat: 48}
+
+  africa:
+    status: placeholder
+    note: Desert north, savanna centre, rainforest belt, highlands in the east.
+    name: Africa
+    order: 4
+    resources: {wheat: 6, cattle: 12, fish: 10, timber: 8, gold_ore: 12, coffee: 10, oil: 12, aluminum: 6, uranium: 8, rare_earths: 8}
+    geo:
+      size: [56, 68]
+      x_scale_pct: 98
+      size_pct: 75
+      outline: [[-6, 36], [-2, 35], [0, 36], [3, 37], [8, 37], [10, 37], [11, 37], [10, 36],
+        [11, 35], [10, 34], [12, 33], [13, 33], [15, 32], [17, 31], [19, 30], [20, 31], [20, 32],
+        [22, 33], [24, 32], [25, 32], [29, 31], [32, 31], [33, 30], [34, 28], [35, 24], [37, 21],
+        [38, 18], [40, 15], [42, 13], [43, 12], [45, 10], [47, 11], [51, 12], [51, 10], [50, 7],
+        [48, 5], [46, 2], [43, -1], [42, -2], [40, -4], [39, -7], [40, -9], [40, -11], [41, -15],
+        [39, -17], [36, -19], [35, -21], [36, -23], [35, -24], [33, -26], [33, -28], [31, -29],
+        [30, -31], [28, -33], [26, -34], [22, -34], [20, -35], [18, -34], [18, -33], [18, -31],
+        [16, -28], [15, -26], [14, -23], [13, -21], [12, -18], [12, -16], [12, -13], [14, -11],
+        [13, -9], [12, -6], [12, -5], [10, -3], [9, -1], [10, 1], [10, 3], [9, 4], [8, 4],
+        [7, 4], [6, 4], [5, 6], [4, 6], [3, 6], [1, 6], [-2, 5], [-3, 5], [-5, 5], [-7, 4],
+        [-9, 5], [-11, 7], [-13, 8], [-13, 9], [-15, 11], [-17, 12], [-17, 15], [-16, 17],
+        [-16, 19], [-17, 21], [-16, 24], [-15, 26], [-13, 28], [-12, 28], [-10, 30], [-10, 32],
+        [-9, 33], [-8, 34], [-7, 34], [-6, 35]]
+      islands:
+        - [[49, -12], [51, -16], [50, -18], [48, -22], [47, -25], [45, -25], [44, -24],
+          [43, -22], [44, -20], [44, -17], [46, -16], [48, -14]]
+      lakes: []
+      biome_seeds: [[arid, 0, 25], [arid, 15, 22], [arid, 28, 24], [arid, 8, 29], [arid, -10, 23],
+        [arid, 46, 7], [arid, 16, -24], [savanna, 0, 12], [savanna, 20, 11], [savanna, 34, 2],
+        [savanna, 30, -14], [savanna, 22, -18], [savanna, -12, 13], [tropical, 20, 0],
+        [tropical, 11, 3], [tropical, -7, 7], [tropical, 48, -18], [tropical, 27, -5],
+        [temperate, 26, -30], [temperate, 2, 35], [temperate, -6, 33], [temperate, 39, 9],
+        [temperate, 35, -8], [wetland, 30, 8], [wetland, 23, -19], [wetland, 31, 30]]
+      ridges:
+        - {kind: mountain, points: [[-8, 31], [-4, 33], [2, 35], [7, 36]]}
+        - {kind: mountain, points: [[37, 13], [38, 9], [39, 6]]}
+        - {kind: hills, points: [[36, 1], [35, -5], [34, -10]]}
+        - {kind: hills, points: [[27, -31], [30, -28]]}
+        - {kind: hills, points: [[5, 24], [7, 22]]}
+        - {kind: hills, points: [[17, 21], [19, 20]]}
+        - {kind: hills, points: [[48, -15], [47, -21]]}
+    cities:
+      - {name: Cairo, lon: 31, lat: 30}
+      - {name: Lagos, lon: 3, lat: 7}
+      - {name: Johannesburg, lon: 28, lat: -26}
+      - {name: Nairobi, lon: 37, lat: -1}
+      - {name: Kinshasa, lon: 15, lat: -4}
+      - {name: Addis Ababa, lon: 39, lat: 9}
+      - {name: Casablanca, lon: -8, lat: 34}
+      - {name: Dakar, lon: -17, lat: 15}
+      - {name: Algiers, lon: 3, lat: 37}
+      - {name: Windhoek, lon: 17, lat: -23}
+      - {name: Lusaka, lon: 28, lat: -15}
+      - {name: Khartoum, lon: 33, lat: 16}
+      - {name: Cape Town, lon: 18, lat: -34}
+      - {name: Bamako, lon: -8, lat: 13}
+      - {name: Antananarivo, lon: 48, lat: -19}
+
+  oceania:
+    status: placeholder
+    note: Arid interior, fertile and tropical coasts, the New Guinea highlands.
+    name: Oceania
+    order: 5
+    resources: {wheat: 10, cattle: 14, fish: 16, timber: 6, gold_ore: 10, coffee: 4, oil: 6, aluminum: 10, uranium: 8, rare_earths: 6}
+    geo:
+      size: [70, 58]
+      x_scale_pct: 90
+      size_pct: 100
+      outline: [[114, -22], [116, -21], [119, -20], [121, -19], [122, -18], [124, -16],
+        [125, -15], [127, -14], [128, -15], [130, -15], [130, -13], [131, -12], [133, -11],
+        [135, -12], [137, -12], [136, -14], [136, -15], [137, -16], [140, -18], [141, -16],
+        [142, -13], [142, -11], [143, -11], [144, -14], [145, -15], [146, -18], [146, -19],
+        [149, -21], [151, -23], [153, -25], [154, -28], [153, -31], [152, -33], [151, -34],
+        [150, -38], [148, -38], [146, -39], [144, -38], [143, -39], [140, -38], [139, -36],
+        [138, -35], [138, -34], [137, -33], [136, -35], [135, -34], [134, -32], [131, -31],
+        [128, -32], [124, -33], [122, -34], [119, -34], [117, -35], [115, -34], [115, -33],
+        [116, -32], [115, -30], [114, -27], [113, -25], [114, -23]]
+      islands:
+        - [[145, -41], [148, -41], [148, -43], [147, -44], [145, -42]]
+        - [[131, -1], [132, 0], [134, -1], [136, -3], [138, -2], [141, -3], [145, -4], [146, -6],
+          [148, -6], [148, -7], [149, -9], [151, -11], [149, -10], [147, -10], [146, -8],
+          [144, -8], [143, -9], [142, -9], [141, -9], [139, -8], [139, -7], [138, -6], [136, -5],
+          [134, -4], [133, -4], [132, -3]]
+      lakes: []
+      biome_seeds: [[arid, 125, -25], [arid, 135, -27], [arid, 120, -29], [arid, 132, -21],
+        [arid, 141, -29], [savanna, 130, -16], [savanna, 140, -21], [savanna, 124, -18],
+        [savanna, 145, -24], [tropical, 143, -6], [tropical, 138, -4], [tropical, 145, -16],
+        [tropical, 132, -12], [temperate, 148, -34], [temperate, 145, -37], [temperate, 116, -33],
+        [temperate, 147, -42], [temperate, 152, -28], [prairie, 147, -30], [wetland, 141, -14]]
+      ridges:
+        - {kind: hills, points: [[145, -15], [147, -22], [150, -28], [149, -34], [147, -37]]}
+        - {kind: mountain, points: [[138, -4], [142, -5], [145, -6], [147, -7]]}
+        - {kind: hills, points: [[118, -23], [121, -22]]}
+    cities:
+      - {name: Sydney, lon: 151, lat: -34}
+      - {name: Perth, lon: 116, lat: -32}
+      - {name: Darwin, lon: 131, lat: -12}
+      - {name: Melbourne, lon: 145, lat: -38}
+      - {name: Brisbane, lon: 153, lat: -27}
+      - {name: Adelaide, lon: 139, lat: -35}
+      - {name: Hobart, lon: 147, lat: -43}
+      - {name: Port Moresby, lon: 147, lat: -9}
+      - {name: Cairns, lon: 146, lat: -17}
+      - {name: Alice Springs, lon: 134, lat: -24}
+      - {name: Broome, lon: 122, lat: -18}
+      - {name: Kalgoorlie, lon: 121, lat: -31}
+      - {name: Mount Isa, lon: 139, lat: -21}
+      - {name: Exmouth, lon: 114, lat: -22}
+      - {name: Jayapura, lon: 141, lat: -3}

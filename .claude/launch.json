@@ -1,0 +1,57 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "beacon-web",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8765",
+        "--seed",
+        "1",
+        "--human",
+        "europe"
+      ],
+      "port": 8765
+    },
+    {
+      "name": "beacon-web-test",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8766",
+        "--seed",
+        "5",
+        "--human",
+        "europe",
+        "--reveal"
+      ],
+      "port": 8766
+    },
+    {
+      "name": "beacon-web-check",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "python",
+        "-m",
+        "web.server",
+        "--port",
+        "8767",
+        "--seed",
+        "2",
+        "--human",
+        "europe"
+      ],
+      "port": 8767
+    }
+  ]
+}

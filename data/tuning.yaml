@@ -1,0 +1,584 @@
+# Global tunables. Every number is a tunable: value, status (placeholder | calibrated), note.
+# "calibrated" here also covers values fixed by the design doc or the designer.
+# Integers only: percentages are integer percent, movement is in sub-points (movement.scale).
+
+time:
+  start_year:
+    value: 2025
+    status: calibrated
+    note: Designer decision 2026-11-13 (start in 2025, research into near-future tech).
+  turns_per_year:
+    value: 4
+    status: placeholder
+    note: One turn per quarter, so 200 turns cover 2025-2074.
+
+map:
+  width:
+    value: 216
+    status: placeholder
+    note: Map columns (216 x 128 from 2026-11-14, room to shuffle the continents; was 192 x 116).
+      Earlier - 192 x 116 = 22272 tiles (designer 2026-11-14 - continents about twice as
+      big, about 1000 land hexes each, for 15 well-spaced real cities). Each continent's box is
+      in data/continents.yaml.
+  height:
+    value: 128
+    status: placeholder
+    note: Map rows.
+  wrap:
+    value: true
+    status: placeholder
+    note: The world wraps east to west - the earth is round, there is no edge (designer
+      2026-11-15, SPEC_M10). The map width must be even.
+  land_per_continent:
+    value: 2750
+    status: placeholder
+    note: Land hexes each continent grows to from its real outline, so land is about 60% of the
+      map and every continent has about the same (designer 2026-11-15, SPEC_M10 - "more 60/40
+      land/ocean").
+  land_edge_pct:
+    value: [8, 20, 40, 65, 100]
+    status: placeholder
+    note: Growth chance in percent by distance (0, 1, 2, 3, 4+ hexes) from the continent box's
+      inner edge, so grown land never lines up into straight, box-shaped coasts.
+  land_fill_pct:
+    value: 88
+    status: placeholder
+    note: Most a continent may fill of its box while growing (keeps a ragged coast).
+  land_grow_chance_pct:
+    value: [0, 10, 25, 45, 70, 90, 100]
+    status: placeholder
+    note: Chance a coastal ocean hex becomes land in one growth pass, by how many land
+      neighbours it has (0-6); bays fill first, so the coast stays ragged.
+  row_gap:
+    value: -1
+    status: placeholder
+    note: Rows between the two rows of continents (negative - their margins overlap, leaving a
+      strait one hex wide; designer 2026-11-15, SPEC_M10 - meet a friend by about turn 15).
+  layout_gap_min:
+    value: -1
+    status: placeholder
+    note: Columns between neighbouring continents in a row (negative - their ocean margins
+      overlap, leaving a strait one hex wide; designer 2026-11-15, SPEC_M10).
+  ocean_margin:
+    value: 1
+    status: placeholder
+    note: Ocean hexes kept clear inside each continent box edge, so continents never touch.
+  min_island_tiles:
+    value: 3
+    status: placeholder
+    note: Islands smaller than this are dropped; larger ones are joined to their continent by
+      the shortest causeway, so every continent is one landmass.
+  biome_blend_pct:
+    value: 30
+    status: placeholder
+    note: Chance a hex near a climate border takes the neighbouring zone's biome instead.
+  hill_pct:
+    value: 8
+    status: placeholder
+    note: Chance a land tile is hills, on top of the hill ridges.
+  ridge_flank_hill_pct:
+    value: 35
+    status: placeholder
+    note: Chance a flat hex beside a mountain range is hills.
+  resource_pct:
+    value: 12
+    status: placeholder
+    note: Chance a land or coast tile gets a resource (if any resource fits it).
+
+cities:
+  min_distance:
+    value: 5
+    status: placeholder
+    note: Minimum hex distance between any two cities. The real city list in
+      data/continents.yaml is chosen to keep it (checked by a test); designer 2026-11-14 asked
+      for more space between cities.
+  known_count:
+    value: 1
+    status: placeholder
+    note: Cities a player holds at the start (designer 2026-11-14 - just the capital, e.g. New
+      York; the other fourteen are alien-held and must be liberated). Was 3.
+  work_radius:
+    value: 2
+    status: placeholder
+    note: Tiles a city can work (19 at radius 2). Civ V uses 3; 2 suits 20 cities per continent.
+  lost_state_weights:
+    status: placeholder
+    note: Shares of each continent's unknown cities in each starting state (exact quota, then a
+      seeded shuffle of which city gets which state). Designer 2026-11-14 - every lost city is
+      held by the aliens (no dormant cities or ruins); beating the aliens makes it yours again.
+    overrun: 100
+  start_pop:
+    status: placeholder
+    note: Starting population by starting role. Designer 2026-11-14 - the capital starts with 5
+      citizens (the palace food keeps them fed before any farm is built); others 2.
+    capital: 5
+    known: 2
+    dormant: 2
+    overrun: 3
+    empty: 0
+  start_improved:
+    status: placeholder
+    note: Improved tiles around each starting city, by role. Designer 2026-11-14 - none; every farm
+      and mine has to be built by engineers.
+    capital: 0
+    known: 0
+  liberated_improved_pct:
+    value: 0
+    status: placeholder
+    note: Improved tiles a liberated city gets, as percent of its surviving population. 0 - like
+      starting cities, its land must be improved by engineers (designer 2026-11-14).
+  start_buildings:
+    status: placeholder
+    note: Buildings present at the start, by role.
+    capital: [food_depot, workshop, market, library, school, radio_tower, military_base]
+    known: [food_depot]
+  refound_pop:
+    value: 1
+    status: placeholder
+    note: Population of a city refounded by a restoration team.
+  liberation_pop_loss_pct:
+    value: 50
+    status: placeholder
+    note: Population lost (rounded down) when a city is liberated in battle.
+  liberated_hp_pct:
+    value: 50
+    status: placeholder
+    note: City HP after liberation, as percent of its maximum.
+  vision:
+    value: 1
+    status: placeholder
+    note: City sight radius before buildings.
+  base_strength:
+    value: 10
+    status: placeholder
+    note: City combat strength before population, buildings and garrison.
+  strength_per_pop:
+    value: 2
+    status: placeholder
+    note: City combat strength per population.
+  garrison_share_pct:
+    value: 30
+    status: placeholder
+    note: Share of the garrison's effective strength added to the city's (50 made alien cities
+      near-impregnable to early units in M4 runs).
+  capital:
+    status: placeholder
+    note: A capital's built-in defences (like Civ's palace), added to its strength and HP, and the
+      palace's own food and production (so 5 starting citizens are fed before any farm). With one
+      starting city (designer 2026-11-14) an undefended capital fell to the first alien sieges.
+    strength: 15
+    hp: 100
+    food: 3
+    production: 1
+  base_hp:
+    value: 200
+    status: placeholder
+    note: City hit points before walls.
+  heal_per_turn:
+    value: 20
+    status: placeholder
+    note: City HP regained each turn, unless the city took damage that turn.
+  attack_range:
+    value: 2
+    status: placeholder
+    note: City bombardment range.
+
+economy:
+  start_gold:
+    value: 100
+    status: placeholder
+    note: Treasury at the start.
+  unlinked_road_upkeep:
+    value: 1
+    status: placeholder
+    note: Gold per turn for each road or rail hex not yet joined to one of the player's cities
+      (designer 2026-11-14).
+  food_per_pop:
+    value: 2
+    status: placeholder
+    note: Food eaten per population per turn.
+  growth_base:
+    value: 15
+    status: placeholder
+    note: Food to grow from population 1; threshold = base + per_pop*(p-1) + quad*(p-1)^2.
+  growth_per_pop:
+    value: 6
+    status: placeholder
+    note: Linear growth threshold term.
+  growth_quad:
+    value: 1
+    status: placeholder
+    note: Quadratic growth threshold term.
+  science_per_pop_pct:
+    value: 50
+    status: placeholder
+    note: Science from population, as percent per citizen (rounded down per city).
+  city_center_yields:
+    status: placeholder
+    note: Added to the city's own tile, which is always worked. Production 2 so grassland cities
+      are not stuck at 1 production. Food 2 (2026-11-14) so a new city of 2 feeds itself before
+      engineers build any farms (cities start with no improved tiles).
+    food: 2
+    production: 2
+    science: 1
+    gold: 1
+  focus_weights:
+    status: placeholder
+    note: Tile-scoring weights per city focus when assigning citizens.
+    balanced: {food: 2, production: 2, science: 1, gold: 1, beacon: 1}
+    food: {food: 6, production: 1, science: 1, gold: 1, beacon: 1}
+    production: {food: 2, production: 5, science: 1, gold: 1, beacon: 1}
+    science: {food: 2, production: 1, science: 5, gold: 1, beacon: 1}
+    gold: {food: 2, production: 1, science: 1, gold: 5, beacon: 1}
+  connection_gold:
+    value: 2
+    status: placeholder
+    note: Gold a turn for each city (not the capital) joined to the capital by road, rail or city
+      tiles (designer 2026-11-15, SPEC_M10 - cities produce without a road; connecting pays).
+  purchase_pct:
+    value: 200
+    status: placeholder
+    note: Gold to buy an item outright, as percent of its production cost.
+  project_conversion_pct:
+    value: 50
+    status: placeholder
+    note: Production converted to gold or science by the wealth and research projects.
+  unit_upkeep:
+    value: 1
+    status: placeholder
+    note: Gold per unit member per turn beyond the free allowance.
+  free_units_per_city:
+    value: 2
+    status: placeholder
+    note: Unit members supported free per active city.
+
+movement:
+  scale:
+    value: 30
+    status: calibrated
+    note: Sub-points per move point. Structural, so roads (1/3) and rail (1/10) are integers.
+
+combat:
+  unit_max_hp:
+    value: 100
+    status: calibrated
+    note: HP of one unit. Designer rule - a two-unit stack has combined HP (max 200).
+  stack_size:
+    value: 2
+    status: calibrated
+    note: Designer decision 2026-11-13; a stack fights at stack_size x strength.
+  base_damage:
+    value: 30
+    status: placeholder
+    note: Damage each side takes at equal strength.
+  min_damage:
+    value: 1
+    status: placeholder
+    note: Floor on damage from one attack.
+  max_damage:
+    value: 100
+    status: placeholder
+    note: Cap on damage from one attack.
+  variance_pct:
+    value: 20
+    status: placeholder
+    note: Damage is scaled by a seeded roll in 100 +/- variance percent.
+  wound_floor_pct:
+    value: 50
+    status: placeholder
+    note: Strength percent at 0 HP; strength scales linearly from 100% at full HP.
+  fortify_pct:
+    value: 25
+    status: placeholder
+    note: Defence bonus for a fortified unit.
+  flanking_pct:
+    value: 10
+    status: placeholder
+    note: Melee attack bonus per other friendly military unit next to the defender.
+  heal:
+    status: placeholder
+    note: HP healed per unit member per turn if the unit did not move or attack (fortified or
+      resting). Designer 2026-11-14, as in Civ V - 20 in your own territory (cities included), 10
+      outside it.
+    city: 20
+    own_territory: 20
+    neutral: 10
+
+start:
+  mode:
+    value: survivor
+    status: calibrated
+    note: Designer 2026-11-15 (SPEC_M14) - survivor (the band takes its first town) is the normal
+      start; classic gives cities and an army from turn 1.
+  units:
+    status: placeholder
+    note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
+      two infantry and one engineer at the capital (the scout is kept for exploring), and one
+      infantry and one engineer at every other starting city (other_cities).
+    list:
+      - {type: infantry, count: 2}
+      - {type: recon_team, count: 1}
+      - {type: engineers, count: 1}
+  other_cities:
+    status: placeholder
+    note: Units placed at each starting city other than the capital (designer 2026-11-14).
+    list:
+      - {type: infantry, count: 1}
+      - {type: engineers, count: 1}
+  city_units:
+    status: placeholder
+    note: City defence units placed on the tile of every city a player owns at the start
+      (designer 2026-11-14 - a city artillery that cannot move).
+    list: [city_artillery]
+
+aliens:
+  garrison:
+    status: placeholder
+    note: Alien units placed in each overrun city at the start (the first sits in the city); one
+      hive guard each (2026-11-14 retune, was hive guard and warrior). The
+      alien city nearest each capital gets only near_list, so a first liberation comes early
+      (designer 2026-11-14, with one starting city).
+    list: [alien_hive_guard]
+    near_list: [alien_hatchling]
+  near_hp_pct:
+    value: 50
+    status: placeholder
+    note: The alien city nearest each capital starts at this percent of its HP (an easy first
+      liberation, designer 2026-11-14).
+
+trade:
+  alliance_tech:
+    value: international_accords
+    status: calibrated
+    note: Designer decision 2026-11-13 - both players must know it to ally.
+  shipping:
+    status: placeholder
+    note: Goods and units travel by sea at speed hexes per turn (at least 1 turn). Shipping a unit
+      costs base_gold + per_hex_gold x distance / 10. Ports are coastal cities with a Port.
+    speed: 20
+    unit_base_gold: 10
+    unit_per_10_hexes_gold: 3
+  deals:
+    status: placeholder
+    note: Allowed durations for per-turn parts of deals (gold per turn, resource lending).
+    durations: [10, 20, 30]
+  abroad_upkeep_pct:
+    value: 100
+    status: placeholder
+    note: Extra upkeep, as percent of normal unit upkeep, for unit members on another continent.
+
+endgame:
+  barrage_tech:
+    value: orbital_barrage
+    status: calibrated
+    note: DESIGN.md 11 - researching it stops reinforcements; it unlocks the barrage project.
+  radar_techs:
+    value: [deep_space_radar, stellar_chorus]
+    status: placeholder
+    note: Techs that reveal every alien city to their owner (DESIGN.md 12, late-game hunt tools).
+  mothership:
+    status: placeholder
+    note: Strike chance per thousand per turn; a struck city drops to strike_hp_pct of its HP and
+      loses strike_pop_pct of its population. The barrage host is host_weight times likelier to be
+      targeted than any other player city.
+    strike_permille: 25
+    strike_hp_pct: 40
+    strike_pop_pct: 25
+    host_weight: 10
+  barrage:
+    status: placeholder
+    note: Progress needed, the minimum turns from start to firing (DESIGN.md 11, a fixed number of
+      turns), gold converted to progress at gold_to_progress_pct, and the extra siege value the
+      director gives the host city.
+    cost: 3000
+    min_turns: 20
+    gold_to_progress_pct: 50
+    host_siege_value: 80
+  espionage:
+    status: placeholder
+    note: Gold to complete an operation, how many alien techs it offers, and how many turns the
+      largest contributor has to choose before the first offered is taken.
+    cost: 800
+    offered: 3
+    choose_turns: 1
+
+citizens:
+  stats:
+    status: placeholder
+    note: Every citizen has 6 points over the six domains, in one of three seeded patterns
+      (designer 2026-11-14) - +1 in all six, +3 in two, or +2 in three. Weights pick the pattern.
+    points: 6
+    patterns:
+      - {status: placeholder, note: +1 everywhere., weight: 1, picks: 6, each: 1}
+      - {status: placeholder, note: Two strengths., weight: 1, picks: 2, each: 3}
+      - {status: placeholder, note: Three strengths., weight: 1, picks: 3, each: 2}
+  tile_rate_pct:
+    value: 50
+    status: calibrated
+    note: Designer 2026-11-14 - a citizen working a tile adds half its stats there (rounded down);
+      on the council its full stats go to its home city. Military counts only on the council.
+  military_strength:
+    value: 2
+    status: placeholder
+    note: City strength per military point of a citizen on the council.
+  growing_up:
+    status: placeholder
+    note: A child grows up after `needed` points. Each turn it gains base + per_food x the city's
+      food surplus (if positive), so a well-fed city grows up its children in about 5 turns and a
+      city with no surplus in about 13 (designer asked for an initial equation). Births still come
+      from the city's food store reaching its growth threshold.
+    needed: 100
+    base: 8
+    per_food: 3
+  trait_pct:
+    value: 60
+    status: placeholder
+    note: Chance a newborn citizen has one trait.
+  traits:
+    status: placeholder
+    note: Citizen traits (one at most). grow_pct speeds growing up; tile_rate_pct replaces the
+      half rate on tiles; council_pct scales council stats; food_eaten changes upkeep.
+    quick: {note: Grows up twice as fast., grow_pct: 200}
+    skilled: {note: Works a tile at full rate instead of half., tile_rate_pct: 100}
+    statesman: {note: Gives half as much again on the council., council_pct: 150}
+    frugal: {note: Eats 1 less food., food_eaten: -1}
+    devoted: {note: +1 beacon wherever it is., beacon_flat: 1}
+  names:
+    status: placeholder
+    note: Fictional given names for citizens (no real people).
+    list: [Ari, Bex, Cai, Dov, Eli, Fay, Gus, Hal, Ira, Jun, Kit, Lio, Mae, Nia, Oli, Pax, Quin,
+           Rae, Sol, Tam, Uma, Vic, Wes, Xan, Yui, Zed, Ama, Bo, Cyd, Dex, Eno, Fin, Gia, Hux,
+           Ilo, Jem, Kai, Lux, Mo, Noe]
+
+promotions:
+  steps:
+    status: calibrated
+    note: Designer 2026-11-14 - every combat (attacking or attacked) is 1 experience. Promotions at
+      2, then doubling (4, 8, 16), then x1.5 each time (24, 36, 54, 81...).
+    first: 2
+    double_until: 16
+    then_pct: 150
+  options:
+    status: placeholder
+    note: Choices at each promotion. Every unit has the general two; `classes` limits an option to
+      unit classes (designer 2026-11-14 - unit-specific promotions). Effects - attack_pct,
+      defence_pct, vs {class or city - pct}, heal (extra HP a turn when resting), moves (extra).
+      Bonuses add up.
+    attack_10: {note: +10% attack strength., attack_pct: 10}
+    defence_10: {note: +10% defence strength., defence_pct: 10}
+    dig_in: {note: +20% defence; infantry hold ground., defence_pct: 20, classes: [infantry]}
+    field_medic: {note: Heals 10 HP more a turn when resting., heal: 10, classes: [infantry, armour]}
+    blitz: {note: +1 move., moves: 1, classes: [armour, recon]}
+    breakthrough: {note: +20% attacking infantry., vs: {infantry: 20}, classes: [armour]}
+    siege_master: {note: +25% against cities., vs: {city: 25}, classes: [artillery]}
+    barrage: {note: +15% ranged attack., attack_pct: 15, classes: [artillery, naval]}
+    sea_legs: {note: +1 move at sea., moves: 1, classes: [naval]}
+
+defences:
+  upgrade:
+    status: placeholder
+    note: Designer 2026-11-14 - city guns do not earn experience; they are upgraded with gold.
+      Each level adds strength_pct to attack and defence; level k (from 1) costs cost_base +
+      cost_step x (k - 1) gold, up to max_level.
+    cost_base: 60
+    cost_step: 40
+    strength_pct: 15
+    max_level: 5
+
+turrets:
+  status: placeholder
+  note: Turrets (designer 2026-11-14). Level 1 when built; each gold upgrade adds strength and HP
+    and repairs it. Level k costs upgrade_cost_base + upgrade_cost_step x (k - 1) gold to reach
+    k + 1. Range 1 - it fires at units next to it at the end of each turn.
+  strength_base: 18
+  strength_per_level: 8
+  hp_base: 60
+  hp_per_level: 30
+  range: 1
+  upgrade_cost_base: 50
+  upgrade_cost_step: 30
+  max_level: 4
+
+repair:
+  turns:
+    value: 1
+    status: placeholder
+    note: Turns a nanorepair crew takes to rebuild a pillaged improvement (engineers rebuild at
+      the normal pace).
+
+convoys:
+  shares_pct:
+    value: [25, 50]
+    status: placeholder
+    note: Shares of its production or spare food a city may send by convoy to a friendly city
+      joined to it by road or rail (designer 2026-11-15, SPEC_M10).
+
+contact:
+  radio_building:
+    value: radio_tower
+    status: calibrated
+    note: Designer 2026-11-16 - players meet only by radio - every player with this building in
+      a city it holds is in contact with every other such player (and sits on the council).
+      Sighting, beacon and distress contact are off. Classic capitals start with it; a survivor
+      band rebuilds it in its first town (cheap, about 2 turns). Replaces radio_start (SPEC_M13).
+  beacon_tech:
+    value: beacon_theory
+    status: placeholder
+    note: Researching this (beacon level 1) makes contact with every other player (designer
+      2026-11-15, SPEC_M10 - meet people without finding their cities).
+
+remnants:
+  per_continent_min:
+    value: 3
+    status: placeholder
+    note: Fewest meteor remnants placed on each continent at the start (designer 2026-11-15,
+      SPEC_M10). Shared - the first player (or the aliens) to mine one claims it.
+  per_continent_max:
+    value: 5
+    status: placeholder
+    note: Most meteor remnants per continent.
+  min_city_distance:
+    value: 4
+    status: placeholder
+    note: No remnant within this many hexes of a city.
+  min_spacing:
+    value: 5
+    status: placeholder
+    note: Fewest hexes between two remnants.
+
+survivor:
+  status: placeholder
+  note: The survivor start (docs/SPEC_M14.md, designer 2026-11-15). Each player's band (band) starts
+    band_distance hexes from its first town, the player's old capital held lightly by the aliens
+    (town_garrison, at town_hp_pct of its HP). Caches hold loot (weights); near_caches of them lie
+    just beyond the band's sight (none beside it, nearer than the town, which starts unseen) and
+    always hold gear; the rest lie within radius, out of sight (designer 2026-11-16). A unit holds one
+    weapon (weapon or alien_weapon, the better counts) and one armour. Alien hunters ignore band
+    units farther than hunt_radius (one less in forest or hills). If the leader falls before the
+    first town, it escapes to the band's starting hex with escape_survivors survivors. The town's
+    barricades hold (it cannot fall below 1 HP) until the band has found a weapon, armour or another
+    survivor (designer - no capture without an upgrade or an extra citizen). Taking the
+    first town turns survivors without gear into citizens; geared survivors stay as units; the
+    leader leaves the map; scrap becomes production; founding_units join. AI bands storm the town
+    once they have gear, six people or it is ai_attack_turn, attacking only when the unit keeps at
+    least ai_min_hp after the worst counter-blow or the blow takes the town.
+  band: [{type: band_leader, count: 1}, {type: survivor, count: 4}]
+  band_distance: 4
+  town_garrison: [alien_hatchling]
+  town_pop: 2
+  town_hp_pct: 70
+  caches: 8
+  near_caches: 2
+  radius: 7
+  loot:
+    weapon: {weight: 4, attack: 5}
+    armour: {weight: 3, defence: 5}
+    alien_weapon: {weight: 1, attack: 12}
+    survivor: {weight: 3}
+    scrap: {weight: 3, scrap: 20}
+  hunt_radius: 2
+  escape_survivors: 2
+  founding_units: [engineers, recon_team]
+  ai_attack_turn: 9
+  ai_min_hp: 20
+
