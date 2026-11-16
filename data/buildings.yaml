@@ -5,12 +5,12 @@
 buildings:
   food_depot: {status: placeholder, note: Granary stand-in., cost: 60, maintenance: 1, tech: market_economy, yields: {food: 2}, yield_pct: {}}
   workshop: {status: placeholder, note: Light industry., cost: 70, maintenance: 1, tech: industrial_base, yields: {production: 2}, yield_pct: {}}
+  storehouse: {status: placeholder, note: "Stores more timber, stone and iron (SPEC_M16).", cost: 50, maintenance: 1, tech: industrial_base, yields: {}, yield_pct: {}}
   market: {status: placeholder, note: Commerce., cost: 80, maintenance: 0, tech: market_economy, yields: {gold: 2}, yield_pct: {gold: 25}}
   library: {status: placeholder, note: The first science building - buildable from turn 1 (designer 2026-11-15 SPEC_M10)., cost: 45, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}}
   school: {status: placeholder, note: Education., cost: 80, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}, requires_building: library}
   port: {status: placeholder, note: Harbour; trade role arrives in M6., cost: 90, maintenance: 1, tech: market_economy, yields: {food: 1, gold: 1}, yield_pct: {}, coastal: true}
-  military_base: {status: placeholder, note: Barracks and depots., cost: 100, maintenance: 2, tech: modern_warfare, yields: {}, yield_pct: {}, unit_production_pct: 25, city_strength: 4}
-  defence_perimeter: {status: placeholder, note: City walls., cost: 100, maintenance: 1, tech: fortification_doctrine, yields: {}, yield_pct: {}, city_strength: 8, city_hp: 100}
+  military_base: {status: placeholder, note: The barracks - needed to train military units (designer 2026-11-16)., cost: 100, maintenance: 2, tech: modern_warfare, yields: {}, yield_pct: {}, unit_production_pct: 25, city_strength: 4}
   radio_tower: {status: placeholder, note: "Contact with the other continents and a seat on the council (designer 2026-11-16 - cheap, about 2 turns; the first thing a new city builds). Wider city sight.", cost: 12, maintenance: 0, tech: industrial_base, yields: {}, yield_pct: {}, vision: 2}
   factory: {status: placeholder, note: Heavy industry., cost: 140, maintenance: 2, tech: advanced_manufacturing, yields: {production: 1}, yield_pct: {production: 25}, requires_building: workshop}
   research_lab: {status: placeholder, note: Applied research., cost: 150, maintenance: 2, tech: applied_ai, yields: {science: 3}, yield_pct: {science: 25}, requires_building: school}
@@ -29,7 +29,6 @@ buildings:
   data_centre: {status: placeholder, note: Computing for research., cost: 180, maintenance: 2, tech: applied_ai, yields: {science: 4, gold: 1}, yield_pct: {}}
   autonomous_factory: {status: placeholder, note: Robotic heavy industry., cost: 200, maintenance: 2, tech: nanofabrication, yields: {production: 2}, yield_pct: {production: 25}, requires_building: factory}
   quantum_lab: {status: placeholder, note: Quantum research., cost: 240, maintenance: 3, tech: quantum_computing, yields: {science: 5}, yield_pct: {science: 25}, requires_building: research_lab}
-  plasma_shield: {status: placeholder, note: Directed-energy city shield., cost: 250, maintenance: 3, tech: directed_energy, yields: {}, yield_pct: {}, city_strength: 12, city_hp: 150}
   arcology: {status: placeholder, note: Self-contained city tower., cost: 300, maintenance: 4, tech: post_scarcity, yields: {food: 8, science: 4}, yield_pct: {}}
   orbital_relay: {status: placeholder, note: Satellite sight over the continent., cost: 260, maintenance: 3, tech: nanofabrication, yields: {}, yield_pct: {}, vision: 4}
   climate_dome: {status: placeholder, note: Controlled growing climate., cost: 200, maintenance: 3, tech: climate_engineering, yields: {food: 3}, yield_pct: {}}
@@ -46,4 +45,3 @@ buildings:
   bio_reactor: {status: placeholder, note: Living power plant., cost: 160, maintenance: 2, tech: bio_reactors, yields: {}, yield_pct: {production: 30}}
   phase_scanner: {status: placeholder, note: Wide sight through fog., cost: 120, maintenance: 1, tech: phase_scanners, yields: {}, yield_pct: {}, vision: 4}
   translation_hub: {status: placeholder, note: Speaks to the hive; draws recruits., cost: 140, maintenance: 2, tech: hive_linguistics, yields: {beacon: 6}, yield_pct: {}}
-  chitin_bulwark: {status: placeholder, note: Grown city walls., cost: 180, maintenance: 2, tech: organic_armour, yields: {}, yield_pct: {}, city_strength: 12, city_hp: 150}

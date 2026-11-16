@@ -12,7 +12,7 @@ production:
   recon: 2
   scout_boats: 1
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
-                      research_lab, defence_perimeter, vertical_farm, financial_center, hospital,
+                      research_lab, storehouse, vertical_farm, financial_center, hospital,
                       radio_tower, fusion_plant]
   capital_priority: [beacon_i, beacon_ii, beacon_iii]
   capital_build_military_pct: 50

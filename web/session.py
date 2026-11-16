@@ -676,6 +676,82 @@ class Session:
             "banned_until": c.banned_until,
         }
 
+    def builder(self, city_id: int) -> dict[str, Any]:
+        """The city builder (SPEC_M16): land, layout, walls, stores and what can be built."""
+        from beacon import layout, materials, tech
+
+        s, cfg, me = self.state, self.cfg, self.human
+        if not 0 <= city_id < len(s.cities) or s.cities[city_id].owner != me:
+            raise ValueError(f"no city {city_id} of yours")
+        c = s.cities[city_id]
+        layout.ensure(s, cfg, c)
+        cy = economy.city_yields(s, cfg, c)
+        tiles = []
+        for t in layout.territory_tiles(s, cfg, c):
+            ox, oy = layout._offset(s, c.tile, t)
+            tile = s.tiles[t]
+            tiles.append(
+                {
+                    "tile": t,
+                    "x": round(ox * 1000),  # thousandths of a hex radius
+                    "y": round(oy * 1000),
+                    "terrain": tile.terrain,
+                    "elevation": tile.elevation,
+                    "feature": tile.feature,
+                    "improvement": tile.improvement,
+                    "resource": tile.resource,
+                }
+            )
+        queued = [i.split(":", 1)[1] for i in c.queue if i.startswith("building:")]
+        catalog = {}
+        for b in sorted(cfg.buildings):
+            why = economy.building_allowed(s, cfg, c, b)
+            if why == "already built":
+                continue
+            catalog[b] = {
+                "name": b.replace("_", " ").capitalize(),
+                "note": note(cfg, "buildings", b),
+                "size": layout.size_of(cfg, b),
+                "production": cfg.buildings[b]["cost"],
+                "materials": materials.building_cost(cfg, b),
+                "why": why,
+                "placed": layout.pending(c, b) is not None,
+                "queued": b in queued,
+            }
+        player = s.players[me]
+        walls = {
+            m: {
+                "name": w["name"],
+                "cost": w["cost"],
+                "production": w["production"],
+                "strength": w["strength"],
+                "hp": w["hp"],
+                "why": None
+                if not w["tech"] or tech.knows(player, w["tech"])
+                else f"needs tech {w['tech']}",
+            }
+            for m, w in cfg.materials("walls").items()
+        }
+        return {
+            "city": {"id": c.id, "name": c.name, "hp": c.hp, "max_hp": _city_max_hp(s, cfg, c)},
+            "strength": combat.city_strength(s, cfg, c).total // 100,
+            "cells_per_hex": cfg.materials("layout.cells_per_hex"),
+            "gap": cfg.materials("layout.gap"),
+            "cells": sorted(layout.territory(s, cfg, c)),
+            "tiles": tiles,
+            "layout": [dict(e, size=layout.size_of(cfg, e["what"])) for e in c.layout],
+            "walls": [[*map(int, k.split(",")), m] for k, m in sorted(c.walls.items())],
+            "wall_orders": [list(o) for o in c.wall_orders],
+            "wall_totals": layout.wall_totals(cfg, c),
+            "stores": {g: c.stores.get(g, 0) for g in materials.goods(cfg)},
+            "caps": materials.caps(cfg, c),
+            "income": materials.income(s, cfg, c, cy.worked),
+            "catalog": catalog,
+            "wall_types": walls,
+            "queue": list(c.queue),
+            "production": cy.totals["production"],
+        }
+
     def city_detail(self, city_id: int) -> dict[str, Any]:
         s, cfg, me = self.state, self.cfg, self.human
         if not 0 <= city_id < len(s.cities) or s.cities[city_id].owner != me:
@@ -684,9 +760,14 @@ class Session:
         cy = economy.city_yields(s, cfg, c)
         prod = cy.totals["production"]
         options = []
+        from beacon import materials
+
         for item in economy.production_options(s, cfg, c):
             kind, _, ident = item.partition(":")
-            cost = economy.item_cost(cfg, item, s.players[me]) if kind != "project" else None
+            if item == "walls":  # the wall pieces laid in the builder (SPEC_M16)
+                kind = ident = "walls"
+            cost = economy.item_cost(cfg, item, s.players[me], c) if kind != "project" else None
+            needs = materials.item_cost(cfg, c, item)
             options.append(
                 {
                     "item": item,
@@ -699,12 +780,16 @@ class Session:
                         else None
                     ),
                     "note": note(cfg, "buildings" if kind == "building" else "units", ident)
-                    if kind != "project"
+                    if kind in ("building", "unit")
+                    else f"{len(c.wall_orders)} wall pieces laid out in the builder"
+                    if kind == "walls"
                     else "",
-                    "info": describe(cfg, kind, ident),
+                    "info": describe(cfg, kind, ident) if kind != "walls" else {},
+                    "materials": needs,
+                    "short": materials.short(c, needs),
                     "progress": economy.stored(c, item),
                     "price": economy.purchase_price(
-                        cfg, item, s.players[me], economy.stored(c, item)
+                        cfg, item, s.players[me], economy.stored(c, item), c
                     )
                     if cost
                     else None,
@@ -725,6 +810,9 @@ class Session:
             "growth_threshold": economy.growth_threshold(cfg, c.pop),
             "worked": cy.worked,
             "options": options,
+            "stores": {g: c.stores.get(g, 0) for g in materials.goods(cfg)},
+            "caps": materials.caps(cfg, c),
+            "income": materials.income(s, cfg, c, cy.worked),
             "citizens": [self._citizen_row(x, cy.surplus_food) for x in citizens.of_city(s, c.id)],
             "workable": [
                 {

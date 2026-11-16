@@ -13,6 +13,8 @@ def max_hp(cfg: Config, city: City, state: GameState | None = None) -> int:
     hp = cfg.t("cities.base_hp") + sum(cfg.buildings[b].get("city_hp", 0) for b in city.buildings)
     if city.is_capital:
         hp += cfg.t("cities.capital.hp")
+    if city.walls:  # wall pieces laid in the builder (SPEC_M16)
+        hp += sum(cfg.materials(f"walls.{m}.hp") for m in city.walls.values())
     if state is not None and city.owner == ALIENS:
         hp += alien_effect(state, cfg, "city_hp")
     return hp

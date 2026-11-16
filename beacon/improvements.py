@@ -84,6 +84,8 @@ def build_problem(
             tile.resource is None or cfg.resources[tile.resource]["improvement"] != improvement
         ):
             return f"{improvement} needs a resource that uses it"
+        if spec.get("requires_feature") and tile.feature not in spec["requires_feature"]:
+            return f"{improvement} needs {' or '.join(spec['requires_feature'])}"
     return None
 
 

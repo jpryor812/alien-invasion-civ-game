@@ -70,6 +70,9 @@ def _restore(state: GameState, cfg: Config, city: City, pop: int) -> Events:
     city.queue = []
     if city.owner is None:
         return []
+    from beacon.layout import ensure  # a freed city's buildings get their places (SPEC_M16)
+
+    ensure(state, cfg, city)
     events = ensure_capital(state, cfg, city.owner)
     network.update_connections(state, cfg, city.owner)
     return events

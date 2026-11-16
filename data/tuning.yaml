@@ -130,7 +130,7 @@ cities:
   start_buildings:
     status: placeholder
     note: Buildings present at the start, by role.
-    capital: [food_depot, workshop, market, library, school, radio_tower]
+    capital: [food_depot, workshop, market, library, school, radio_tower, military_base]
     known: [food_depot]
   refound_pop:
     value: 1

@@ -464,6 +464,7 @@ class AIPlayer(Bot):
         self.research()
         self.ensure_port()
         self.production()
+        self.walls()  # SPEC_M16
         self.council()
         self.bombard()
         self.alliances()

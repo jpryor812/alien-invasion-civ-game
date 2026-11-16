@@ -10,8 +10,10 @@ from beacon import (
     fog,
     hexgrid,
     improvements,
+    layout,
     leader,
     mapgen,
+    materials,
     network,
     rng,
     starfall,
@@ -116,6 +118,10 @@ def new_game(
         if city.status == ACTIVE and city.owner in state.players:
             role = "capital" if city.is_capital else "known"
             improvements.auto_improve(state, cfg, city, improved[role], city.owner)
+    for city in state.cities:  # stores and a layout for every city a player holds (SPEC_M16)
+        if city.status == ACTIVE and city.owner in state.players:
+            materials.start_stores(cfg, city)
+            layout.ensure(state, cfg, city)
     if start == "survivor":
         story.place_sites(state, cfg)  # caches avoid finds, so finds come first
         survivors.setup(state, cfg)

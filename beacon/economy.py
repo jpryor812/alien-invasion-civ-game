@@ -128,6 +128,11 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
         return f"needs tech {spec['tech']}"
     if spec["domain"] == "sea" and not is_coastal(state, cfg, city):
         return "needs a coastal city"
+    from beacon.materials import needs_barracks  # designer 2026-11-16
+
+    barracks = cfg.materials("barracks.building")
+    if needs_barracks(cfg, u) and barracks not in city.buildings:
+        return "needs a barracks"
     if spec.get("fixed") and any(
         other.owner == city.owner and slot_kind(cfg, other.type) == slot_kind(cfg, u)
         for other in state.units_at(city.tile)
@@ -139,6 +144,8 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
 
 
 def item_allowed(state: GameState, cfg: Config, city: City, item: str) -> str | None:
+    if item == "walls":  # SPEC_M16: the wall pieces laid in the builder
+        return None if city.wall_orders else "no walls laid out"
     kind, _, ident = item.partition(":")
     if kind == "building":
         return building_allowed(state, cfg, city, ident) if ident in cfg.buildings else "unknown"
@@ -160,11 +167,19 @@ def production_options(state: GameState, cfg: Config, city: City) -> list[str]:
     items = [f"building:{b}" for b in sorted(cfg.buildings)]
     items += [f"unit:{u}" for u in sorted(cfg.units)]
     items += [f"project:{p}" for p in PROJECTS]
+    items += ["walls"]
     return [i for i in items if item_allowed(state, cfg, city, i) is None]
 
 
-def item_cost(cfg: Config, item: str, player: Player | None = None) -> int:
-    """Production cost; units cost less with Mass Production (tech effect unit_cost_pct)."""
+def item_cost(
+    cfg: Config, item: str, player: Player | None = None, city: City | None = None
+) -> int:
+    """Production cost; units cost less with Mass Production (tech effect unit_cost_pct). Walls
+    (SPEC_M16) cost the production of the pieces the city has ordered."""
+    if item == "walls":
+        from beacon.layout import wall_production
+
+        return wall_production(cfg, city) if city is not None else 1
     kind, _, ident = item.partition(":")
     if kind == "building":
         return cfg.buildings[ident]["cost"]
@@ -174,10 +189,12 @@ def item_cost(cfg: Config, item: str, player: Player | None = None) -> int:
     raise ValueError(f"{item} has no cost")
 
 
-def purchase_price(cfg: Config, item: str, player: Player | None, progress: int = 0) -> int:
+def purchase_price(
+    cfg: Config, item: str, player: Player | None, progress: int = 0, city: City | None = None
+) -> int:
     """Gold to buy an item outright (Automated Markets lowers it: tech effect purchase_pct). The
     production already put into the item lowers the price in proportion (SPEC_M10)."""
-    cost = item_cost(cfg, item, player)
+    cost = item_cost(cfg, item, player, city)
     base = cost * cfg.t("economy.purchase_pct") // 100
     full = base * (100 + techfx.total(cfg, player, "purchase_pct")) // 100
     left = max(0, cost - progress)
@@ -244,9 +261,22 @@ def resource_available(state: GameState, cfg: Config, pid: str, unit_type: str) 
 def complete_item(state: GameState, cfg: Config, city: City, item: str) -> dict[str, Any] | None:
     """Finish an item. Returns an event, or None if it cannot complete yet (unit has no room or
     no strategic resource)."""
+    from beacon import layout, materials  # SPEC_M16
+
+    cost = materials.item_cost(cfg, city, item)
+    if materials.short(city, cost):
+        return None
+    if item == "walls":
+        materials.pay(city, cost)
+        gained = sum(cfg.materials(f"walls.{m}.hp") for _, _, m in city.wall_orders)
+        n = layout.finish_walls(city)
+        city.hp = min(max_hp(cfg, city), city.hp + gained)
+        return {"kind": "walls_built", "city": city.id, "pieces": n}
     kind, _, ident = item.partition(":")
     if kind == "building":
+        materials.pay(city, cost)
         city.buildings = sorted([*city.buildings, ident])
+        layout.complete(state, cfg, city, ident)
         city.hp = min(max_hp(cfg, city), city.hp + cfg.buildings[ident].get("city_hp", 0))
         return {"kind": "building_completed", "city": city.id, "building": ident}
     if not resource_available(state, cfg, city.owner, ident):
@@ -254,6 +284,7 @@ def complete_item(state: GameState, cfg: Config, city: City, item: str) -> dict[
     unit = place_unit(state, cfg, ident, city.owner, city.tile, cfg.t("cities.work_radius"))
     if unit is None:
         return None
+    materials.pay(city, cost)
     return {"kind": "unit_completed", "city": city.id, "unit": unit.id, "type": ident}
 
 
@@ -304,6 +335,10 @@ def process_city(
             citizens.remove_youngest(state, city)
             events.append({"kind": "city_starved", "city": city.id, "pop": city.pop})
 
+    # materials from the tiles it works (SPEC_M16)
+    from beacon import materials
+
+    materials.gather(state, cfg, city, cy.worked)
     # production
     production = production_in + arrived.get("production", 0)
     head = city.queue[0] if city.queue else None
@@ -324,7 +359,7 @@ def process_city(
         else:
             carry, city.production_store = city.production_store, 0
             city.progress[head] = city.progress.get(head, 0) + production + carry
-            cost = item_cost(cfg, head, player)
+            cost = item_cost(cfg, head, player, city)
             if city.progress[head] >= cost:
                 if item_allowed(state, cfg, city, head) is not None:
                     city.queue.pop(0)
@@ -332,7 +367,13 @@ def process_city(
                 else:
                     done = complete_item(state, cfg, city, head)
                     if done is None:
-                        events.append({"kind": "production_stalled", "city": city.id, "item": head})
+                        from beacon import materials
+
+                        lack = materials.short(city, materials.item_cost(cfg, city, head))
+                        events.append(
+                            {"kind": "production_stalled", "city": city.id, "item": head}
+                            | ({"needs": lack} if lack else {})
+                        )
                     else:
                         over = city.progress.pop(head) - cost
                         city.production_store = min(over, production)

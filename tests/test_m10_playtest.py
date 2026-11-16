@@ -26,6 +26,7 @@ def test_council_stats_count_in_every_city(cfg):
 def test_each_item_keeps_its_own_progress(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(3, 3), ACTIVE, EU, pop=3)
+    city.buildings = ["military_base"]  # soldiers need a barracks (designer 2026-11-16)
     apply_command(s, cfg, SetProduction(player=EU, city=city.id, items=("unit:infantry",)))
     economy.player_turn(s, cfg, EU)
     kept = city.progress["unit:infantry"]
@@ -41,6 +42,8 @@ def test_any_item_can_be_bought_without_touching_the_queue(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(3, 3), ACTIVE, EU, pop=3)
     city.queue = ["unit:infantry"]
+    city.buildings = ["military_base"]
+    city.stores = {"timber": 150, "stone": 150, "iron": 80}  # buildings cost materials (SPEC_M16)
     s.players[EU].gold = 10_000
     full = economy.purchase_price(cfg, "building:market", s.players[EU])
     city.progress["building:market"] = economy.item_cost(cfg, "building:market", s.players[EU]) // 2

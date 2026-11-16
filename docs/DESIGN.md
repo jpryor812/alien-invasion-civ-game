@@ -329,3 +329,15 @@ varied partners.
   carries the best city into a harder next game, a Clash-style home base, and asynchronous
   multiplayer.
 
+## M16: materials and the city builder (designer 2026-11-16, docs/SPEC_M16.md)
+
+- Cities gather timber, stone and iron from the land they work (forests with lumber camps, hills
+  with mines) and store them. Buildings and walls cost materials plus work; tanks, artillery and
+  ships also cost iron. Soldiers are trained only where there is a barracks.
+- The **City builder** (button on the city panel) switches to a close view of the city's land:
+  no hex lines, only its border. Choose a building, a blue ghost follows the cursor, click to
+  place; drag to lay walls of wood, stone and later steel, chitin or plasma. What you build and
+  what you build it from decide the city's strength and HP.
+- Art: eight Meshy buildings (city hall, library, market, barracks, workshop, factory, radio
+  tower, food depot) and Blender models for the rest.
+

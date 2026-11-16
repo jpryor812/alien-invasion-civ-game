@@ -6,6 +6,7 @@
 improvements:
   farm: {status: placeholder, note: Fields., kind: tile, turns: 3, tech: null, yields: {food: 1}, terrains: [grassland, plains, desert, tundra], elevations: [flat]}
   mine: {status: placeholder, note: Hill mining., kind: tile, turns: 4, tech: null, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
+  lumber_camp: {status: placeholder, note: "Cuts timber in a forest or jungle (SPEC_M16).", kind: tile, turns: 3, tech: null, yields: {production: 1}, terrains: [grassland, plains, tundra], elevations: [flat, hills], requires_feature: [forest, jungle]}
   extractor: {status: placeholder, note: Wells and lumber camps; only on a resource that needs it., kind: tile, turns: 4, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], requires_resource: true}
   radio_beacon: {status: placeholder, note: Keeps nearby hexes permanently revealed (DESIGN.md 5)., kind: tile, turns: 3, tech: radio_beacon_network, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], vision: 2}
   military_base: {status: placeholder, note: Fortified position., kind: tile, turns: 3, tech: fortification_doctrine, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], defense_pct: 25}

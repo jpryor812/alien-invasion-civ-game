@@ -82,8 +82,11 @@ def setup(state: GameState, cfg: Config) -> None:
         player.founded, player.band_town = False, capital.id
         for city in mine:  # the band must find its old towns again (designer 2026-11-16)
             player.known_cities.pop(str(city.id), None)
-            # the aliens wrecked the radio: rebuilding it is the first job (SPEC_M14 revision)
-            city.buildings = [b for b in city.buildings if b != cfg.t("contact.radio_building")]
+            # the aliens wrecked the radio and the barracks: rebuilding them comes first
+            # (SPEC_M14 revision; the barracks since SPEC_M16)
+            wrecked = {cfg.t("contact.radio_building"), cfg.materials("barracks.building")}
+            city.buildings = [b for b in city.buildings if b not in wrecked]
+            city.layout = []
         r = rng.stream(state.seed, "map", "band", pid)
         ring = [
             i
@@ -234,6 +237,10 @@ def found(state: GameState, cfg: Config, city: City, pid: str) -> Events:
     city.pop += joined
     citizens.sync(state, cfg, city)
     city.production_store += player.scrap
+    from beacon import layout, materials  # SPEC_M16
+
+    materials.start_stores(cfg, city)
+    layout.ensure(state, cfg, city)
     scrap, player.scrap = player.scrap, 0
     for t in sv["founding_units"]:
         place_unit(state, cfg, t, pid, city.tile, cfg.t("cities.work_radius"))

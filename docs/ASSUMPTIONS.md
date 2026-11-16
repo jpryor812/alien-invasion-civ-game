@@ -932,3 +932,38 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   (web/static/settlement), walls drawn along edges with HP bars, a raid warning (arrows and a
   countdown), and a short raid scene (raiders march in, hit the wall, the result shows).
 
+## M16: materials and the city builder (designer 2026-11-16, docs/SPEC_M16.md)
+
+- **Materials.** Each city stores timber, stone and iron (caps 150/150/80; a new storehouse
+  building adds 150 each). They come from the city's own hex (+1 timber, +1 stone) and from worked
+  tiles: forest or jungle +2 timber, hills +1 stone, mine +2 stone +1 iron, the new **lumber camp**
+  improvement (forest or jungle, no tech) +3 timber, extractor +1 timber, some resources more. Only
+  worked (improved) tiles count, as for food. Food stays the main game's food (no grain bank).
+- **Costs.** A building costs 30% of its production in timber, plus 20% in stone from production
+  80, plus 10% in iron from tech tier 3, unless its data lists `materials`. Industrial units cost
+  iron (armour 25%, artillery 20%, naval 20% plus 10% timber). Materials are paid when the item
+  completes; short stores stall it with a "needs" event. Gold buys the work, never the materials.
+- **Barracks.** Melee and ranged units (land and sea, not recon, civilians or city defences) need
+  the military base (now called the barracks) in the city. Classic capitals start with one; a
+  band's old town loses its barracks and radio to the aliens.
+- **Layout.** Fine grid of 8 cells across a hex; a city's land is every cell whose centre lies
+  on a passable land hex of its work area that it holds. Footprints are squares (city hall 4,
+  most 2, large buildings 3); a 1-cell gap between buildings; walls may stand in gaps. Placing a
+  building orders it (queue + position); a building queued without a place is set at the free
+  spot nearest the centre when it completes; existing buildings and freed cities' buildings are
+  placed the same way. Removing a placed building from the queue frees its place. Moving is free.
+- **Walls.** One piece per cell: wood (timber 1, 1 production, 0.1 strength, 2 HP), stone (stone 1,
+  1, 0.2, 3), steel (Mechanized Warfare; iron 1 + stone 1, 2, 0.3, 4), chitin (Organic Armour), plasma
+  (Directed Energy). A "walls" queue item builds every piece laid out. Defence perimeter, plasma
+  shield and chitin bulwark are no longer buildings. City strength gains a line per material
+  (tenths summed, rounded down); city HP gains the pieces' HP.
+- **AI.** Picks only items it has the materials for (and re-chooses when the head is short),
+  builds a barracks in the capital early, engineers build lumber camps on forest, and every few
+  turns (staggered) lays a square ring 6 cells from the centre in the best material it knows when
+  the stores allow, upgrading later.
+- **Balance (10 seeds, 100 turns, survivor start).** First towns as before (median turn 9). Cities
+  freed per game 15-32 (median 26.5). The barrage started by turn 100 in 1 of 10 games (4 of 10
+  before materials): building now waits on timber and stone.
+- **Later (designer).** Citizens crafting weapons to defend themselves; a Clash-style separate mode
+  fed by blueprints and rewards from the main game.
+

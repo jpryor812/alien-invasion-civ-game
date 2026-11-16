@@ -186,6 +186,7 @@ def test_tank_needs_oil(cfg, game):
     )
     game.tiles[oil_tile].resource, game.tiles[oil_tile].improvement = "oil", "extractor"
     assert economy.resource_supply(game, cfg, PID)["oil"] >= 1
+    city.stores["iron"] = 80  # tanks also cost iron (SPEC_M16)
     events, _ = economy.process_city(game, cfg, city, game.players[PID])
     assert any(e["kind"] == "unit_completed" and e["type"] == "tank" for e in events)
     assert economy.resource_usage(game, cfg, PID)["oil"] == 1

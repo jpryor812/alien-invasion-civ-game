@@ -54,6 +54,8 @@ class App:
             return self.sandbox_session().view()
         if parts[:2] == ["api", "unit"] and len(parts) == 3:
             return s.unit_options(int(parts[2]))
+        if parts[:2] == ["api", "builder"] and len(parts) == 3:
+            return s.builder(int(parts[2]))
         if parts[:2] == ["api", "city"] and len(parts) == 3:
             return s.city_detail(int(parts[2]))
         simple = {

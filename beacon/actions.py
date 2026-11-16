@@ -47,8 +47,11 @@ from beacon.commands import (
     FundProject,
     HoldFire,
     MergeUnits,
+    MoveBuilding,
     MoveUnit,
     OfferRecruit,
+    PlaceBuilding,
+    PlaceWalls,
     PromoteUnit,
     ProposeDeal,
     ProposeMeasure,
@@ -163,6 +166,9 @@ def _set_production(state: GameState, cfg: Config, cmd: SetProduction) -> Events
         if problem:
             raise CommandError(f"{city.name} cannot produce {item}: {problem}")
     city.queue = list(cmd.items)
+    from beacon.layout import drop_unqueued  # placed buildings taken off the queue lose their place
+
+    drop_unqueued(city)
     return [{"kind": "production_set", "city": city.id, "items": list(cmd.items)}]
 
 
@@ -178,9 +184,14 @@ def _purchase(state: GameState, cfg: Config, cmd: Purchase) -> Events:
     if problem:
         raise CommandError(problem)
     player = state.players[cmd.player]
-    price = economy.purchase_price(cfg, item, player, economy.stored(city, item))
+    price = economy.purchase_price(cfg, item, player, economy.stored(city, item), city)
     if player.gold < price:
         raise CommandError(f"{item} costs {price} gold; treasury has {player.gold}")
+    from beacon import materials  # SPEC_M16: gold buys the work, not the materials
+
+    lack = materials.short(city, materials.item_cost(cfg, city, item))
+    if lack:
+        raise CommandError("needs " + ", ".join(f"{n} more {g}" for g, n in sorted(lack.items())))
     done = economy.complete_item(state, cfg, city, item)
     if done is None:
         raise CommandError(f"{item} cannot be completed now (no room or no strategic resource)")
@@ -652,7 +663,7 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
         out += [SetFocus(player=pid, city=city.id, focus=f) for f in economy.FOCUSES]
         if city.queue and not city.queue[0].startswith("project:"):
             head = city.queue[0]
-            price = economy.purchase_price(cfg, head, player, economy.stored(city, head))
+            price = economy.purchase_price(cfg, head, player, economy.stored(city, head), city)
             if player.gold >= price:
                 out.append(Purchase(player=pid, city=city.id))
         for t in hexgrid.within(city.tile, cfg.t("cities.attack_range"), state.width, state.height):
@@ -939,3 +950,62 @@ def _set_agenda(state: GameState, cfg: Config, cmd: SetAgenda) -> Events:
         raise CommandError(f"unknown agenda {cmd.agenda!r}")
     state.players[cmd.player].agenda = cmd.agenda
     return [{"kind": "agenda_set", "agenda": cmd.agenda}]
+
+
+# -- the city builder (docs/SPEC_M16.md) -----------------------------------------------------------
+
+
+@handles(PlaceBuilding)
+def _place_building(state: GameState, cfg: Config, cmd: PlaceBuilding) -> Events:
+    from beacon import layout
+
+    city = own_city(state, cmd.player, cmd.city)
+    layout.ensure(state, cfg, city)
+    if cmd.building not in cfg.buildings:
+        raise CommandError(f"unknown building {cmd.building!r}")
+    problem = economy.building_allowed(state, cfg, city, cmd.building)
+    if problem:
+        raise CommandError(problem)
+    if layout.pending(city, cmd.building) is not None:
+        raise CommandError(f"{cmd.building} is already placed and waiting to be built")
+    problem = layout.place_problem(state, cfg, city, cmd.building, cmd.x, cmd.y)
+    if problem:
+        raise CommandError(problem)
+    entry = layout.order(cfg, city, cmd.building, cmd.x, cmd.y)
+    item = f"building:{cmd.building}"
+    if item not in city.queue:
+        city.queue = [*city.queue, item]
+    return [
+        {"kind": "building_placed", "city": city.id, "building": cmd.building, "entry": entry["id"]}
+    ]
+
+
+@handles(MoveBuilding)
+def _move_building(state: GameState, cfg: Config, cmd: MoveBuilding) -> Events:
+    from beacon import layout
+
+    city = own_city(state, cmd.player, cmd.city)
+    entry = next((e for e in city.layout if e["id"] == cmd.entry), None)
+    if entry is None:
+        raise CommandError("no such building in this city")
+    problem = layout.place_problem(state, cfg, city, entry["what"], cmd.x, cmd.y, skip=entry["id"])
+    if problem:
+        raise CommandError(problem)
+    entry["x"], entry["y"] = cmd.x, cmd.y
+    return [{"kind": "building_moved", "city": city.id, "entry": entry["id"]}]
+
+
+@handles(PlaceWalls)
+def _place_walls(state: GameState, cfg: Config, cmd: PlaceWalls) -> Events:
+    from beacon import layout
+
+    city = own_city(state, cmd.player, cmd.city)
+    layout.ensure(state, cfg, city)
+    cells = [(int(c[0]), int(c[1])) for c in cmd.cells]
+    problem = layout.wall_problem(state, cfg, city, cells, cmd.material)
+    if problem:
+        raise CommandError(problem)
+    layout.order_walls(city, cells, cmd.material)
+    if "walls" not in city.queue:
+        city.queue = [*city.queue, "walls"]
+    return [{"kind": "walls_ordered", "city": city.id, "pieces": len(cells)}]

@@ -1,0 +1,68 @@
+# Materials and the city layout in the main game (docs/SPEC_M16.md, designer 2026-11-16).
+# Cities store timber, stone and iron from the tiles they work; buildings, walls and industrial
+# units cost them; buildings and walls are placed on a fine grid over the city's territory.
+
+goods:
+  status: placeholder
+  note: Stored per city, up to cap (a storehouse adds storehouse_cap of each). Capitals at the
+    start and a band's first town get `start`.
+  list: [timber, stone, iron]
+  cap: {timber: 150, stone: 150, iron: 80}
+  storehouse_cap: 150
+  start: {timber: 40, stone: 30, iron: 0}
+
+sources:
+  status: placeholder
+  note: Goods a worked tile (or the city's own tile) yields each turn, by feature, elevation,
+    improvement and resource; centre - what every city tile adds. Added together.
+  centre: {timber: 1, stone: 1}
+  features: {forest: {timber: 2}, jungle: {timber: 2}}
+  elevations: {hills: {stone: 1}}
+  improvements: {mine: {stone: 2, iron: 1}, lumber_camp: {timber: 3}, extractor: {timber: 1},
+                 geothermal_vent: {stone: 1}}
+  resources: {timber: {timber: 2}, aluminum: {iron: 2}, rare_earths: {iron: 1}, gold_ore: {stone: 1}}
+
+costs:
+  status: placeholder
+  note: A building's materials, unless it lists its own `materials` - timber_pct of its
+    production cost, plus stone_pct when the cost is at least stone_from, plus iron_pct from tech
+    tier iron_tier up. Industrial units (by class) cost the listed percents of their production
+    cost in iron (and timber). Paid when the item completes; short stores make it wait.
+  timber_pct: 30
+  stone_pct: 20
+  stone_from: 80
+  iron_pct: 10
+  iron_tier: 3
+  units: {armour: {iron: 25}, artillery: {iron: 20}, naval: {iron: 20, timber: 10}}
+
+barracks:
+  status: placeholder
+  note: Designer 2026-11-16 - military units are trained only in a city with a barracks (the
+    military base). Recon units, civilians and city defence units do not need one.
+  building: military_base
+
+layout:
+  status: placeholder
+  note: The builder's fine grid - cells_per_hex cells across a hex. Buildings keep `gap` empty
+    cells from each other (walls may stand there). Footprints are squares of `size` cells; the
+    city hall stands at the centre. AI walls make a square ring ai_ring cells from the centre.
+  cells_per_hex: 8
+  gap: 1
+  hall_size: 4
+  default_size: 2
+  sizes: {market: 3, factory: 3, research_lab: 3, military_base: 3, port: 3, shipyard: 3,
+          autonomous_factory: 3, quantum_lab: 3, fusion_plant: 3, arcology: 4, financial_center: 3,
+          logistics_hub: 3, data_centre: 3, hospital: 3, metro: 3, climate_dome: 3, beacon_v: 3,
+          storehouse: 3}
+  ai_ring: 6
+
+walls:
+  status: placeholder
+  note: Wall pieces, one per cell. strength is in tenths of a city strength point per piece; hp
+    adds to the city's HP. Each piece costs materials and `production` (a "walls" queue item).
+    Replaces the defence perimeter (stone/steel), plasma shield and chitin bulwark buildings.
+  wood: {name: Wooden palisade, tech: null, cost: {timber: 1}, production: 1, strength: 1, hp: 2}
+  stone: {name: Stone wall, tech: null, cost: {stone: 1}, production: 1, strength: 2, hp: 3}
+  steel: {name: Steel wall, tech: mechanized_warfare, cost: {iron: 1, stone: 1}, production: 2, strength: 3, hp: 4}
+  chitin: {name: Chitin bulwark, tech: organic_armour, cost: {timber: 1, stone: 1}, production: 2, strength: 4, hp: 5}
+  plasma: {name: Plasma barrier, tech: directed_energy, cost: {iron: 2}, production: 3, strength: 5, hp: 6}

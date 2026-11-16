@@ -367,6 +367,44 @@ class ArmResistance(Command):
     city: int
 
 
+# -- the city builder (docs/SPEC_M16.md) -----------------------------------------------------------
+
+
+@register
+@dataclass(frozen=True)
+class PlaceBuilding(Command):
+    """Order a building at a spot (top-left cell of its footprint); it joins the queue."""
+
+    kind: ClassVar[str] = "place_building"
+    city: int
+    building: str
+    x: int
+    y: int
+
+
+@register
+@dataclass(frozen=True)
+class MoveBuilding(Command):
+    """Move a placed building (by its layout id) to another spot; free."""
+
+    kind: ClassVar[str] = "move_building"
+    city: int
+    entry: int
+    x: int
+    y: int
+
+
+@register
+@dataclass(frozen=True)
+class PlaceWalls(Command):
+    """Lay wall pieces on cells (each [x, y]); a "walls" item joins the queue."""
+
+    kind: ClassVar[str] = "place_walls"
+    city: int
+    cells: tuple[tuple[int, int], ...]
+    material: str
+
+
 # -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------
 
 

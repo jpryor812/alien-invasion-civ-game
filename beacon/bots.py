@@ -17,6 +17,7 @@ from beacon import (
     economy,
     hexgrid,
     improvements,
+    materials,
     movement,
     promotions,
     recruits,
@@ -135,7 +136,11 @@ class Bot:
         return counts
 
     def _military_choice(self, city: Any, counts: dict[str, int]) -> str | None:
-        options = economy.production_options(self.state, self.cfg, city)
+        options = [  # only what the city has the materials for (SPEC_M16)
+            o
+            for o in economy.production_options(self.state, self.cfg, city)
+            if not materials.short(city, materials.item_cost(self.cfg, city, o))
+        ]
         every = self.param("production.ranged_every")
         if counts["military"] % every == every - 1:
             ranged = [
@@ -187,13 +192,26 @@ class Bot:
             starved = head.startswith("unit:") and not economy.resource_available(
                 self.state, self.cfg, self.pid, head[5:]
             )
+            # waiting on materials it lacks (SPEC_M16): choose again
+            starved = starved or bool(
+                head and materials.short(city, materials.item_cost(self.cfg, city, head))
+            )
             if city.queue and not starved:
                 continue
             options = economy.production_options(self.state, self.cfg, city)
+            # buildings only when the city has the materials (SPEC_M16)
+            options = [
+                o
+                for o in options
+                if not materials.short(city, materials.item_cost(self.cfg, city, o))
+            ]
             item = None
+            barracks = f"building:{self.cfg.materials('barracks.building')}"
             radio = f"building:{self.cfg.t('contact.radio_building')}"
             if radio in options and self.pid not in on_air(self.state, self.cfg):
                 item = radio  # reach the other continents first (designer 2026-11-16)
+            elif barracks in options and city.is_capital:
+                item = barracks  # soldiers need a barracks (designer 2026-11-16)
             elif "unit:uav_patrol" in options and counts["military"] >= 2:
                 item = "unit:uav_patrol"  # sees strikes coming (designer 2026-11-16)
             elif (
@@ -294,6 +312,8 @@ class Bot:
         options = []
         if tile.resource and self.cfg.resources[tile.resource]["improvement"]:
             options.append(self.cfg.resources[tile.resource]["improvement"])
+        if tile.feature in ("forest", "jungle"):
+            options.append("lumber_camp")  # timber (SPEC_M16)
         options += ["mine", "farm"]
         for imp in options:
             spec = self.cfg.improvements[imp]
@@ -807,12 +827,49 @@ class Bot:
         self.promote()
         self.research()
         self.production()
+        self.walls()  # SPEC_M16
         self.council()
         self.bombard()
         net = self._network()
         claimed: set[int] = set()
         garrisons = {uid: tile for tile, uid in self._garrisons().items()}
         self.play_units(net, claimed, garrisons)
+
+    def walls(self) -> None:
+        """Lay a wall ring around each city once its stores allow, in the best material known;
+        upgrade the ring when a better material comes (SPEC_M16). Each city looks every few
+        turns (staggered), since a ring is a big order."""
+        from beacon import layout
+        from beacon.commands import PlaceWalls
+
+        kinds = self.cfg.materials("walls")
+        order = list(kinds)
+        known = [
+            m
+            for m in order
+            if not kinds[m]["tech"] or tech.knows(self.view.player, kinds[m]["tech"])
+        ]
+        if not known:
+            return
+        best = known[-1]
+        for city in self.view.my_cities():
+            if city.status != "active" or city.wall_orders or (self.state.turn + city.id) % 4:
+                continue
+            if city.walls and all(order.index(m) >= order.index(best) for m in city.walls.values()):
+                continue
+            layout.ensure(self.state, self.cfg, city)
+            ring = [
+                c
+                for c in layout.ai_ring(self.state, self.cfg, city)
+                if order.index(city.walls.get(f"{c[0]},{c[1]}", order[0])) < order.index(best)
+                or f"{c[0]},{c[1]}" not in city.walls
+            ]
+            if not ring:
+                continue
+            cost = {g: n * len(ring) for g, n in kinds[best]["cost"].items()}
+            if materials.short(city, cost):
+                continue
+            self.submit(PlaceWalls(player=self.pid, city=city.id, cells=tuple(ring), material=best))
 
     def band(self, unit: Unit) -> None:
         """A survivor band: take the caches it has seen nearby, then storm its first town once it

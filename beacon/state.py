@@ -61,6 +61,12 @@ class City:
     incoming: dict[str, int] = field(default_factory=dict)  # convoy goods arriving next turn
     refuses_hybrids: bool = False  # the city's attitude, seeded at the start (SPEC_M11)
     contents: str | None = None  # what an alien-held city holds (SPEC_M12, data/aliens.yaml)
+    stores: dict[str, int] = field(default_factory=dict)  # timber, stone, iron (SPEC_M16)
+    layout: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # placed buildings (id, what, x, y, done)
+    walls: dict[str, str] = field(default_factory=dict)  # "x,y" -> wall material, built
+    wall_orders: list[list[Any]] = field(default_factory=list)  # [x, y, material] being built
     resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
     armed_by: dict[str, int] = field(default_factory=dict)  # resistance levels, by player
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"

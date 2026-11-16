@@ -167,6 +167,12 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
     grid = techfx.total(cfg, state.players.get(city.owner or ""), "city_strength")
     if grid:
         lines.append({"source": "defence grid", "kind": "base", "value": grid})
+    if city.walls:  # SPEC_M16: walls laid in the builder, by material
+        from beacon.layout import wall_totals
+
+        for m, row in sorted(wall_totals(cfg, city).items()):
+            if row["strength"]:
+                lines.append({"source": f"walls:{m}", "kind": "base", "value": row["strength"]})
     for b in city.buildings:
         if cfg.buildings[b].get("city_strength"):
             lines.append(

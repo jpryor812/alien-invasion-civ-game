@@ -1345,7 +1345,8 @@ function cityTier(pop) { return pop <= 2 ? 0 : pop <= 5 ? 1 : pop <= 9 ? 2 : 3; 
 function drawCity(c, sx, sy, R, i) {
   const Rb = zoomStep(R), tier = cityTier(c.pop || 1);
   const owner = c.owner && c.owner !== "aliens" ? OWNER[c.owner] : "#888";
-  const walls = (c.buildings || []).includes("defence_perimeter"), shield = (c.buildings || []).includes("plasma_shield");
+  // walls laid in the city builder (SPEC_M16): a ring shows from 20 pieces; plasma glows as a shield
+  const laid = Object.values(c.walls || {}), walls = laid.length >= 20, shield = laid.includes("plasma");
   const key = `${c.status}|${tier}|${owner}|${c.is_capital ? 1 : 0}|${walls ? 1 : 0}${shield ? 1 : 0}|${Rb}|${i % 3}`;
   let sp = CITY_SPRITES.get(key);
   if (!sp) {
@@ -1622,6 +1623,7 @@ function roundRect(x, y, w, h, r) {
 // production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
 // and the city's health bar beneath.
 const GEAR_NAME = { weapon: "Rifle (+5 attack)", armour: "Body armour (+5 defence)", alien_weapon: "Alien weapon (+12 attack)" };
+const MAT_ICON = { timber: "🪵", stone: "🪨", iron: "⚙️" };
 const CONTENTS_NAME = { survivors: "survivors", captive: "a captive specialist", lab: "a working lab", cache: "a weapons cache", depot: "a fuel depot", hive_heart: "a hive heart" };
 // An announced alien strike (SPEC_M12): a red arrow from where it gathers to the city, with the
 // turns left in a disc on the city.
@@ -2246,18 +2248,20 @@ function renderCityPanel() {
   const surplus = d.totals.food - d.food_eaten;
   const head = c.queue[0];
   const headOpt = head ? d.options.find((o) => o.item === head) : null;
-  const groups = { building: [], unit: [], project: [] };
-  for (const o of d.options) groups[o.kind].push(o);
+  const groups = { building: [], unit: [], project: [], walls: [] };
+  for (const o of d.options) (groups[o.kind] || groups.project).push(o);
   const list = Object.entries(groups).filter(([, v]) => v.length).map(([k, v]) =>
     `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-price="${o.price ?? ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}${o.price ? ` · or buy now for ${o.price} gold` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.progress ? `${o.progress} saved · ` : ""}${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}${o.price ? ` <button class="small buyit" data-buy="${esc(o.item)}" ${S.view.economy.gold < o.price ? "disabled" : ""} title="Buy it now (the queue is not changed)">${o.price}g</button>` : ""}</span></div>`).join("")).join("");
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
     <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.is_capital ? "capital" : c.connected ? "road to the capital (+gold)" : '<span class="muted">no road to the capital yet</span>'}</div>
     <div class="row muted">HP ${c.hp}/${d.max_hp} · strength ${Math.round(d.strength / 100)}</div>
+    <div class="row stores">${Object.keys(d.stores || {}).map((g) => `<span class="store" data-tip="${esc(`<b>${pretty(g)}</b><div>${d.stores[g]} stored of ${d.caps[g]}; +${d.income[g]} a turn from the tiles the city works</div>`)}">${MAT_ICON[g] || ""} ${d.stores[g]}<span class="muted">/${d.caps[g]} +${d.income[g]}</span></span>`).join("")}</div>
+    <div class="actions"><button class="primary" id="open-builder" title="Place buildings and walls in the city (B)">City builder</button></div>
     <div class="yields">${YIELD_KEYS.map((k) => yieldBox(k, d.totals[k], d.lines)).join("")}</div>
     <div class="row">Focus <select id="focus">${d.focuses.map((f) => `<option ${f === c.focus ? "selected" : ""}>${f}</option>`).join("")}</select></div>
     <h3>Producing</h3>
-    <div class="row">${head ? `${esc(pretty(head.split(":")[1]))} <span class="muted">${(c.progress || {})[head] ?? 0}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
+    <div class="row">${head ? `${esc(pretty(head.split(":")[1] || head))} <span class="muted">${(c.progress || {})[head] ?? 0}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
       ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
     ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
     <div class="list" id="prodlist">${list}</div>`}
@@ -2284,6 +2288,7 @@ function renderCityPanel() {
   });
   if ($("changeprod")) $("changeprod").onclick = () => { S.cityListOpen = true; renderCityPanel(); };
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
+  $("open-builder").onclick = () => window.Builder && Builder.open(c.id);
   if ($("buy")) $("buy").onclick = () => send({ kind: "purchase", city: c.id });
   side.querySelectorAll("[data-buy]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); send({ kind: "purchase", city: c.id, item: el.dataset.buy }); });
   if ($("convoy-send")) $("convoy-send").onclick = () => send({ kind: "set_convoy", city: c.id, target: Number($("convoy-to").value), goods: $("convoy-goods").value, pct: Number($("convoy-pct").value) });

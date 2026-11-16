@@ -149,6 +149,7 @@ FILES = (
     "leaders",
     "council",
     "settlement",
+    "materials",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
@@ -255,6 +256,10 @@ class Config:
     def ai(self, path: str) -> Any:
         """A value from data/ai.yaml (cached; read-only)."""
         return self._section("ai", path)
+
+    def materials(self, path: str) -> Any:
+        """A value from data/materials.yaml (materials and city layouts, docs/SPEC_M16.md)."""
+        return self._section("materials", path)
 
     def settlement(self, path: str) -> Any:
         """A value from data/settlement.yaml (the settlement sandbox, docs/SPEC_M15.md)."""
