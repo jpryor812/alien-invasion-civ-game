@@ -899,3 +899,36 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   nests within 4 hexes; scouts beside an alien city sabotage it while above 60% HP. Seed 3 over
   100 turns: 34-56 resistance armings, 28-36 nests cleared, 13-19 UAVs, 0-3 sabotages.
 
+## M15: the settlement sandbox (designer 2026-11-16, docs/SPEC_M15.md)
+
+- **Separate from the main game.** Its own state (`beacon/settlement.py`, `data/settlement.yaml`),
+  its own session and API (`web/sandbox.py`, `/api/sandbox`), its own page (`sandbox.html`, linked
+  from the title menu). Deterministic and integer-only like the main game, seeded through the
+  `events` stream.
+- **Layout.** The city hall hex (6 slots, the hall takes one) and six ring hexes dealt by seed
+  from a fixed mix: two grain (plains and grassland, 3 slots), two forest (timber, 2 slots), two
+  hills (stone and iron, 2 slots). A farm and a lumber camp stand at the start.
+- **Goods.** Grain, timber, stone, iron, each with a storage cap (granaries and warehouses add);
+  excess is lost at the turn's end. Gold is separate and comes only from the start (60) and the
+  Exchange.
+- **Workers.** Producing buildings (farm, lumber camp, quarry, iron mine, workshop) need one person
+  each, staffed in that order; people beyond them only eat. Each person eats 2 grain; growth costs
+  30 grain from the store when there is room (6, plus 3 a house); hunger loses one person a turn.
+- **Construction.** Materials are paid when ordered; labour (3 a turn, plus 3 a staffed workshop)
+  goes to the queue in order. Cancelling returns the materials (up to storage). Slots count
+  queued buildings.
+- **Strength.** Every building adds strength (city hall 10, watchtower 8, others 1-2), all of it
+  counting against a raid on any hex (city_share_pct 100). Walls on the struck hex's outer edges
+  add theirs (wood 10, stone 22, iron 40); hardening replaces a wall.
+- **Raids.** Turn 6, then every 5 turns; strength 18 + 9 per raid; seen 2 turns ahead (hex and
+  strength). Held - the walls there lose 60% of the raid's strength as HP, shared. Broken - the
+  walls lose its full strength, the building with the most labour on that hex is wrecked, and 25%
+  of every store burns. A scripted sensible player held 38 of 50 raids (30 turns, 10 seeds).
+- **The Exchange.** Sells at 60% and buys at 160% of the current price; each price index drifts
+  up to 8% a turn (seeded) and back toward 100, sags 2% per 10 sold, rises as much per 10 bought,
+  within 50-180%.
+- **The view.** A canvas with a 35-degree tilt: raised hex slabs with the photo ground textures
+  and painted forest sprites, rocks drawn in code, buildings as Blender renders
+  (web/static/settlement), walls drawn along edges with HP bars, a raid warning (arrows and a
+  countdown), and a short raid scene (raiders march in, hit the wall, the result shows).
+

@@ -317,3 +317,15 @@ varied partners.
 - Contact is by radio only (designer 2026-11-16): a player reaches other continents and the
   council once a city of theirs has a radio tower (cheap; the first thing a new city builds).
 
+## M15: the settlement sandbox (designer 2026-11-16, docs/SPEC_M15.md)
+
+- A playable prototype of the material economy and the close-up city view, separate from the
+  main game (title menu: Settlement Sandbox): goods from staffed buildings in hex slots, storage,
+  people who eat grain, construction with materials and labour, walls on the outer edges, raids
+  every few turns, and the Galactic Exchange. If the loop feels right it replaces production
+  points in the main game, and the close-up view becomes the zoomed-in map (docs/FUTURE_SETTLEMENTS.md).
+- Persistence (designer brainstorm 2026-11-16): standard games start fresh; ideas for later are
+  city blueprints saved to the career profile (still paid in materials), a legacy campaign that
+  carries the best city into a harder next game, a Clash-style home base, and asynchronous
+  multiplayer.
+

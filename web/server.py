@@ -7,7 +7,7 @@ GET  /api/view              the human player's fog-safe view
 GET  /api/unit/<id>         options for one of the player's units
 GET  /api/city/<id>         details of one of the player's cities
 GET  /api/techs | /api/council | /api/leader | /api/population | /api/diplomacy
-GET  /api/projects | /api/scores
+GET  /api/projects | /api/scores | /api/sandbox (settlement sandbox, SPEC_M15)
 GET  /api/saves (newest first, with turn and player) | /api/status | /api/continents
 POST /api/command           a command dict (the player is filled in)
 POST /api/end_turn          AI players act, then the turn ends
@@ -28,6 +28,7 @@ from typing import Any
 
 from beacon import canonical
 from beacon.config import load
+from web.sandbox import Sandbox
 from web.session import Session
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -36,13 +37,21 @@ STATIC = Path(__file__).resolve().parent / "static"
 class App:
     def __init__(self, seed: int, human: str):
         self.session = Session(load(), seed, human)
+        self.sandbox: Sandbox | None = None  # the settlement sandbox (SPEC_M15), made on first use
         self.lock = threading.Lock()
+
+    def sandbox_session(self) -> Sandbox:
+        if self.sandbox is None:
+            self.sandbox = Sandbox(self.session.cfg)
+        return self.sandbox
 
     def get(self, path: str) -> Any:
         s = self.session
         parts = path.strip("/").split("/")
         if parts[:2] == ["api", "view"]:
             return s.view()
+        if parts == ["api", "sandbox"]:
+            return self.sandbox_session().view()
         if parts[:2] == ["api", "unit"] and len(parts) == 3:
             return s.unit_options(int(parts[2]))
         if parts[:2] == ["api", "city"] and len(parts) == 3:
@@ -69,6 +78,11 @@ class App:
         s = self.session
         if path == "/api/command":
             return s.command(body)
+        if path == "/api/sandbox/command":
+            return self.sandbox_session().command(body)
+        if path == "/api/sandbox/new":
+            self.sandbox_session().new(int(body.get("seed", 1)))
+            return {"ok": True}
         if path == "/api/end_turn":
             return s.end_turn()
         if path == "/api/new":
