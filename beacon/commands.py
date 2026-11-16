@@ -405,6 +405,17 @@ class PlaceWalls(Command):
     material: str
 
 
+@register
+@dataclass(frozen=True)
+class ImproveTile(Command):
+    """Send a free engineer on the city's land to build a tile work (designer 2026-11-16)."""
+
+    kind: ClassVar[str] = "improve_tile"
+    city: int
+    tile: int
+    improvement: str
+
+
 # -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------
 
 

@@ -169,3 +169,35 @@ def test_builder_view(cfg, tmp_path, monkeypatch):
     assert set(d["stores"]) == {"timber", "stone", "iron"}
     detail = sess.city_detail(c.id)
     assert detail["stores"] and all("materials" in o for o in detail["options"])
+
+
+def test_engineers_work_the_land_from_the_city_builder(cfg, world):
+    from beacon import improvements
+    from beacon.actions import pending_decisions
+    from beacon.commands import ImproveTile
+
+    s, c = world
+    land = layout.territory_tiles(s, cfg, c)
+    crew = improvements.city_engineers(s, cfg, c)
+    assert crew  # the classic start gives engineers beside the capital
+    # engineers no longer ask for orders on the map
+    assert not any(
+        p["kind"] == "unit_needs_orders" and p["unit"] == u.id
+        for u in crew
+        for p in pending_decisions(s, cfg, EU)
+    )
+    target = next(t for t in land if improvements.tile_problem(s, cfg, c, t, "farm") is None)
+    with pytest.raises(CommandError, match="tile works"):
+        apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=target, improvement="road"))
+    outside = next(t for t in range(len(s.tiles)) if t not in land)
+    with pytest.raises(CommandError, match="land"):
+        apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=outside, improvement="farm"))
+    apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=target, improvement="farm"))
+    worker = next(u for u in crew if u.job is not None)
+    assert worker.tile == target and worker.job.improvement == "farm"
+    if all(u.job for u in improvements.city_engineers(s, cfg, c)):
+        other = next(t for t in land if t != target)
+        assert "no free engineers" in (improvements.tile_problem(s, cfg, c, other, "farm") or "")
+    for _ in range(cfg.improvements["farm"]["turns"] + 1):
+        improvements.progress_jobs(s, cfg, EU)
+    assert s.tiles[target].improvement == "farm"

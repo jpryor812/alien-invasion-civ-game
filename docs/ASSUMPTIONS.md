@@ -981,3 +981,15 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   players' show as "<continent>'s leader"); it is still the 20-strength band_leader unit, with
   four 10-strength survivors.
 
+
+## Develop city: engineers and production from the builder (designer 2026-11-16)
+- "Choose production" is now "Develop city" and opens the city builder. The city panel no longer
+  lists buildings and units with turns and gold; it shows the queue and the button.
+- The builder gains a Land tab (click a hex of the city's land, choose a farm, mine, camp...) and a
+  Train tab (units and projects join the end of the queue), and shows the queue with remove and buy.
+- Tile works are ordered per city (`ImproveTile`): the free engineer on the city's land nearest the
+  hex walks there and starts the job. Only engineers standing on that city's land can be sent, so
+  engineers trained elsewhere must be walked over first; none free means "train some".
+- Engineers no longer ask for orders on the map, and the map no longer offers them tile works.
+  Roads, railways, turrets and sea bridges stay map orders (they reach beyond a city's land).
+  The AI still orders tile works from the map as before (same rules, same result).

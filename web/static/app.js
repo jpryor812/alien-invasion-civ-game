@@ -2035,7 +2035,7 @@ function unitName(u) {
 function describePending(p) {
   return {
     choose_research: "Choose research",
-    choose_production: `${cityName(p.city)}: choose production`,
+    choose_production: `${cityName(p.city)}: develop the city`,
     unit_needs_orders: `${unitLabel(p.unit)} needs orders`,
     recruit_unseated: "A recruit has no council seat",
     offer_received: "A recruit is offered to you",
@@ -2050,7 +2050,7 @@ function describePending(p) {
 async function resolvePending(p) {
   if (p.kind === "choose_research") return openScreen("techs");
   if (p.kind === "council_vote") return openScreen("council");
-  if (p.kind === "choose_production") { centerOnTile(S.view.cities[p.city].tile); return selectCity(p.city); }
+  if (p.kind === "choose_production") { centerOnTile(S.view.cities[p.city].tile); if (window.Builder) return Builder.open(p.city); return selectCity(p.city); }
   if (p.kind === "unit_needs_orders") { const u = S.view.units.find((x) => x.id === p.unit); if (u) centerOnTile(u.tile); return selectUnit(p.unit); }
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
   if (p.kind === "deal_received") return openScreen("diplomacy");
@@ -2252,25 +2252,17 @@ function renderCityPanel() {
   side.classList.remove("unitmode");
   if (window.Advisors) Advisors.trigger("production");
   const surplus = d.totals.food - d.food_eaten;
-  const head = c.queue[0];
-  const headOpt = head ? d.options.find((o) => o.item === head) : null;
-  const groups = { building: [], unit: [], project: [], walls: [] };
-  for (const o of d.options) (groups[o.kind] || groups.project).push(o);
-  const list = Object.entries(groups).filter(([, v]) => v.length).map(([k, v]) =>
-    `<div class="group">${k}s</div>` + v.map((o) => `<div class="item${o.item === head ? " current" : ""}" data-price="${o.price ?? ""}" data-item="${esc(o.item)}" data-tip="${esc(infoHtml(pretty(o.id), o.info, `<div class="tip-kind">${o.cost != null ? `Cost ${o.cost} production` : "Ongoing"}${o.turns != null ? ` · ${o.turns} turns here` : ""}${o.price ? ` · or buy now for ${o.price} gold` : ""}</div>`))}"><span>${esc(pretty(o.id))}</span><span class="muted">${o.progress ? `${o.progress} saved · ` : ""}${o.cost ?? ""}${o.turns != null ? ` · ${o.turns}t` : ""}${o.price ? ` <button class="small buyit" data-buy="${esc(o.item)}" ${S.view.economy.gold < o.price ? "disabled" : ""} title="Buy it now (the queue is not changed)">${o.price}g</button>` : ""}</span></div>`).join("")).join("");
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
     <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.is_capital ? "capital" : c.connected ? "road to the capital (+gold)" : '<span class="muted">no road to the capital yet</span>'}</div>
     <div class="row muted">HP ${c.hp}/${d.max_hp} · strength ${Math.round(d.strength / 100)}</div>
     <div class="row stores">${Object.keys(d.stores || {}).map((g) => `<span class="store" data-tip="${esc(`<b>${pretty(g)}</b><div>${d.stores[g]} stored of ${d.caps[g]}; +${d.income[g]} a turn from the tiles the city works</div>`)}">${MAT_ICON[g] || ""} ${d.stores[g]}<span class="muted">/${d.caps[g]} +${d.income[g]}</span></span>`).join("")}</div>
-    <div class="actions"><button class="primary" id="open-builder" title="Place buildings and walls in the city (B)">City builder</button></div>
+    <div class="actions"><button class="primary develop" id="open-builder" title="Place buildings and walls, work the land with engineers and train units (B)">🏗 Develop city</button></div>
     <div class="yields">${YIELD_KEYS.map((k) => yieldBox(k, d.totals[k], d.lines)).join("")}</div>
     <div class="row">Focus <select id="focus">${d.focuses.map((f) => `<option ${f === c.focus ? "selected" : ""}>${f}</option>`).join("")}</select></div>
-    <h3>Producing</h3>
-    <div class="row">${head ? `${esc(pretty(head.split(":")[1] || head))} <span class="muted">${(c.progress || {})[head] ?? 0}/${headOpt?.cost ?? "–"}${headOpt?.turns != null ? ` · ${headOpt.turns} turns` : ""}</span>` : '<span class="bad">nothing</span>'}
-      ${headOpt?.price ? `<button class="small" id="buy" ${S.view.economy.gold < headOpt.price ? "disabled" : ""}>Buy ${headOpt.price}g</button>` : ""}</div>
-    ${head && !S.cityListOpen ? '<div class="actions"><button id="changeprod">Change production…</button></div>' : `<h3>${head ? "Change production" : "Choose production"}</h3>
-    <div class="list" id="prodlist">${list}</div>`}
+    <h3>Being built</h3>
+    <div class="row">${c.queue.length ? c.queue.map((it, i) => { const o = d.options.find((x) => x.item === it); const short = Object.entries((o && o.short) || {}).map(([g, n]) => `${n} ${g}`).join(", ");
+      return `<div${i ? ' class="muted"' : ""}>${esc(pretty(it.split(":")[1] || it))}${o && o.turns != null ? ` <span class="muted">· ${o.turns} turns</span>` : ""}${short ? ` <span class="bad">· short of ${short}</span>` : ""}</div>`; }).join("") : '<span class="bad">nothing: open Develop city</span>'}</div>
     <h3>Convoy</h3>
     ${convoyHtml(c)}
     <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>
@@ -2285,18 +2277,8 @@ function renderCityPanel() {
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
   side.querySelectorAll("[data-upgrade-gun]").forEach((el) => el.onclick = () => send({ kind: "upgrade_defence", unit: Number(el.dataset.upgradeGun) }));
   if ($("citpage")) $("citpage").onclick = () => openScreen("population", c.id);
-  side.querySelectorAll("#prodlist .item").forEach((el) => el.onclick = async () => {
-    if (el.dataset.item === head) return;
-    S.cityListOpen = false;
-    await send({ kind: "set_production", city: c.id, items: [el.dataset.item] });
-    // Civ style: once the city has something to build, move on to the next decision
-    if (!S.view.pending.some((p) => p.kind === "choose_production" && p.city === c.id)) { clearSelection(); }
-  });
-  if ($("changeprod")) $("changeprod").onclick = () => { S.cityListOpen = true; renderCityPanel(); };
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
   $("open-builder").onclick = () => window.Builder && Builder.open(c.id);
-  if ($("buy")) $("buy").onclick = () => send({ kind: "purchase", city: c.id });
-  side.querySelectorAll("[data-buy]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); send({ kind: "purchase", city: c.id, item: el.dataset.buy }); });
   if ($("convoy-send")) $("convoy-send").onclick = () => send({ kind: "set_convoy", city: c.id, target: Number($("convoy-to").value), goods: $("convoy-goods").value, pct: Number($("convoy-pct").value) });
   if ($("convoy-stop")) $("convoy-stop").onclick = () => send({ kind: "set_convoy", city: c.id, target: -1 });
   side.classList.remove("hidden");
@@ -2336,7 +2318,7 @@ async function send(cmd) {
 const ACTION_ORDER = ["story_choice", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
-  choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
+  choose_research: "Choose research", choose_production: "Develop city", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
   recruit_unseated: "Seat a recruit", council_vote: "Council vote", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
@@ -2454,7 +2436,11 @@ function showTooltip(i, x, y) {
       if (!t.visible) html += '<br><span class="muted">not currently seen</span>';
     } else if (S.explored.has(i)) html = '<span class="muted">Mist: explored, not seen now</span>';
     else html = '<span class="muted">Fog: unexplored</span>';
-    if (c) html += `<br><b>${esc(c.name)}</b> · ${c.status}${c.owner ? ` · ${pretty(c.owner)}` : ""} · pop ${c.pop}`;
+    if (t && t.nest != null) html += '<br><b class="bad">Alien nest</b>: it heals and feeds the alien city next to it every turn. End a soldier\'s turn here to destroy it.';
+    if (c) {
+      html += `<br><b>${esc(c.name)}</b> · ${c.status}${c.owner ? ` · ${pretty(c.owner)}` : ""} · pop ${c.pop}`;
+      if (c.strength) html += `<br>🛡 <b>Defence strength ${Math.round(c.strength / 100)}</b>: what an attacker fights against (the shield on the banner). Walls, garrison, buildings${c.owner === S.view.me ? " and your leader" : ""} raise it.`;
+    }
     for (const u of us) html += `<br>${pretty(u.owner)}: ${esc(unitName(u))}${u.count > 1 ? " ×2" : ""} (${u.hp} HP)`;
   }
   tip.innerHTML = html;

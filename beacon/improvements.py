@@ -182,3 +182,54 @@ def auto_improve(state: GameState, cfg: Config, city: City, n: int, owner: str) 
         state.tiles[t].improvement = imp
         state.tiles[t].built_by = owner
     fog.touch_built(state)
+
+
+# -- tile works ordered from the city builder (designer 2026-11-16) ------------------------------
+
+
+def city_engineers(state: GameState, cfg: Config, city: City) -> list[Unit]:
+    """The owner's engineers standing on the city's land, idle or at work."""
+    from beacon import layout
+
+    land = set(layout.territory_tiles(state, cfg, city))
+    return [
+        u
+        for u in state.sorted_units()
+        if u.owner == city.owner and cfg.units[u.type].get("can_build") and u.tile in land
+    ]
+
+
+def tile_problem(
+    state: GameState, cfg: Config, city: City, tile: int, improvement: str
+) -> str | None:
+    """None if the city may send one of its free engineers to build `improvement` on `tile`."""
+    from dataclasses import replace
+
+    from beacon import layout
+
+    spec = cfg.improvements.get(improvement)
+    if spec is None or spec["kind"] != "tile":
+        return "only tile works (farms, mines, camps...) are ordered from the city"
+    if tile not in layout.territory_tiles(state, cfg, city):
+        return "that hex is not this city's land"
+    if any(u.tile == tile and u.owner != city.owner for u in state.units.values()):
+        return "another unit stands there"
+    crew = city_engineers(state, cfg, city)
+    if any(u.job is not None and u.tile == tile for u in crew):
+        return "engineers already work there"
+    idle = [u for u in crew if u.job is None]
+    if not idle:
+        return "no free engineers on this city's land - train some"
+    probe = replace(idle[0], tile=tile, moves_left=max(1, idle[0].moves_left))
+    return build_problem(state, cfg, probe, improvement)
+
+
+def send_engineers(state: GameState, cfg: Config, city: City, tile: int, improvement: str) -> Unit:
+    """The free engineer nearest the hex walks there (within the city's land) and starts work."""
+    from beacon import hexgrid
+
+    idle = [u for u in city_engineers(state, cfg, city) if u.job is None]
+    unit = min(idle, key=lambda u: (hexgrid.distance(u.tile, tile, state.width), u.id))
+    unit.tile = tile
+    start_job(state, cfg, unit, improvement)
+    return unit

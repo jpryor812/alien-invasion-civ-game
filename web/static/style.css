@@ -514,3 +514,14 @@ th .icon.medal { width: 15px; height: 15px; }
 button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 0.08em; }
 
 .uportrait img.leaderface { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* builder queue, Land and Train tabs (designer 2026-11-16) */
+#bpanel .bqueue { margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line, rgba(255,255,255,0.15)); border-radius: 6px; font-size: 13px; }
+#bpanel .bq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 0; }
+#bpanel .bq.head b { color: var(--brass-hi); }
+#bpanel .bq .bad { font-size: 11px; color: var(--bad); }
+#bpanel .bq button { padding: 1px 7px; font-size: 12px; }
+#bpanel .bq .x { margin-left: auto; }
+#bpanel .btabs { display: flex; flex-wrap: wrap; gap: 4px; }
+#bpanel .bopt { position: relative; }
+#bpanel .bopt .buy { position: absolute; right: 8px; top: 6px; font-size: 12px; padding: 1px 6px; border-radius: 4px; background: rgba(255,210,90,0.18); cursor: pointer; }
+#side .develop { font-size: 16px; padding: 9px 18px; width: 100%; }

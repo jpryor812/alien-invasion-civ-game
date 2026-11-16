@@ -46,6 +46,7 @@ from beacon.commands import (
     Fortify,
     FundProject,
     HoldFire,
+    ImproveTile,
     MergeUnits,
     MoveBuilding,
     MoveUnit,
@@ -241,6 +242,16 @@ def _build(state: GameState, cfg: Config, cmd: BuildImprovement) -> Events:
     if problem:
         raise CommandError(problem)
     improvements.start_job(state, cfg, unit, cmd.improvement, cmd.target)
+    return [{"kind": "job_started", "unit": unit.id, "improvement": cmd.improvement}]
+
+
+@handles(ImproveTile)
+def _improve_tile(state: GameState, cfg: Config, cmd: ImproveTile) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    problem = improvements.tile_problem(state, cfg, city, cmd.tile, cmd.improvement)
+    if problem:
+        raise CommandError(problem)
+    unit = improvements.send_engineers(state, cfg, city, cmd.tile, cmd.improvement)
     return [{"kind": "job_started", "unit": unit.id, "improvement": cmd.improvement}]
 
 
@@ -782,7 +793,13 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
         if unit.owner == pid and promotions.due(cfg, unit) > 0:
             out.append({"kind": "unit_promotion", "unit": unit.id})
     for unit in state.sorted_units():
-        if unit.owner == pid and unit.moves_left > 0 and unit.order == "none" and unit.job is None:
+        if (
+            unit.owner == pid
+            and unit.moves_left > 0
+            and unit.order == "none"
+            and unit.job is None
+            and not cfg.units[unit.type].get("can_build")  # engineers work from the city builder
+        ):
             out.append({"kind": "unit_needs_orders", "unit": unit.id})
     for rec in recruits.recruits_of(state, pid):
         if not rec.seats and _seat_options(state, cfg, rec):

@@ -419,7 +419,8 @@ class Session:
             "builds": [
                 i
                 for i in sorted(cfg.improvements)
-                if improvements.build_problem(s, cfg, unit, i) is None
+                if cfg.improvements[i]["kind"] != "tile"  # tile works: from the city builder
+                and improvements.build_problem(s, cfg, unit, i) is None
             ],
             "bridges": [  # shallow water hexes beside the engineers (SPEC_M11)
                 t
@@ -686,6 +687,30 @@ class Session:
         c = s.cities[city_id]
         layout.ensure(s, cfg, c)
         cy = economy.city_yields(s, cfg, c)
+        from beacon import improvements
+
+        def works(t: int) -> list[dict[str, Any]]:
+            out = []
+            for i in sorted(cfg.improvements):
+                spec = cfg.improvements[i]
+                if spec["kind"] != "tile":
+                    continue
+                why = improvements.tile_problem(s, cfg, c, t, i)
+                if why and not why.startswith("no free engineers"):
+                    continue  # does not fit this hex, or not yet known
+                out.append(
+                    {
+                        "id": i,
+                        "name": i.replace("_", " ").capitalize(),
+                        "note": note(cfg, "improvements", i),
+                        "turns": spec["turns"],
+                        "yields": dict(spec.get("yields") or {}),
+                        "goods": dict(cfg.materials("sources.improvements").get(i) or {}),
+                        "why": why,
+                    }
+                )
+            return out
+
         tiles = []
         for t in layout.territory_tiles(s, cfg, c):
             ox, oy = layout._offset(s, c.tile, t)
@@ -700,6 +725,7 @@ class Session:
                     "feature": tile.feature,
                     "improvement": tile.improvement,
                     "resource": tile.resource,
+                    "works": works(t),
                 }
             )
         queued = [i.split(":", 1)[1] for i in c.queue if i.startswith("building:")]
@@ -732,6 +758,8 @@ class Session:
             }
             for m, w in cfg.materials("walls").items()
         }
+        opts = self._options(c, cy.totals["production"])
+        by_item = {o["item"]: o for o in opts}
         return {
             "city": {"id": c.id, "name": c.name, "hp": c.hp, "max_hp": _city_max_hp(s, cfg, c)},
             "strength": combat.city_strength(s, cfg, c).total // 100,
@@ -750,18 +778,32 @@ class Session:
             "wall_types": walls,
             "queue": list(c.queue),
             "production": cy.totals["production"],
+            "options": [o for o in opts if o["kind"] != "building"],
+            "queue_rows": [
+                dict(
+                    by_item.get(i) or {"item": i, "kind": i.split(":")[0], "id": i},
+                    name=_item_name(c, i),
+                )
+                for i in c.queue
+            ],
+            "engineers": [
+                {
+                    "id": u.id,
+                    "tile": u.tile,
+                    "job": u.job.improvement if u.job else None,
+                    "turns_left": u.job.turns_left if u.job else None,
+                }
+                for u in improvements.city_engineers(s, cfg, c)
+            ],
+            "worked": cy.worked,
         }
 
-    def city_detail(self, city_id: int) -> dict[str, Any]:
-        s, cfg, me = self.state, self.cfg, self.human
-        if not 0 <= city_id < len(s.cities) or s.cities[city_id].owner != me:
-            raise ValueError(f"no city {city_id} of yours")
-        c = s.cities[city_id]
-        cy = economy.city_yields(s, cfg, c)
-        prod = cy.totals["production"]
-        options = []
+    def _options(self, c: Any, prod: int) -> list[dict[str, Any]]:
+        """What the city can produce, with costs, turns, materials and the buy price."""
         from beacon import materials
 
+        s, cfg, me = self.state, self.cfg, self.human
+        options: list[dict[str, Any]] = []
         for item in economy.production_options(s, cfg, c):
             kind, _, ident = item.partition(":")
             if item == "walls":  # the wall pieces laid in the builder (SPEC_M16)
@@ -795,6 +837,18 @@ class Session:
                     else None,
                 }
             )
+        return options
+
+    def city_detail(self, city_id: int) -> dict[str, Any]:
+        s, cfg, me = self.state, self.cfg, self.human
+        if not 0 <= city_id < len(s.cities) or s.cities[city_id].owner != me:
+            raise ValueError(f"no city {city_id} of yours")
+        c = s.cities[city_id]
+        cy = economy.city_yields(s, cfg, c)
+        prod = cy.totals["production"]
+        options = self._options(c, prod)
+        from beacon import materials
+
         seen = fog.visible_tiles(s, cfg, me)
         bombard = [
             t
@@ -1498,6 +1552,12 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
         lines.append(f"Engineers build it in {m['turns']} turns")
         return {"lines": lines, "tags": sorted(set(tags)), "note": note(cfg, "improvements", ident)}
     return {"lines": [], "tags": [], "note": ""}
+
+
+def _item_name(city: Any, item: str) -> str:
+    if item == "walls":
+        return f"Walls ({len(city.wall_orders)} pieces)"
+    return item.split(":", 1)[-1].replace("_", " ").capitalize()
 
 
 def note(cfg: Config, file: str, ident: str) -> str:

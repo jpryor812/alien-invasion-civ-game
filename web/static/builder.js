@@ -164,7 +164,21 @@
       const [, sy] = toScreen(0, (e.y + e.size - 0.5) * cellW());
       items.push({ y: sy, draw: () => drawBuilding(e.what, e.x, e.y, e.size, e.done ? 1 : 0.6, B.sel === e.id ? "rgba(255,230,120,0.18)" : e.done ? null : "rgba(110,180,255,0.18)") });
     }
+    for (const en of d.engineers) {  // the city's engineers, where they stand or work
+      const t = d.tiles.find((x) => x.tile === en.tile); if (!t) continue;
+      const [sx, sy] = toScreen(t.x / 1000 - 0.35, t.y / 1000 + 0.45);
+      items.push({ y: sy, draw: () => {
+        g.fillStyle = en.job ? "rgba(240,170,60,0.95)" : "rgba(90,170,255,0.95)"; g.beginPath(); g.arc(sx, sy, 13, 0, 7); g.fill();
+        g.strokeStyle = "#fff"; g.lineWidth = 2; g.stroke();
+        g.font = "14px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🛠", sx, sy + 1);
+        if (en.job) { g.font = "bold 12px sans-serif"; g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 3; g.strokeText(`${en.turns_left}`, sx + 15, sy - 10); g.fillText(`${en.turns_left}`, sx + 15, sy - 10); }
+      } });
+    }
     items.sort((a, b) => a.y - b.y).forEach((it) => it.draw());
+    if (B.tile != null) {  // the hex chosen in the Land tab
+      const t = d.tiles.find((x) => x.tile === B.tile);
+      if (t) { hexPath(t.x / 1000, t.y / 1000, 0.97); g.strokeStyle = "#7fc4ff"; g.lineWidth = 3; g.setLineDash([8, 5]); g.stroke(); g.setLineDash([]); g.fillStyle = "rgba(80,170,255,0.12)"; g.fill(); }
+    }
     // the ghost under the cursor
     if (tool && B.hover) {
       const [hx, hy] = B.hover;
@@ -190,7 +204,7 @@
     const stores = Object.keys(d.stores).map((k) => `<span class="store">${MAT[k]} ${d.stores[k]}<span class="muted">/${d.caps[k]} +${d.income[k]}</span></span>`).join(" ");
     const sel = B.sel != null ? d.layout.find((e) => e.id === B.sel) : null;
     const tab = B.tab || "build";
-    const list = tab === "build"
+    const list = tab === "land" ? landList() : tab === "train" ? trainList() : tab === "build"
       ? Object.entries(d.catalog).filter(([, b]) => !b.why || !/needs tech/.test(b.why)).map(([id, b]) => {
         const short = Object.entries(b.materials).filter(([k, n]) => d.stores[k] < n);
         const why = b.placed ? "placed, waiting to be built" : b.why;
@@ -202,17 +216,55 @@
     p.innerHTML = `<div class="title">${ec(d.city.name)}</div>
       <div class="row">${stores}</div>
       <div class="row muted">Strength ${d.strength} · HP ${d.city.hp}/${d.city.max_hp}${walls ? ` · walls: ${walls}` : ""}${d.wall_orders.length ? ` · <span class="good">${d.wall_orders.length} pieces being built</span>` : ""}</div>
+      ${queueHtml()}
       ${sel ? `<div class="bsel"><b>${ec(pr(sel.what))}</b> ${sel.done ? "" : '<span class="muted">(being built)</span>'} ${sel.what !== "city_hall" ? '<button id="bmove">Move</button>' : ""}</div>` : ""}
-      <div class="row btabs"><button class="${tab === "build" ? "primary" : ""}" data-tab="build">Buildings</button><button class="${tab === "walls" ? "primary" : ""}" data-tab="walls">Walls</button></div>
+      <div class="row btabs"><button class="${tab === "build" ? "primary" : ""}" data-tab="build">Buildings</button><button class="${tab === "walls" ? "primary" : ""}" data-tab="walls">Walls</button><button class="${tab === "land" ? "primary" : ""}" data-tab="land">Land</button><button class="${tab === "train" ? "primary" : ""}" data-tab="train">Train</button></div>
       <div class="blist">${list}</div>`;
     p.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { B.tab = b.dataset.tab; B.tool = null; panel(); hint(); });
     p.querySelectorAll("[data-place]").forEach((b) => b.onclick = () => { B.tool = { kind: "place", what: b.dataset.place, size: d.catalog[b.dataset.place].size }; B.sel = null; hint(); });
     p.querySelectorAll("[data-wall]").forEach((b) => b.onclick = () => { B.tool = { kind: "wall", material: b.dataset.wall }; hint(); panel(); });
+    p.querySelectorAll("[data-work]").forEach((b) => b.onclick = () => send({ kind: "improve_tile", city: B.city, tile: B.tile, improvement: b.dataset.work }));
+    p.querySelectorAll("[data-train]").forEach((b) => b.onclick = () => send({ kind: "set_production", city: B.city, items: [...d.queue, b.dataset.train] }));
+    p.querySelectorAll("[data-buy]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); send({ kind: "purchase", city: B.city, item: b.dataset.buy }); });
+    p.querySelectorAll("[data-unqueue]").forEach((b) => b.onclick = () => { const k = +b.dataset.unqueue; send({ kind: "set_production", city: B.city, items: d.queue.filter((_, i) => i !== k) }); });
     if (document.getElementById("bmove")) document.getElementById("bmove").onclick = () => { B.tool = { kind: "move", entry: sel.id, what: sel.what, size: sel.size }; hint(); };
+  }
+  const yTxt = (y) => Object.entries(y || {}).map(([k, n]) => `+${n} ${k}`).join(", ");
+  function queueHtml() {
+    const d = B.d;
+    if (!d.queue_rows.length) return `<div class="bqueue muted">Nothing being built. Place a building, lay walls or train a unit.</div>`;
+    return `<div class="bqueue"><div class="muted">Being built (${d.production} work a turn)</div>${d.queue_rows.map((q, i) => {
+      const short = Object.entries(q.short || {}).map(([k, n]) => `${n} ${k}`).join(", ");
+      return `<div class="bq${i ? "" : " head"}"><b>${ec(q.name)}</b> <span class="muted">${q.cost != null ? `${q.progress || 0}/${q.cost} work${q.turns != null ? ` · ${q.turns} turn${q.turns === 1 ? "" : "s"}` : ""}` : ""}</span>
+        ${short ? `<span class="bad">short of ${short}</span>` : ""}
+        ${!i && q.price ? `<button data-buy="${q.item}" title="Finish it now with gold">Buy 💰${q.price}</button>` : ""}<button class="x" data-unqueue="${i}" title="Take it off the queue">×</button></div>`;
+    }).join("")}</div>`;
+  }
+  function landList() {
+    const d = B.d, free = d.engineers.filter((e) => !e.job).length, busy = d.engineers.length - free;
+    const crew = `<div class="row">🛠 Engineers on this land: <b>${free}</b> free${busy ? `, ${busy} at work` : ""}${d.engineers.filter((e) => e.job).map((e) => ` · ${pr(e.job)} (${e.turns_left})`).join("")}</div>`
+      + (free ? "" : `<button class="bopt" data-train="unit:engineers"><b>Train engineers</b><span class="cost">They appear here and work the land you choose.</span></button>`);
+    const t = d.tiles.find((x) => x.tile === B.tile);
+    if (!t) return crew + `<div class="row muted">Click a hex of the city's land to choose what to build on it.</div>`;
+    const busyHere = d.engineers.find((e) => e.job && e.tile === t.tile);
+    const here = [pr(t.elevation === "hills" ? "hills" : ""), pr(t.terrain), t.feature ? pr(t.feature) : "", t.resource ? pr(t.resource) : ""].filter(Boolean).join(", ");
+    const works = t.works.map((w) => `<button class="bopt" data-work="${w.id}" ${w.why ? "disabled" : ""} title="${ec(w.note || "")}"><b>${ec(w.name)}</b>
+      <span class="cost">${w.turns} turns${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
+    return crew + `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
+      + (busyHere ? `<div class="row good">🛠 Engineers are building a ${ec(pr(busyHere.job).toLowerCase())} here: ${busyHere.turns_left} turn${busyHere.turns_left === 1 ? "" : "s"} left.</div>`
+        : works || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
+  }
+  function trainList() {
+    const d = B.d, units = d.options.filter((o) => o.kind === "unit" || o.kind === "project");
+    if (!units.length) return `<div class="row muted">Nothing to train here yet.</div>`;
+    return units.map((o) => `<button class="bopt" data-train="${o.item}" title="${ec(o.note || "")}"><b>${ec(pr(o.id))}</b>
+      <span class="cost">${o.cost != null ? `${o.cost} work${o.turns != null ? ` · ${o.turns} turns` : ""}` : "project"}${Object.keys(o.materials || {}).length ? ` · ${costTxt(o.materials)}` : ""}${Object.keys(o.short || {}).length ? ` <span class="bad">(short: it will wait)</span>` : ""}</span>
+      ${o.price ? `<span class="buy" data-buy="${o.item}" title="Buy it now">💰${o.price}</span>` : ""}</button>`).join("");
   }
   function hint() {
     const t = B.tool, bar = document.getElementById("bbar");
-    bar.innerHTML = !t ? "Choose a building or a wall to build. Click a building to select it. Drag to pan, wheel to zoom."
+    bar.innerHTML = !t ? (B.tab === "land" ? "Click a hex of land, then choose what your engineers build there. Drag to pan, wheel to zoom."
+      : "Choose a building or a wall to build. Click a building to select it, or a hex of land to work it. Drag to pan, wheel to zoom.")
       : t.kind === "wall" ? `Drag across the land to lay ${ec(B.d.wall_types[t.material].name.toLowerCase())} pieces. Esc to stop.`
       : `Move the ${ec(pr(t.what))} and click to ${t.kind === "move" ? "set it down" : "place it"}. Blue fits, red does not. Esc to cancel.`;
   }
@@ -252,7 +304,15 @@
       if (!moved) {  // a click: select the building under the cursor
         const [cx, cy] = cellAt(sx, sy);
         const hit = B.d.layout.find((b) => cx >= b.x && cx < b.x + b.size && cy >= b.y && cy < b.y + b.size);
-        B.sel = hit ? hit.id : null; panel();
+        B.sel = hit ? hit.id : null;
+        if (!hit) {  // empty ground: choose the hex under the cursor for the Land tab
+          const [wx, wy] = toWorld(sx, sy);
+          let best = null, bd = 1;
+          for (const t of B.d.tiles) { const dd = Math.hypot(t.x / 1000 - wx, t.y / 1000 - wy); if (dd < bd) { bd = dd; best = t; } }
+          B.tile = best ? best.tile : null;
+          if (best) B.tab = "land";
+        }
+        panel(); hint();
       }
       return;
     }
@@ -275,8 +335,8 @@
     if (e.key === "Escape") { e.stopPropagation(); if (B.tool) { B.tool = null; B.drag = null; hint(); panel(); } else close(); }
   }, true);
 
-  async function open(cityId) {
-    B.city = cityId; B.tool = null; B.sel = null; B.tab = "build";
+  async function open(cityId, tab) {
+    B.city = cityId; B.tool = null; B.sel = null; B.tile = null; B.tab = tab || "build";
     document.getElementById("builder").classList.remove("hidden");
     B.open = true;
     await reload();
