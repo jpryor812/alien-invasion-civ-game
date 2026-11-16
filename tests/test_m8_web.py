@@ -11,6 +11,7 @@ import pytest
 from beacon import fog
 from beacon.state import ALIENS
 from beacon.units import create_unit, free_tile_near
+from web import profile
 from web import session as session_mod
 from web.server import serve
 from web.session import Session
@@ -22,6 +23,7 @@ HUMAN = "europe"
 def temp_saves(tmp_path, monkeypatch):
     """Keep test saves (including autosaves) out of runs/saves."""
     monkeypatch.setattr(session_mod, "SAVE_DIR", tmp_path / "saves")
+    monkeypatch.setattr(profile, "PROFILE", tmp_path / "profile.json")  # the career (M11)
 
 
 @pytest.fixture

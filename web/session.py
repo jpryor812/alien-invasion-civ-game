@@ -24,6 +24,7 @@ from beacon import (
     fog,
     hexgrid,
     improvements,
+    leader,
     movement,
     mvp,
     recruits,
@@ -37,6 +38,7 @@ from beacon.game import new_game
 from beacon.state import ACTIVE, ALIENS, GameState, state_from_json, state_to_json, to_dict
 from beacon.turn import advance_turn, year
 from beacon.view import observe
+from web import profile
 
 SAVE_DIR = Path(__file__).resolve().parent.parent / "runs" / "saves"
 PUBLIC_EVENTS = frozenset(
@@ -63,6 +65,7 @@ class Session:
     def __init__(self, cfg: Config, seed: int = 1, human: str = "europe"):
         self.cfg = cfg
         self.reveal = False  # developer only (web.server --reveal): the whole map, for art
+        self.profile_path = profile.PROFILE  # the career profile (tests point it elsewhere)
         self.new(seed, human)
 
     # -- lifecycle ---------------------------------------------------------------------------
@@ -74,6 +77,7 @@ class Session:
         state.players[human].controller = "human"
         self.state, self.human = state, human
         self.events: list[dict[str, Any]] = []
+        self.game_id = f"{int(time.time())}-{seed}-{human}"  # its row in the career profile
 
     def save(self, name: str) -> str:
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", name):
@@ -96,6 +100,7 @@ class Session:
         self.state = state
         self.human = next(p for p, pl in state.players.items() if pl.controller == "human")
         self.events = []
+        self.game_id = f"save-{name}-{state.seed}-{self.human}"
 
     @staticmethod
     def saves() -> list[dict[str, Any]]:
@@ -142,6 +147,18 @@ class Session:
         if self.state.outcome is not None:
             return {"ok": False, "error": "the game is over"}
         data = dict(data, player=self.human)
+        if data.get("kind") == "set_wardrobe":  # cosmetics unlock from the career (SPEC_M11)
+            career = self.career()
+            items = [("outfits", data.get("outfit"))] + [
+                ("accessories", a) for a in data.get("accessories") or []
+            ]
+            for kind, item in items:
+                if (
+                    item in self.cfg.leader(f"wardrobe.{kind}")
+                    and not self.reveal
+                    and not profile.unlocked(self.cfg, career, kind, item)
+                ):
+                    return {"ok": False, "error": f"{item} is not unlocked in your career yet"}
         try:
             cmd = command_from_dict(data)
             events = apply_command(self.state, self.cfg, cmd)
@@ -165,6 +182,9 @@ class Session:
         self.events = [e for e in events if self._mine(e)]
         with contextlib.suppress(OSError):
             self.save("autosave")  # so Continue works after a restart
+        with contextlib.suppress(OSError):
+            credits = s.players[self.human].credits
+            profile.record(self.game_id, credits, s.outcome == "victory", self.profile_path)
         return {"ok": True, "events": self.events}
 
     def _mine(self, e: dict[str, Any]) -> bool:
@@ -390,6 +410,11 @@ class Session:
                 for i in sorted(cfg.improvements)
                 if improvements.build_problem(s, cfg, unit, i) is None
             ],
+            "bridges": [  # shallow water hexes beside the engineers (SPEC_M11)
+                t
+                for t in improvements.bridge_targets(s, cfg, unit)
+                if improvements.build_problem(s, cfg, unit, "sea_bridge", t) is None
+            ],
             "build_info": {
                 i: self._build_info(unit.tile, i)
                 for i in sorted(cfg.improvements)
@@ -578,6 +603,9 @@ class Session:
             else {},
             "military": citizens.council_military(cfg, c) if c.seats else 0,
             "born": c.born,
+            "kin": c.kin,
+            "hybrid": c.hybrid,
+            "banned_until": c.banned_until,
         }
 
     def city_detail(self, city_id: int) -> dict[str, Any]:
@@ -733,6 +761,15 @@ class Session:
                 for seat in ["general", *DOMAINS]
             },
             "members": self._members(),
+            "leader": {  # the leader heads the council (SPEC_M11)
+                "name": player.leader.name,
+                "look": player.leader.look,
+                "outfit": player.leader.outfit,
+                "level": player.leader.level,
+                "skills": player.leader.skills,
+            }
+            if (player := s.players[me]).leader
+            else None,
         }
 
     def _members(self) -> list[dict[str, Any]]:
@@ -770,6 +807,161 @@ class Session:
                 }
             )
         return out
+
+    # -- the leader (SPEC_M11) ---------------------------------------------------------------
+
+    def career(self) -> dict[str, int]:
+        credits = self.state.players[self.human].credits
+        return profile.totals(profile.load(self.profile_path), (self.game_id, credits))
+
+    def leader(self) -> dict[str, Any]:
+        """The leader screen: the human's leader, family, wardrobe and career, other leaders."""
+        s, cfg, me = self.state, self.cfg, self.human
+        player = s.players[me]
+        lead = player.leader
+        if lead is None:
+            raise ValueError("no leader")
+        traits = cfg.leader("traits.list")
+        stones = cfg.leader("milestones.list")
+        xp = leader.xp(cfg, player)
+
+        def trait_row(t: str) -> dict[str, Any]:
+            return {"id": t, "name": traits[t]["name"], "note": traits[t]["info"]}
+
+        def choice_row(choice: str) -> dict[str, Any]:
+            if choice == "trait":
+                title = f"Level {cfg.leader('traits.third_trait_level')}: a third trait"
+                opts = [trait_row(t) for t in leader.options(cfg, lead, choice)]
+            else:
+                stone, at = choice.split(":")
+                title = f"{stones[stone]['name']} ({pretty_key(stones[stone]['key'])}: {at})"
+                opts = [
+                    {"id": o, "name": spec["name"], "note": spec["info"]}
+                    for o, spec in stones[stone]["options"].items()
+                ]
+            return {"id": choice, "title": title, "options": opts}
+
+        def person(c) -> dict[str, Any]:
+            return {
+                "id": c.id,
+                "name": c.name,
+                "adult": c.adult,
+                "hybrid": c.hybrid,
+                "stats": c.stats,
+                "city": s.cities[c.city].name,
+                "growth": c.growth,
+                "growth_needed": cfg.t("citizens.growing_up.needed"),
+                "seats": c.seats,
+            }
+
+        children = [person(s.citizens[str(k)]) for k in lead.children if str(k) in s.citizens]
+        candidates = [
+            {
+                "id": f"recruit:{r.id}",
+                "name": r.name,
+                "kind": "alien recruit",
+                "total": sum(r.scores.values()),
+            }
+            for r in recruits.recruits_of(s, me)
+            if r.seats
+        ]
+        people = sorted(
+            (c for c in citizens.of_player(s, me) if c.adult and not c.kin),
+            key=lambda c: (-sum(c.stats.values()), c.id),
+        )
+        candidates += [
+            {
+                "id": f"citizen:{c.id}",
+                "name": c.name,
+                "kind": f"citizen of {s.cities[c.city].name}",
+                "total": sum(c.stats.values()),
+            }
+            for c in people[:12]
+        ]
+        expecting = None
+        if lead.expecting is not None:
+            who = leader.partner_of(s, lead.expecting)
+            expecting = {"partner": getattr(who, "name", "?"), "due": lead.due}
+        career = self.career()
+        wardrobe = {
+            kind: [
+                {
+                    "id": item,
+                    "name": spec["name"],
+                    "unlocked": self.reveal or profile.unlocked(cfg, career, kind, item),
+                    "unlock": spec["unlock"],
+                }
+                for item, spec in cfg.leader(f"wardrobe.{kind}").items()
+            ]
+            for kind in ("outfits", "accessories")
+        }
+        start = cfg.leader("start")
+        others = [
+            {
+                "player": pid,
+                "continent": s.players[pid].name,
+                "name": s.players[pid].leader.name,
+                "look": s.players[pid].leader.look,
+                "outfit": s.players[pid].leader.outfit,
+                "level": s.players[pid].leader.level,
+                "age": leader.age(cfg, s, s.players[pid].leader),
+            }
+            for pid in sorted(player.met)
+            if s.players[pid].leader is not None
+        ]
+        return {
+            "name": lead.name,
+            "sex": lead.sex,
+            "look": lead.look,
+            "title": f"President of {player.name}",
+            "continent": player.name,
+            "age": leader.age(cfg, s, lead),
+            "start_age": lead.start_age,
+            "level": lead.level,
+            "xp": xp,
+            "xp_level": leader.xp_for_level(cfg, lead.level),
+            "xp_next": leader.xp_for_level(cfg, lead.level + 1),
+            "points": leader.points(cfg, lead),
+            "skills": {d: lead.skills[d] for d in DOMAINS},
+            "military_strength": cfg.t("citizens.military_strength"),
+            "traits": [trait_row(t) for t in lead.traits],
+            "choices": [choice_row(c) for c in lead.choices],
+            "bonuses": [
+                {
+                    "name": stones[b.split(":")[0]]["options"][b.split(":")[1]]["name"],
+                    "note": stones[b.split(":")[0]]["options"][b.split(":")[1]]["info"],
+                }
+                for b in lead.bonuses
+            ],
+            "outfit": lead.outfit,
+            "accessories": list(lead.accessories),
+            "children": children,
+            "expecting": expecting,
+            "family_block": leader.family_block(s, cfg, me),
+            "partners": candidates,
+            "birth_turns": cfg.leader("family.birth_turns"),
+            "wardrobe": wardrobe,
+            "career": career,
+            "can_create": s.turn == 0,
+            "custom": lead.custom,
+            "catalog": {
+                "looks": [{"id": k, "sex": v} for k, v in leader.looks(cfg).items()],
+                "traits": [trait_row(t) for t in sorted(traits)],
+                "age_min": start["age_min"],
+                "age_max": start["age_max"],
+                "trait_count": start["traits"],
+            },
+            "milestones": [
+                {
+                    "name": spec["name"],
+                    "key": pretty_key(spec["key"]),
+                    "have": s.players[me].credits.get(spec["key"], 0),
+                    "at": spec["at"],
+                }
+                for spec in stones.values()
+            ],
+            "others": others,
+        }
 
     def cities_overview(self) -> dict[str, Any]:
         """Every city of yours on one page (Civ's city list)."""
@@ -1098,6 +1290,15 @@ def _tile_yields(cfg: Config, tile: Any) -> dict[str, int]:
     return tile_yields(cfg, tile)
 
 
+def pretty_key(key: str) -> str:
+    return {
+        "cities_liberated": "cities freed",
+        "kills": "aliens defeated",
+        "leader_children": "children grown",
+        "shards_claimed": "shards claimed",
+    }.get(key, key.replace("_", " "))
+
+
 def _source_label(src: str) -> str:
     """A readable name for a yield line's source (see economy.city_yields)."""
     if src in ("city_tile", "city_centre"):
@@ -1108,6 +1309,8 @@ def _source_label(src: str) -> str:
         return "Citizens on tiles (half stats)"
     if src == "population":
         return "Population"
+    if src.startswith("leader:"):
+        return f"Leader ({src[7:]})"
     if src.startswith("citizen:") and src.endswith("(council)"):
         return "Citizens on the council"
     if src.startswith("council:"):

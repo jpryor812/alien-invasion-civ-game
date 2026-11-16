@@ -262,3 +262,22 @@ varied partners.
 - Trait list and recruit lifespans.
 - MVP weights.
 - Number of beacon investment levels and cost curves.
+
+## M11: ocean bridges and the leader (designer 2026-11-15, docs/SPEC_M11.md)
+
+- **Sea bridges.** Engineers with Robotics build a sea bridge over shallow water beside the
+  shore or another bridge (6 turns). Bridged hexes are land at road speed: armies, roads and
+  convoys cross, continents join, and aliens can cross and pillage them too. Deep ocean cannot
+  be bridged. AI players bridge toward their allies.
+- **The leader.** Every player has a leader (generated for the AI; made on a creation screen by
+  the human): name, look, age and two traits. The leader heads the 16-seat council and is not a
+  unit. Six skills start at +1 and count in every city (military as city strength); XP from
+  achievements raises levels, each giving a skill point, and milestones offer bonuses for the
+  game. A third trait comes at level 5. The leader ages but never dies.
+- **Family.** The leader can start a family with a grown citizen or a seated alien recruit; the
+  child is born in the capital. Hybrid children are stronger, some cities refuse to let them work
+  their land, and on the council they risk being voted out.
+- **Leader screen.** The leader stands full height on a backdrop (Meshy renders), with traits,
+  skills, XP, choices, family, wardrobe, milestones and career. Outfits and accessories unlock
+  from a local career profile and are cosmetic only.
+

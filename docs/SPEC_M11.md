@@ -13,7 +13,10 @@ families and hybrids). The five story events from SPEC_M9 section 4 come later.
 "A technology to build cross-ocean bridges so we can connect continents by land and move
 faster."
 
-- New tech **Ocean Engineering** (production tree, tier 3, 280 science; prereq Applied AI).
+- ~~New tech **Ocean Engineering** (production tree, tier 3, 280 science; prereq Applied AI).~~
+  As built: the sea bridge is unlocked by **Robotics**, the existing tier-3 production tech
+  under Applied AI (same tier, cost and prerequisite). A new tier-3 tech would have broken the
+  designer's tree, where every tech opens exactly two (2, 4, 8, 16); see docs/ASSUMPTIONS.md M11.
 - New route **sea bridge**, built by engineers on a **shallow water** (coast) hex next to land or
   to another bridge, over 6 turns. Deep ocean cannot be bridged. The engineers stand on the land
   or bridge hex beside it while they build.
@@ -75,7 +78,11 @@ and their stats which can eventually be upgraded - and this is also where traits
 - The creation screen uses the same layout, with choices in place of values.
 
 ### Art: Meshy 3D renders (designer)
-- 379 Meshy credits are left (about 12 models). Proposal:
+- As built (designer 2026-11-15: "just do 1 man leader and 1 woman leader and 2 outfits for
+  now"): one man and one woman look, each in a civilian coat and a field uniform, 4 models
+  (web/static/leaders/README.md). The field uniform unlocks after 10 career cities freed; the
+  dress uniform and further looks wait for a later round. The original proposal follows.
+- 379 Meshy credits were left (about 12 models). Proposal:
   - **4 leader looks**, 2 men and 2 women, in a civilian commander's coat: 4 models.
   - **2 alternate outfits** (field uniform, dress uniform) for each look, unlocked by career
     milestones: 8 models at the most. If credits run short, the uniforms go to 2 looks first.

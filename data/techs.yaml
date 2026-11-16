@@ -40,7 +40,7 @@ techs:
   urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 80, prereqs: [], known_at_start: false, effects: {growth_pct: 25}}
   sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 4, cost: 450, prereqs: [digital_finance], known_at_start: false, effects: {yield_pct: {gold: 10}, keep_research_on_deficit: 1}}
   carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 5, cost: 720, prereqs: [global_logistics], known_at_start: false, effects: {city_yields: {gold: 2}}}
-  robotics: {status: placeholder, note: Automated assembly lines., tree: production, tier: 3, cost: 280, prereqs: [applied_ai], known_at_start: false, effects: {build_turns: -1}}
+  robotics: {status: placeholder, note: Automated assembly lines; robot crews build sea bridges (SPEC_M11)., tree: production, tier: 3, cost: 280, prereqs: [applied_ai], known_at_start: false, effects: {build_turns: -1}}
   mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 4, cost: 450, prereqs: [robotics], known_at_start: false, effects: {unit_cost_pct: -15}}
   orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 4, cost: 450, prereqs: [signal_amplification], known_at_start: false, effects: {ship_time_pct: -50}}
   militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 4, cost: 450, prereqs: [powered_exoskeletons], known_at_start: false, effects: {free_upkeep_per_city: 1}}

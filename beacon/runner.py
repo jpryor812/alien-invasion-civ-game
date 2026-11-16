@@ -144,6 +144,22 @@ def summary(
         "commands": len(log),
         "rejected_commands": sum(1 for e in log if not e["ok"]),
         "credits": credits,
+        # SPEC_M11: sea bridges built and each leader's level, children and hybrids
+        "sea_bridges": sum(1 for t in state.tiles if t.route == "sea_bridge"),
+        "leaders": {
+            pid: {
+                "level": p.leader.level,
+                "children": len(p.leader.children),
+                "hybrids": sum(
+                    1
+                    for k in p.leader.children
+                    if str(k) in state.citizens and state.citizens[str(k)].hybrid
+                ),
+            }
+            for pid, p in state.players.items()
+            if p.leader is not None
+        },
+        "hybrids_voted_out": sum(1 for c in state.citizens.values() if c.banned_until >= 0),
     }
 
 

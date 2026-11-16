@@ -613,7 +613,8 @@ class Bot:
             if seats is not None:
                 self.submit(SeatRecruit(player=self.pid, recruit=rec.id, seats=seats))
                 continue
-            others = [p for p in self.state.player_ids() if p != self.pid]
+            met = self.state.players[self.pid].met  # gifts need contact (M10)
+            others = [p for p in self.state.player_ids() if p != self.pid and p in met]
             if not others:
                 continue
             counts = {p: len(recruits.recruits_of(self.state, p)) for p in others}

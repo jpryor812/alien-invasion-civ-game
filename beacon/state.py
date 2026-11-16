@@ -16,7 +16,7 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from beacon import canonical
 
-STATE_VERSION = 6
+STATE_VERSION = 7
 ALIENS = "aliens"
 
 # City status values.
@@ -58,6 +58,7 @@ class City:
     progress: dict[str, int] = field(default_factory=dict)  # production put into each item (M10)
     convoy: dict[str, Any] | None = None  # {"to": city id, "kind": food|production, "pct"} (M10)
     incoming: dict[str, int] = field(default_factory=dict)  # convoy goods arriving next turn
+    refuses_hybrids: bool = False  # the city's attitude, seeded at the start (SPEC_M11)
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
     buildings: list[str] = field(default_factory=list)
     hp: int = 0
@@ -74,6 +75,7 @@ class City:
 class Job:
     improvement: str
     turns_left: int
+    tile: int | None = None  # where it is built, if not the unit's own hex (a sea bridge)
 
 
 @dataclass
@@ -105,6 +107,31 @@ class CityMemory:
 
 
 @dataclass
+class Leader:
+    """A player's leader (docs/SPEC_M11.md): the head of the council, not a unit on the map. Age,
+    XP and level follow from the turn and the player's achievements (beacon/leader.py)."""
+
+    name: str
+    sex: str  # man | woman
+    look: str  # id in data/leaders.yaml looks
+    start_age: int
+    skills: dict[str, int]  # domain -> value; each starts at +1
+    traits: list[str]
+    level: int = 1
+    spent: int = 0  # skill points spent so far (one per level gained)
+    milestones: list[str] = field(default_factory=list)  # "<milestone>:<threshold>" reached
+    choices: list[str] = field(default_factory=list)  # waiting: "<milestone>:<threshold>"/"trait"
+    bonuses: list[str] = field(default_factory=list)  # "<milestone>:<option>" chosen
+    outfit: str = "civilian"
+    accessories: list[str] = field(default_factory=list)
+    children: list[int] = field(default_factory=list)  # citizen ids, oldest first
+    expecting: str | None = None  # "citizen:<id>" or "recruit:<id>": the child on the way
+    due: int = -1  # turn the child is born
+    rest_until: int = -1  # no new family before this turn (the cooldown after a birth)
+    custom: bool = False  # made on the creation screen
+
+
+@dataclass
 class Player:
     id: str
     name: str
@@ -124,6 +151,7 @@ class Player:
     met: list[str] = field(default_factory=list)  # players met so far (beacon/contact.py)
     boons: list[dict[str, Any]] = field(default_factory=list)  # shard effects (like tech effects)
     flags: list[str] = field(default_factory=list)  # story choices remembered
+    leader: Leader | None = None  # docs/SPEC_M11.md
 
 
 @dataclass
@@ -200,6 +228,9 @@ class Citizen:
     job: str = "auto"  # "auto", "council" or "tile:<index>" (the player's choice)
     tile: int | None = None  # the tile it works now (set by citizens.assign)
     seats: list[str] = field(default_factory=list)  # council seat held now ("general"/a domain)
+    kin: bool = False  # a child of the leader (SPEC_M11)
+    hybrid: bool = False  # a child of the leader and an alien recruit
+    banned_until: int = -1  # voted off the council: no seat before this turn
 
 
 @dataclass

@@ -686,3 +686,77 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Camera.** After a unit command, if that unit no longer needs orders, the client selects the
   next unit that does and centres on it.
 
+## M11: ocean bridges and the leader (designer 2026-11-15, docs/SPEC_M11.md)
+
+- **Sea bridge tech.** Robotics (tier 3, production, under Applied AI) unlocks the sea bridge
+  instead of a new Ocean Engineering tech: the tree keeps exactly two children per tech (2, 4,
+  8, 16), as the designer set it and `test_tech_tree_branches_two_four_eight_sixteen` checks.
+  The AI's endgame research list now includes Applied AI and Robotics before the radio beacons.
+- **Sea bridge.** A route (`kind: bridge`) built over 6 turns on an empty coast (shallow) hex
+  beside engineers standing on passable land or on another bridge (`BuildImprovement.target`;
+  `Job.tile` holds the hex). A bridged hex is passable land for land units, moves at road speed,
+  counts as a road for connections, convoys and upkeep, and ships still sail through it. Any
+  unit may cross, aliens too. Aliens pillage it like a road; the wrecker steps ashore to a free
+  land hex beside it. Engineers rebuild it as new (no quick repair). Remnants and finds may in
+  rare cases land on a bridged hex.
+- **AI bridges.** An AI with Robotics and an ally sends one engineer a turn to bridge toward the
+  nearest explored land of an allied continent (the far shore of a strait, which scouts see):
+  the cheapest path over explored hexes from its capital, where each unbridged shallow hex costs
+  4 land steps (`bridges.water_cost`), and only if the path needs at most 4 bridges
+  (`bridges.max_water`). Aiming at an allied city instead found no path, since the AI has not
+  explored the ally's interior.
+- **Leader data.** `data/leaders.yaml` (a new data file, `cfg.leader()`): looks, names, start,
+  traits, XP, milestones, family, hybrids, wardrobe, AI. Descriptions are `info` (the loader
+  strips `note` as metadata). Leaders use one RNG stream, `leader`, with sub-keys (make,
+  attitude, hybrid, vote).
+- **Generated leaders.** Every player gets a leader from the seed: a look (and its sex), a name
+  not used by another player, an age of 30-55 and two traits. A human may remake theirs with
+  `CreateLeader` only on turn 0 (the creation screen opens once at the start of a new game).
+- **Age.** Start age plus one year every 4 turns; the leader never dies.
+- **Skills.** Six skills at +1. Each yield skill is a line `leader:<name>` in every one of the
+  owner's active cities, like a council member in a general seat; military adds
+  skill x `citizens.military_strength` to every city's strength. The leader is the 16th seat,
+  above the 3 general and 12 domain seats, and does not use one of them.
+- **XP and levels.** XP is computed from the player's MVP credit ledger (30 per city freed or
+  reclaimed, 15 per city refounded, 2 per alien defeated, 20 per shard claimed, 15 per child of
+  the leader grown up; a new credit key `leader_children`, not scored by the MVP). Level L needs
+  40(L-1) + 20(L-1)(L-2)/2 XP. Levels are counted at the end of each turn. Each level gives one
+  skill point (`RaiseSkill`); points not spent stay.
+- **Traits.** Ten leader traits, each an effect in the tech-effect format (`techfx`), so they
+  apply wherever tech effects do: Steady +5 city strength, Visionary/Provider/Industrious/
+  Merchant/Mystic +10% of one yield, Quartermaster +1 free upkeep per city, Tactician +10%
+  flanking, Builder engineers 1 turn faster, Nurturing +25% growth. A third trait is chosen at
+  level 5.
+- **Milestones.** Liberator (cities freed 1/5/10), Hunter (aliens defeated 10/20/30), Parent of
+  the nation (children grown 1/3/5), Starcatcher (shards 1/3). Each threshold offers 2-3 bonuses
+  in the tech-effect format for this game (`ChooseLeaderBonus`). The SPEC_M9 examples that need
+  new mechanics (half production for the next unit, +1 citizen in a freed city, a free veteran
+  unit, earlier shard warnings, the resistance milestone) wait for a later round.
+- **Family.** `StartFamily` with a grown citizen (not the leader's own child) or an alien
+  recruit seated on the council, while no child is on the way and every child of the leader has
+  grown up, and 20 turns after the last birth (`family.cooldown_turns`; without it the first
+  batch gave about 15 children per leader in 100 turns, with it 5). The child is born in the
+  capital 3 turns later (+1 population there) as a citizen marked `kin`. Partners are not
+  limited by sex.
+- **Hybrids.** A hybrid's stat points are (leader's current skill total + the recruit's score
+  total) / 2, rounded down (designer: "the average of the leader's 6 and the alien parent's
+  total"; the leader's total grows with levels), spread over the domains in proportion to both
+  parents' values (largest remainders first). Its "alien trait" is one citizen trait at 50%,
+  since recruit traits act on council percentages, not on citizens.
+- **Attitudes and votes.** 25% of cities refuse hybrids, seeded per city at the start (no event
+  or building changes it yet). A hybrid in a refusing city takes a council seat if one is free
+  and otherwise idles. Each turn a hybrid on the council is voted out with 3% chance: no seat for
+  10 turns (`Citizen.banned_until`), and it moves to its owner's nearest accepting city if its
+  own refuses.
+- **AI leaders.** Spend points on their lowest skill (ties in domain order), take the first
+  option of every choice, and start a family whenever allowed, with their highest-scoring seated
+  recruit, else their best grown citizen.
+- **Wardrobe and career.** `SetWardrobe` checks only that the items exist; the web session
+  checks career unlocks before sending it. The career profile is `runs/profile.json`: one row
+  per game (keyed by start time, seed and continent, or by save name after a load), updated at
+  each end of turn; totals sum the rows. The developer `--reveal` flag unlocks everything.
+- **Art.** Each outfit is its own Meshy model, so faces differ slightly between outfits of one
+  look. Greying hair is a soft lightening over the crown from age 50. Accessories are CSS
+  overlays placed on the figure.
+- **Recruit gifts (fix).** The bots and AI offer spare recruits only to players they have met
+  (offers to unmet players were rejected; leaders made them common enough to notice).

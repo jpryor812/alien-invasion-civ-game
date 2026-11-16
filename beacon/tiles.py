@@ -16,7 +16,9 @@ def is_water(cfg: Config, tile: Tile) -> bool:
 
 
 def is_passable_land(cfg: Config, tile: Tile) -> bool:
-    return not is_water(cfg, tile) and bool(cfg.elevations[tile.elevation]["passable"])
+    if is_water(cfg, tile):  # a sea bridge carries land units over shallow water (SPEC_M11)
+        return tile.route == "sea_bridge"
+    return bool(cfg.elevations[tile.elevation]["passable"])
 
 
 def resource_active(cfg: Config, tile: Tile) -> bool:

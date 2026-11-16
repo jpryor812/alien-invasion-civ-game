@@ -110,6 +110,14 @@ expedition:
     cities, to the continent with the most known alien cities (a fallen continent first).
   quiet_overrun: 1
 
+bridges:
+  status: placeholder
+  note: SPEC_M11. Once its cities are connected, an AI with Robotics sends an engineer to bridge
+    toward its nearest allied city, along the cheapest known path where each unbridged shallow
+    water hex costs water_cost land steps; only if the path needs at most max_water bridges.
+  water_cost: 4
+  max_water: 4
+
 aid:
   status: placeholder
   note: The AI gives aid to a fallen continent, or else to the player holding the fewest cities if
@@ -122,6 +130,6 @@ endgame:
     the radar and the barrage come in reach; spare gold above the reserve goes to the barrage at
     barrage_gold_pct.
   research: [advanced_manufacturing, mechanized_warfare, powered_exoskeletons, railguns,
-             urban_planning, beacon_theory, radio_beacon_network, deep_space_radar,
-             orbital_barrage]
+             urban_planning, beacon_theory, applied_ai, robotics, radio_beacon_network,
+             deep_space_radar, orbital_barrage]
   barrage_gold_pct: 50

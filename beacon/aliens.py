@@ -288,6 +288,16 @@ def pillage(state: GameState, cfg: Config, unit: Unit) -> Events:
         tile.pillaged = lost  # remembered: a nanorepair crew can rebuild it quickly
     elif tile.route:
         lost, tile.route = tile.route, None
+        if lost == "sea_bridge":  # the bridge falls: the wrecker steps back onto land
+            from beacon.tiles import is_passable_land
+
+            ashore = [
+                n
+                for n in hexgrid.neighbours(unit.tile, state.width, state.height)
+                if is_passable_land(cfg, state.tiles[n]) and not state.units_at(n)
+            ]
+            if ashore:
+                unit.tile = ashore[0]
     else:
         return []
     owner = tile.built_by

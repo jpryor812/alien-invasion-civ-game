@@ -15,6 +15,7 @@ from beacon import (
     fog,
     hexgrid,
     improvements,
+    leader,
     liberation,
     network,
     recruits,
@@ -107,6 +108,7 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     for pid in state.player_ids():
         events.extend(recruits.arrivals(state, cfg, pid))
     events.extend(recruits.end_of_turn(state, cfg))
+    events.extend(leader.end_of_turn(state, cfg))  # births, votes, levels (SPEC_M11)
     reset_units(state, cfg)
     heal_cities(state, cfg)
     state.turn += 1

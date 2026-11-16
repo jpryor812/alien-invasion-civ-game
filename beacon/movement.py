@@ -33,7 +33,7 @@ Events = list[dict[str, Any]]
 
 def step_cost(state: GameState, cfg: Config, a: int, b: int) -> int:
     ta, tb = state.tiles[a], state.tiles[b]
-    if ta.route and tb.route:
+    if ta.route and tb.route:  # sea bridges count as roads (SPEC_M11)
         if ta.route == "railway" and tb.route == "railway":
             return cfg.improvements["railway"]["move_cost"]
         return cfg.improvements["road"]["move_cost"]

@@ -223,6 +223,7 @@ class BuildImprovement(Command):
     kind: ClassVar[str] = "build_improvement"
     unit: int
     improvement: str
+    target: int = -1  # a sea bridge goes on a shallow water hex next to the unit (SPEC_M11)
 
 
 @register
@@ -345,6 +346,58 @@ class ChooseEspionageTech(Command):
     kind: ClassVar[str] = "choose_espionage_tech"
     project: int
     tech: str
+
+
+# -- the leader (docs/SPEC_M11.md) ---------------------------------------------------------------
+
+
+@register
+@dataclass(frozen=True)
+class CreateLeader(Command):
+    """Remake the player's leader on the creation screen (before the first turn ends)."""
+
+    kind: ClassVar[str] = "create_leader"
+    name: str
+    sex: str
+    look: str
+    age: int
+    traits: tuple[str, ...]
+
+
+@register
+@dataclass(frozen=True)
+class RaiseSkill(Command):
+    kind: ClassVar[str] = "raise_skill"
+    skill: str
+
+
+@register
+@dataclass(frozen=True)
+class ChooseLeaderBonus(Command):
+    """Answer a waiting leader choice: a milestone's bonus, or the third trait ("trait")."""
+
+    kind: ClassVar[str] = "choose_leader_bonus"
+    choice: str
+    option: str
+
+
+@register
+@dataclass(frozen=True)
+class StartFamily(Command):
+    """`partner` is "citizen:<id>" (a grown citizen) or "recruit:<id>" (a seated recruit)."""
+
+    kind: ClassVar[str] = "start_family"
+    partner: str
+
+
+@register
+@dataclass(frozen=True)
+class SetWardrobe(Command):
+    """Cosmetic only. The client checks career unlocks (runs/profile.json)."""
+
+    kind: ClassVar[str] = "set_wardrobe"
+    outfit: str
+    accessories: tuple[str, ...]
 
 
 def command_to_dict(cmd: Command) -> dict[str, Any]:

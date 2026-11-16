@@ -33,10 +33,12 @@ from beacon.commands import (
     BuildImprovement,
     CancelJob,
     ChooseEspionageTech,
+    ChooseLeaderBonus,
     ChooseStory,
     CityAttack,
     Command,
     CommandError,
+    CreateLeader,
     DeclineDeal,
     DeclineOffer,
     Fortify,
@@ -48,6 +50,7 @@ from beacon.commands import (
     PromoteUnit,
     ProposeDeal,
     Purchase,
+    RaiseSkill,
     RefoundCity,
     SeatRecruit,
     SetCitizenJob,
@@ -55,11 +58,13 @@ from beacon.commands import (
     SetFocus,
     SetProduction,
     SetResearch,
+    SetWardrobe,
     ShipUnit,
     SkipUnit,
     SplitUnit,
     StartBarrage,
     StartEspionage,
+    StartFamily,
     UnseatRecruit,
     UpgradeDefence,
     UpgradeTurret,
@@ -207,10 +212,10 @@ def _set_focus(state: GameState, cfg: Config, cmd: SetFocus) -> Events:
 @handles(BuildImprovement)
 def _build(state: GameState, cfg: Config, cmd: BuildImprovement) -> Events:
     unit = own_unit(state, cmd.player, cmd.unit)
-    problem = improvements.build_problem(state, cfg, unit, cmd.improvement)
+    problem = improvements.build_problem(state, cfg, unit, cmd.improvement, cmd.target)
     if problem:
         raise CommandError(problem)
-    improvements.start_job(state, cfg, unit, cmd.improvement)
+    improvements.start_job(state, cfg, unit, cmd.improvement, cmd.target)
     return [{"kind": "job_started", "unit": unit.id, "improvement": cmd.improvement}]
 
 
@@ -667,7 +672,13 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
                 if found is not None and found[1] == 0:
                     out.append(MergeUnits(player=pid, unit=unit.id, into=other.id))
         for imp in sorted(cfg.improvements):
-            if improvements.build_problem(state, cfg, unit, imp) is None:
+            if cfg.improvements[imp]["kind"] == "bridge":
+                for t in improvements.bridge_targets(state, cfg, unit):
+                    if improvements.build_problem(state, cfg, unit, imp, t) is None:
+                        out.append(
+                            BuildImprovement(player=pid, unit=unit.id, improvement=imp, target=t)
+                        )
+            elif improvements.build_problem(state, cfg, unit, imp) is None:
                 out.append(BuildImprovement(player=pid, unit=unit.id, improvement=imp))
         city = state.city_at(unit.tile)
         if (
@@ -773,3 +784,76 @@ REPLACE_CITIZENS = (
     AssignBestCitizen,
     AcceptOffer,
 )
+
+
+# -- the leader (docs/SPEC_M11.md) ---------------------------------------------------------------
+
+
+def _leader_of(state: GameState, pid: str):
+    lead = state.players[pid].leader
+    if lead is None:
+        raise CommandError("no leader")
+    return lead
+
+
+@handles(CreateLeader)
+def _create_leader(state: GameState, cfg: Config, cmd: CreateLeader) -> Events:
+    from beacon import leader
+
+    if state.turn != 0:
+        raise CommandError("the leader is made before the first turn ends")
+    problem = leader.create_problem(cfg, cmd.name, cmd.sex, cmd.look, cmd.age, cmd.traits)
+    if problem:
+        raise CommandError(problem)
+    old = _leader_of(state, cmd.player)
+    old.name, old.sex, old.look, old.start_age = cmd.name.strip(), cmd.sex, cmd.look, cmd.age
+    old.traits, old.custom = sorted(cmd.traits), True
+    return [{"kind": "leader_created", "name": old.name}]
+
+
+@handles(RaiseSkill)
+def _raise_skill(state: GameState, cfg: Config, cmd: RaiseSkill) -> Events:
+    from beacon import leader
+
+    lead = _leader_of(state, cmd.player)
+    problem = leader.raise_problem(cfg, lead, cmd.skill)
+    if problem:
+        raise CommandError(problem)
+    leader.raise_skill(lead, cmd.skill)
+    return [{"kind": "leader_skill", "skill": cmd.skill, "value": lead.skills[cmd.skill]}]
+
+
+@handles(ChooseLeaderBonus)
+def _choose_leader_bonus(state: GameState, cfg: Config, cmd: ChooseLeaderBonus) -> Events:
+    from beacon import leader
+
+    lead = _leader_of(state, cmd.player)
+    problem = leader.choose_problem(cfg, lead, cmd.choice, cmd.option)
+    if problem:
+        raise CommandError(problem)
+    leader.choose(cfg, lead, cmd.choice, cmd.option)
+    return [{"kind": "leader_bonus", "choice": cmd.choice, "option": cmd.option}]
+
+
+@handles(StartFamily)
+def _start_family(state: GameState, cfg: Config, cmd: StartFamily) -> Events:
+    from beacon import leader
+
+    problem = leader.family_problem(state, cfg, cmd.player, cmd.partner)
+    if problem:
+        raise CommandError(problem)
+    leader.start_family(state, cfg, cmd.player, cmd.partner)
+    due = state.players[cmd.player].leader.due
+    return [{"kind": "family_started", "partner": cmd.partner, "due": due}]
+
+
+@handles(SetWardrobe)
+def _set_wardrobe(state: GameState, cfg: Config, cmd: SetWardrobe) -> Events:
+    from beacon import leader
+
+    lead = _leader_of(state, cmd.player)
+    problem = leader.wardrobe_problem(cfg, cmd.outfit, cmd.accessories)
+    if problem:
+        raise CommandError(problem)
+    lead.outfit, lead.accessories = cmd.outfit, sorted(cmd.accessories)
+    return [{"kind": "wardrobe_set", "outfit": cmd.outfit}]

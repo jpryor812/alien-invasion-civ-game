@@ -34,6 +34,7 @@ CREDIT_KEYS = (
     "espionage_gold",
     "barrage",
     "shards_claimed",
+    "leader_children",  # the leader's children grown up (SPEC_M11)
 )
 
 

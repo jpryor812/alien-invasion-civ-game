@@ -164,7 +164,12 @@ def city_strength(state: GameState, cfg: Config, city: City) -> Strength:
                 }
             )
     from beacon.citizens import council_military, council_of
+    from beacon.leader import city_strength as leader_strength
 
+    strength = leader_strength(state, cfg, city)
+    if strength:  # the leader heads the council (SPEC_M11)
+        name = state.players[city.owner].leader.name
+        lines.append({"source": f"leader:{name}", "kind": "base", "value": strength})
     for c in council_of(state, city.owner):  # the council guards every city (SPEC_M10)
         if council_military(cfg, c):
             lines.append(

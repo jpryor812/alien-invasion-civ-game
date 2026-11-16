@@ -11,28 +11,35 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import diplomacy, economy, endgame, tech
+from beacon import diplomacy, economy, endgame, hexgrid, improvements, leader, tech
 from beacon.bots import Bot, Submit
 from beacon.commands import (
     AcceptDeal,
+    BuildImprovement,
     ChooseEspionageTech,
+    ChooseLeaderBonus,
     DeclineDeal,
     FundProject,
     MoveUnit,
     ProposeDeal,
+    RaiseSkill,
     SetProduction,
     ShipUnit,
     StartBarrage,
     StartEspionage,
+    StartFamily,
 )
 from beacon.config import Config
-from beacon.state import ACTIVE, DORMANT, EMPTY, OVERRUN, DealTerms, GameState
+from beacon.paths import shortest_path
+from beacon.state import ACTIVE, DORMANT, EMPTY, OVERRUN, DealTerms, GameState, Unit
+from beacon.tiles import is_passable_land
 
 
 class AIPlayer(Bot):
     def __init__(self, state: GameState, cfg: Config, pid: str, submit: Submit):
         super().__init__(state, cfg, pid, submit)
         self.char = cfg.ai(f"characters.{state.players[pid].character}")
+        self._bridge: tuple[int, int] | None | bool = False  # not looked for yet this turn
 
     def param(self, path: str) -> Any:
         if path == "research.priority":
@@ -303,6 +310,112 @@ class AIPlayer(Bot):
                 if gold > 0:
                     self.submit(FundProject(player=self.pid, project=p.id, gold=gold))
 
+    # -- the leader (SPEC_M11) ----------------------------------------------------------------
+
+    def lead(self) -> None:
+        """Spend skill points on the lowest skill, take the first bonus offered, and start a
+        family whenever allowed: with the best seated recruit, else the best grown citizen."""
+        from beacon.config import DOMAINS
+        from beacon.recruits import recruits_of
+
+        me = self.state.players[self.pid].leader
+        if me is None:
+            return
+        while leader.points(self.cfg, me) > 0:
+            low = min(DOMAINS, key=lambda d: (me.skills[d], DOMAINS.index(d)))
+            if not self.submit(RaiseSkill(player=self.pid, skill=low)):
+                break
+        for choice in list(me.choices):
+            opts = leader.options(self.cfg, me, choice)
+            if opts:
+                self.submit(ChooseLeaderBonus(player=self.pid, choice=choice, option=opts[0]))
+        if not self.cfg.leader("ai.family"):
+            return
+        seated = [r for r in recruits_of(self.state, self.pid) if r.seats]
+        people = [
+            c
+            for c in self.state.citizens.values()
+            if self.state.cities[c.city].owner == self.pid and c.adult and not c.kin
+        ]
+        partners = [
+            f"recruit:{r.id}" for r in sorted(seated, key=lambda r: (-sum(r.scores.values()), r.id))
+        ] + [
+            f"citizen:{c.id}"
+            for c in sorted(people, key=lambda c: (-sum(c.stats.values()), c.id))[:1]
+        ]
+        for partner in partners:
+            if leader.family_problem(self.state, self.cfg, self.pid, partner) is None:
+                self.submit(StartFamily(player=self.pid, partner=partner))
+                break
+
+    # -- sea bridges (SPEC_M11) ---------------------------------------------------------------
+
+    def bridge_site(self, net: set[int]) -> tuple[int, int] | None:
+        """(shore hex, water hex) of the next sea bridge toward the nearest allied shore the
+        player has explored, or None. Plans from memory only (explored hexes)."""
+        spec = self.cfg.improvements["sea_bridge"]
+        me = self.state.players[self.pid]
+        if not net or not me.allies or not tech.knows(me, spec["tech"]):
+            return None
+        capital = next((c for c in self.view.my_cities() if c.is_capital), None)
+        if capital is None:
+            return None
+        shores = {
+            i
+            for i in self.view.explored_tiles()
+            if self.state.tiles[i].continent in me.allies
+            and is_passable_land(self.cfg, self.state.tiles[i])
+        }
+        if not shores:
+            return None
+        cost = self.cfg.ai("bridges.water_cost")
+
+        def wet(t) -> bool:
+            return t.terrain in spec["terrains"] and t.route is None
+
+        def step(_: int, b: int) -> int | None:
+            tile = self.remembered(b)
+            if tile is None:
+                return None
+            if wet(tile):
+                return cost
+            if not is_passable_land(self.cfg, tile):
+                return None
+            return 0 if tile.route else 1
+
+        path = shortest_path(
+            capital.tile, shores, lambda i: hexgrid.neighbours(i, self.w, self.h), step
+        )
+        if path is None:
+            return None
+        water = [k for k, i in enumerate(path) if wet(self.state.tiles[i])]
+        if not water or len(water) > self.cfg.ai("bridges.max_water"):
+            return None
+        return path[water[0] - 1], path[water[0]]
+
+    def engineer(self, unit: Unit, net: set[int], claimed: set[int]) -> None:
+        if self._bridge is False:
+            self._bridge = self.bridge_site(net)
+        site = self._bridge
+        if site is None or site[1] in claimed:
+            return super().engineer(unit, net, claimed)
+        shore, water = site
+        claimed.add(water)
+        if unit.tile != shore and not self.submit(
+            MoveUnit(player=self.pid, unit=unit.id, target=shore)
+        ):
+            return super().engineer(unit, net, claimed)
+        if (
+            self.alive(unit)
+            and unit.tile == shore
+            and improvements.build_problem(self.state, self.cfg, unit, "sea_bridge", water) is None
+        ):
+            self.submit(
+                BuildImprovement(
+                    player=self.pid, unit=unit.id, improvement="sea_bridge", target=water
+                )
+            )
+
     # -- turn --------------------------------------------------------------------------------
 
     def play(self) -> None:
@@ -310,6 +423,7 @@ class AIPlayer(Bot):
         self.answer_stories()
         self.starfall_duty()
         self.promote()
+        self.lead()
         self.research()
         self.ensure_port()
         self.production()

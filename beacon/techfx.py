@@ -29,8 +29,11 @@ from beacon.state import Player
 def _effects(cfg: Config, player: Player | None) -> list[dict[str, Any]]:
     if player is None:
         return []
+    from beacon.leader import effects  # leader imports only config, state, rng and hexgrid
+
     techs = [cfg.techs[t].get("effects") or {} for t in player.techs if t in cfg.techs]
-    return techs + list(player.boons)  # Starfall shards claimed (beacon/starfall.py)
+    lead = [e for _, e in effects(cfg, player.leader)]  # leader traits and bonuses (SPEC_M11)
+    return techs + list(player.boons) + lead  # with Starfall shards claimed (beacon/starfall.py)
 
 
 def total(cfg: Config, player: Player | None, key: str) -> int:
@@ -57,6 +60,9 @@ def lines(cfg: Config, player: Player | None, key: str) -> list[tuple[str, Any]]
         if t in cfg.techs and (cfg.techs[t].get("effects") or {}).get(key)
     ]
     out += [(f"shard {b['shard']}", b[key]) for b in player.boons if b.get(key)]
+    from beacon.leader import effects
+
+    out += [(src, e[key]) for src, e in effects(cfg, player.leader) if e.get(key)]
     return out
 
 

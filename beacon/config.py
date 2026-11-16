@@ -146,6 +146,7 @@ FILES = (
     "ai",
     "mvp",
     "story",
+    "leaders",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
@@ -252,6 +253,10 @@ class Config:
     def ai(self, path: str) -> Any:
         """A value from data/ai.yaml (cached; read-only)."""
         return self._section("ai", path)
+
+    def leader(self, path: str) -> Any:
+        """A value from data/leaders.yaml (the leader, docs/SPEC_M11.md)."""
+        return self._section("leaders", path)
 
     def story(self, path: str) -> Any:
         """A value from data/story.yaml (events, exploration finds, Starfall)."""
@@ -363,8 +368,8 @@ def _validate_semantics(tables: dict[str, dict[str, dict[str, Any]]]) -> None:
         if entry["category"] not in ("bonus", "strategic"):
             raise ConfigError(f"resources.{entry_id}: category must be bonus or strategic")
     for entry_id, entry in tables["improvements"].items():
-        if entry["kind"] not in ("tile", "route", "turret"):
-            raise ConfigError(f"improvements.{entry_id}: kind must be tile, route or turret")
+        if entry["kind"] not in ("tile", "route", "turret", "bridge"):
+            raise ConfigError(f"improvements.{entry_id}: kind must be tile, route, turret, bridge")
     effect_keys = {"city_strength", "city_hp", "production", "growth", "max_pop", "heal"}
     for entry_id, entry in tables["alien_techs"].items():
         unknown = set(entry["effects"]) - effect_keys

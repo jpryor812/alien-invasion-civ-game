@@ -6,7 +6,8 @@ GET  /                      the client
 GET  /api/view              the human player's fog-safe view
 GET  /api/unit/<id>         options for one of the player's units
 GET  /api/city/<id>         details of one of the player's cities
-GET  /api/techs | /api/council | /api/population | /api/diplomacy | /api/projects | /api/scores
+GET  /api/techs | /api/council | /api/leader | /api/population | /api/diplomacy
+GET  /api/projects | /api/scores
 GET  /api/saves (newest first, with turn and player) | /api/status | /api/continents
 POST /api/command           a command dict (the player is filled in)
 POST /api/end_turn          AI players act, then the turn ends
@@ -49,6 +50,7 @@ class App:
         simple = {
             "techs": s.techs,
             "council": s.council,
+            "leader": s.leader,
             "population": s.population,
             "cities": s.cities_overview,
             "units": s.units_overview,

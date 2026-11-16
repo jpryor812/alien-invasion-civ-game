@@ -10,11 +10,43 @@ from beacon.state import City, GameState, Job, Unit
 from beacon.tiles import is_passable_land
 
 
-def build_problem(state: GameState, cfg: Config, unit: Unit, improvement: str) -> str | None:
-    """None if `unit` may start building `improvement` on its hex, else the reason."""
+def bridge_targets(state: GameState, cfg: Config, unit: Unit) -> list[int]:
+    """Shallow water hexes beside the unit where a sea bridge could go (SPEC_M11)."""
+    from beacon import hexgrid
+
+    spec = cfg.improvements["sea_bridge"]
+    return [
+        n
+        for n in hexgrid.neighbours(unit.tile, state.width, state.height)
+        if state.tiles[n].terrain in spec["terrains"]
+        and state.tiles[n].route is None
+        and not state.units_at(n)
+    ]
+
+
+def build_problem(
+    state: GameState, cfg: Config, unit: Unit, improvement: str, target: int = -1
+) -> str | None:
+    """None if `unit` may start building `improvement` on its hex (or, for a sea bridge, on the
+    shallow water hex `target` beside it), else the reason."""
     if improvement not in cfg.improvements:
         return f"unknown improvement {improvement!r}"
     spec = cfg.improvements[improvement]
+    if spec["kind"] == "bridge":
+        if not cfg.units[unit.type].get("can_build"):
+            return f"{unit.type} cannot build improvements"
+        if unit.moves_left <= 0:
+            return "no moves left"
+        player = state.players.get(unit.owner)
+        if player is None or not tech.knows(player, spec["tech"]):
+            return f"needs tech {spec['tech']}"
+        if not is_passable_land(cfg, state.tiles[unit.tile]):
+            return "build a bridge from the shore or from another bridge"
+        if target not in bridge_targets(state, cfg, unit):
+            return "a sea bridge goes on an empty shallow water hex beside the engineers"
+        return None
+    if target not in (-1, unit.tile):
+        return f"{improvement} is built on the engineers' own hex"
     tile = state.tiles[unit.tile]
     if cfg.units[unit.type].get("can_repair") and not cfg.units[unit.type].get("can_build"):
         if tile.pillaged != improvement:
@@ -55,12 +87,18 @@ def build_problem(state: GameState, cfg: Config, unit: Unit, improvement: str) -
     return None
 
 
-def start_job(state: GameState, cfg: Config, unit: Unit, improvement: str) -> None:
+def start_job(
+    state: GameState, cfg: Config, unit: Unit, improvement: str, target: int = -1
+) -> None:
     turns = cfg.improvements[improvement]["turns"]
     turns += techfx.total(cfg, state.players.get(unit.owner), "build_turns")  # Robotics
     if cfg.units[unit.type].get("can_repair") and state.tiles[unit.tile].pillaged == improvement:
         turns = cfg.t("repair.turns")
-    unit.job = Job(improvement=improvement, turns_left=max(1, turns))
+    unit.job = Job(
+        improvement=improvement,
+        turns_left=max(1, turns),
+        tile=target if cfg.improvements[improvement]["kind"] == "bridge" else None,
+    )
     unit.order = "work"
     unit.moves_left = 0
     unit.acted = True
@@ -76,8 +114,9 @@ def progress_jobs(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any
         if unit.job.turns_left > 0:
             continue
         imp = unit.job.improvement
-        tile = state.tiles[unit.tile]
-        if cfg.improvements[imp]["kind"] == "route":
+        where = unit.job.tile if unit.job.tile is not None else unit.tile
+        tile = state.tiles[where]
+        if cfg.improvements[imp]["kind"] in ("route", "bridge"):
             tile.route = imp
         elif cfg.improvements[imp]["kind"] == "turret":
             from beacon.turrets import build  # turrets imports combat, which imports a lot
@@ -96,7 +135,7 @@ def progress_jobs(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any
                 "turn": state.turn,
                 "kind": "improvement_built",
                 "player": pid,
-                "tile": unit.tile,
+                "tile": where,
                 "improvement": imp,
             }
         )

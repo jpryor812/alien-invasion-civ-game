@@ -135,6 +135,9 @@ def grow(state: GameState, cfg: Config, city: City, surplus_food: int) -> Events
         if c.growth >= g["needed"]:
             c.growth = g["needed"]
             c.adult = True
+            from beacon.leader import child_grew_up  # the leader's XP (SPEC_M11)
+
+            child_grew_up(state, c)
             events.append(
                 {"kind": "citizen_grew_up", "city": city.id, "citizen": c.id, "name": c.name}
             )
@@ -259,7 +262,7 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
         c.tile, c.seats = None, []
     used = _seat_counts(state, pid)
     for c in people:
-        if c.adult and c.job.startswith("council"):
+        if c.adult and c.job.startswith("council") and c.banned_until <= state.turn:
             seat = _free_seat(cfg, used, c)
             if seat is not None:
                 c.seats = [seat]
@@ -275,6 +278,9 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
             if not any(hostile(u.owner, pid) for u in occ.get(t, []))
         }
         workers = [c for c in people if c.city == city.id and c.adult and not c.seats]
+        # a hybrid cannot work tiles in a city that refuses hybrids (SPEC_M11)
+        spare += [c for c in workers if c.hybrid and city.refuses_hybrids]
+        workers = [c for c in workers if not (c.hybrid and city.refuses_hybrids)]
         for c in workers:
             if c.job.startswith("tile:") and int(c.job[5:]) in free:
                 c.tile = int(c.job[5:])
@@ -307,6 +313,8 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
             free.discard(best)
             food += tile_yields(cfg, state.tiles[best])["food"] * 100 + tile_bonus(cfg, c)["food"]
     for c in sorted(spare, key=lambda x: x.id):
+        if c.banned_until > state.turn:
+            continue  # voted off the council (SPEC_M11)
         seat = _free_seat(cfg, used, c)
         if seat is not None:
             c.seats = [seat]
@@ -330,6 +338,8 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
     if job == "council" or job.startswith("council:"):
         if not c.adult:
             return f"{c.name} has not grown up yet"
+        if c.banned_until > state.turn:
+            return f"{c.name} was voted off the council until turn {c.banned_until}"
         used = pinned_seats(state, pid)
         for s, n in _seat_counts(state, pid).items():
             used[s] += n
@@ -350,6 +360,8 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
         return f"unknown job {job!r}"
     if not c.adult:
         return f"{c.name} has not grown up yet"
+    if c.hybrid and city.refuses_hybrids:
+        return f"{city.name} refuses to let hybrids work its land"
     t = int(job[5:])
     if t not in workable(state, cfg, city):
         return "that tile has no improvement in this city's area"
@@ -388,6 +400,9 @@ def city_lines(
 
     # the council is territory-wide (designer 2026-11-15, SPEC_M10 section 1): every council
     # citizen of the owner adds its full stats to each of the owner's cities
+    from beacon.leader import skill_lines  # the leader heads the council (SPEC_M11)
+
+    lines.extend(skill_lines(state, cfg, city))
     for c in council_of(state, city.owner):
         for y, v in council_bonus(cfg, c).items():
             if v:

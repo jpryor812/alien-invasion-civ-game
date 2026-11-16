@@ -8,6 +8,7 @@ from beacon import (
     fog,
     hexgrid,
     improvements,
+    leader,
     mapgen,
     network,
     rng,
@@ -93,6 +94,11 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
                     raise ValueError(f"no room for {unit_type} in {city.name}")
     state.aliens.start_cities = sum(1 for c in state.cities if c.status == OVERRUN)
     assign_characters(cfg, state)
+    taken: tuple[str, ...] = ()
+    for pid in state.player_ids():  # every player has a leader (SPEC_M11)
+        state.players[pid].leader = leader.generate(cfg, seed, pid, taken)
+        taken += (state.players[pid].leader.name,)
+    leader.seed_attitudes(state, cfg)
     # Nobody knows the other continents at the start: they meet by exploring (beacon/contact.py,
     # designer 2026-11-14; replaces the M6 rule that everyone knew everyone's cities).
     # Only improved tiles can be worked (designer 2026-11-14): known cities start with farmland.

@@ -866,6 +866,7 @@ function draw(t = performance.now()) {
   const reach = new Set(S.options ? [...S.options.reachable, ...mergeTiles()] : []);
   const attackable = new Set((S.options ? S.options.attacks : []).map((a) => a.tile));
   const bombard = new Set(S.targetMode === "bombard" && S.city ? S.city.bombard : []);
+  const bridging = new Set(S.targetMode === "bridge" && S.options ? S.options.bridges : []);
   // a selected city shows its improved tiles: worked (green, with yields) or free (gold, click to staff)
   const cityTiles = new Map(S.selected && S.selected.kind === "city" && S.city ? S.city.workable.map((w) => [w.tile, w]) : []);
   // only the rows and columns on screen (the map has ~27,000 hexes)
@@ -884,8 +885,10 @@ function draw(t = performance.now()) {
       const [ax, ay] = corner(sx, sy, R, edge), [bx, by] = corner(sx, sy, R, (edge + 1) % 6);
       const mx = (ax + bx) / 2, my = (ay + by) / 2;
       const rail = t1.route === "railway" && t2.route === "railway";
-      drawRouteSegment(sx, sy, mx, my, R, rail, i * 7 + n);
+      if (t1.route === "sea_bridge" || t2.route === "sea_bridge") drawBridgeSegment(sx, sy, mx, my, R, t1.route === "sea_bridge", t2.route === "sea_bridge");
+      else drawRouteSegment(sx, sy, mx, my, R, rail, i * 7 + n);
     }
+    if (t1.route === "sea_bridge") { drawBridgePier(sx, sy, R); continue; }
     if (t1.route && joins.length && !S.citiesByTile.has(i)) {  // a small hub where branches meet
       ctx.fillStyle = t1.route === "railway" ? "#3d3833" : "#8a6a42";
       ctx.beginPath(); ctx.arc(sx, sy, Math.max(1.5, R * 0.09), 0, Math.PI * 2); ctx.fill();
@@ -915,6 +918,7 @@ function draw(t = performance.now()) {
   // 6. move and attack highlights
   for (const [i, sx, sy] of visible) {
     if (reach.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1; ctx.stroke(); }
+    if (bridging.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(90,200,220,0.25)"; ctx.fill(); ctx.strokeStyle = "#7fe3f0"; ctx.lineWidth = 2.2; ctx.stroke(); }
     if (attackable.has(i) || bombard.has(i)) { hexPath(ctx, sx, sy, R - 1.5); ctx.fillStyle = "rgba(220,60,50,0.28)"; ctx.fill(); ctx.strokeStyle = "#ff6b5a"; ctx.lineWidth = 2.2; ctx.stroke(); }
     if (cityTiles.has(i)) drawCityTile(cityTiles.get(i), i, sx, sy, R);
     if (S.flash && S.flash.tile === i && performance.now() < S.flash.until) {
@@ -1265,6 +1269,26 @@ function paintImprovement(g, kind, cx, cy, R, variant = 0) {
   }
   // anything else: a small marker
   g.fillStyle = "#3a5a7a"; g.fillRect(cx - R * 0.15, cy - R * 0.1, R * 0.3, R * 0.2);
+}
+// A sea bridge (SPEC_M11): a straight concrete deck with railings, its shadow on the water, and a
+// pier under the middle of each bridged hex. Segments from land to the bridge use the same deck.
+function drawBridgeSegment(x1, y1, x2, y2, R, fromBridge, toBridge) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+  const half = R * 0.16, sh = R * 0.08;
+  const ex = fromBridge || toBridge ? dx / len * R * 0.06 : 0, ey = fromBridge || toBridge ? dy / len * R * 0.06 : 0;
+  const deck = (ox, oy, w) => { ctx.beginPath(); ctx.moveTo(x1 - ex + nx * w + ox, y1 - ey + ny * w + oy); ctx.lineTo(x2 + ex + nx * w + ox, y2 + ey + ny * w + oy); ctx.lineTo(x2 + ex - nx * w + ox, y2 + ey - ny * w + oy); ctx.lineTo(x1 - ex - nx * w + ox, y1 - ey - ny * w + oy); ctx.closePath(); };
+  if (fromBridge) { deck(sh, sh * 1.4, half); ctx.fillStyle = "rgba(10,25,35,0.35)"; ctx.fill(); }
+  deck(0, 0, half); ctx.fillStyle = "#9a9790"; ctx.fill();
+  ctx.strokeStyle = "#5c5a55"; ctx.lineWidth = Math.max(1, R * 0.025); ctx.stroke();
+  ctx.strokeStyle = "#d8d4c8"; ctx.lineWidth = Math.max(0.8, R * 0.018);
+  for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x1 + nx * half * 0.8 * sgn, y1 + ny * half * 0.8 * sgn); ctx.lineTo(x2 + nx * half * 0.8 * sgn, y2 + ny * half * 0.8 * sgn); ctx.stroke(); }
+  ctx.strokeStyle = "rgba(255,240,170,0.5)"; ctx.setLineDash([Math.max(1, R * 0.05), Math.max(1, R * 0.05)]); ctx.lineWidth = Math.max(0.6, R * 0.012);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawBridgePier(sx, sy, R) {
+  ctx.fillStyle = "rgba(10,25,35,0.35)"; ctx.beginPath(); ctx.ellipse(sx + R * 0.08, sy + R * 0.12, R * 0.2, R * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#9a9790"; ctx.strokeStyle = "#5c5a55"; ctx.lineWidth = Math.max(1, R * 0.025);
+  ctx.beginPath(); ctx.arc(sx, sy, R * 0.18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 }
 function drawRouteSegment(x1, y1, x2, y2, R, rail, seed) {
   const bend = (hash(seed, 9) - 0.5) * R * 0.12;
@@ -2099,6 +2123,13 @@ function renderUnitPanel() {
     add(`Build ${pretty(imp)}${short}`, () => send({ kind: "build_improvement", unit: u.id, improvement: imp }));
     a.lastChild.dataset.tip = infoHtml(pretty(imp), bi, extra); a.lastChild.title = "";
   }
+  if (o.bridges && o.bridges.length) {
+    add("Build Sea Bridge", () => {
+      if (o.bridges.length === 1) return send({ kind: "build_improvement", unit: u.id, improvement: "sea_bridge", target: o.bridges[0] });
+      S.targetMode = S.targetMode === "bridge" ? null : "bridge"; S.dirty = true;
+      toast("Click a highlighted shallow-water hex to bridge it");
+    }, "A road over shallow water: land units, convoys and roads cross it (aliens too). 6 turns.");
+  }
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
   if (o.merges.length) a.insertAdjacentHTML("afterend", '<div class="muted small">Move onto the highlighted unit of the same type to merge into a stack of two.</div>');
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));
@@ -2281,6 +2312,7 @@ async function onClick(e) {
   }
   if (S.options) {
     const u = S.options.unit;
+    if (S.targetMode === "bridge" && S.options.bridges.includes(i)) { S.targetMode = null; return send({ kind: "build_improvement", unit: u.id, improvement: "sea_bridge", target: i }); }
     if (S.options.attacks.some((a) => a.tile === i)) return send({ kind: "attack", unit: u.id, target: i });
     if (S.options.reachable.includes(i) || mergeTiles().includes(i)) return send({ kind: "move_unit", unit: u.id, target: i });
   }
@@ -2396,6 +2428,7 @@ window.addEventListener("keydown", (e) => {
   else if (e.key === "s" && S.options) send({ kind: "skip_unit", unit: S.options.unit.id });
   else if (e.key === "t") openScreen("techs");
   else if (e.key === "c") openScreen("council");
+  else if (e.key === "l") openScreen("leader");
   else if (e.key === "d") openScreen("diplomacy");
   else if (e.key === "p") openScreen("projects");
   else if (e.key.startsWith("Arrow")) {
@@ -2433,7 +2466,7 @@ document.addEventListener("mouseover", (e) => {
   if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
   itemTip.style.left = `${x}px`; itemTip.style.top = `${y}px`;
 });
-function closeModal() { $("modal").classList.add("hidden"); document.querySelector(".modal-box").classList.remove("narrow"); S.screen = null; }
+function closeModal() { $("modal").classList.add("hidden"); document.querySelector(".modal-box").classList.remove("narrow", "leaderbox"); S.screen = null; }
 
 async function openScreen(name, arg = null) {
   S.screen = name; S.screenArg = arg;
@@ -2441,6 +2474,7 @@ async function openScreen(name, arg = null) {
   try {
     if (name === "techs") body.innerHTML = techScreen(await api("/api/techs"));
     else if (name === "council") { S.councilData = await api("/api/council"); body.innerHTML = councilScreen(S.councilData); }
+    else if (name === "leader") { S.leaderData = await api("/api/leader"); body.innerHTML = arg === "create" ? creationScreen(S.leaderData) : leaderScreen(S.leaderData); }
     else if (name === "population") body.innerHTML = populationScreen(await api("/api/population"), arg);
     else if (name === "cities") body.innerHTML = citiesScreen(await api("/api/cities"));
     else if (name === "units") body.innerHTML = unitsScreen(await api("/api/units"), arg);
@@ -2452,6 +2486,7 @@ async function openScreen(name, arg = null) {
     else if (name === "menu") body.innerHTML = gameMenu(await api("/api/saves"));
   } catch (err) { toast(err.message); return; }
   document.querySelector(".modal-box").classList.toggle("narrow", name === "menu");
+  document.querySelector(".modal-box").classList.toggle("leaderbox", name === "leader");
   $("modal").classList.remove("hidden");
   wireScreen(name);
 }
@@ -2723,6 +2758,124 @@ function memberCard(m, picked) {
     <div class="muted small">${esc(m.where)}</div><div>${chips}</div>
     ${m.traits.length ? `<div class="small">${m.traits.map((t) => `<span class="trait">${esc(pretty(t))}</span>`).join(" ")}</div>` : ""}</div>`;
 }
+// =============================================================================================
+// the leader (docs/SPEC_M11.md): a CK3-style screen - the leader standing full height on a
+// backdrop at the left; name, title, traits, skills, XP, family, wardrobe and career at the right.
+
+const SKILL_COLOR = { food: "var(--food)", production: "var(--production)", military: "var(--military)", science: "var(--science)", gold: "var(--gold)", beacon: "var(--beacon)" };
+const SKILL_NOTE = {
+  food: "Food in every city", production: "Production in every city", military: "City strength in every city",
+  science: "Science in every city", gold: "Gold in every city", beacon: "Beacon points in every city",
+};
+const ACCESSORY_ART = {  // painted overlays, placed in % of the figure box (both looks share proportions)
+  sash: '<div class="acc sash"></div>',
+  medal: '<div class="acc medal" title="Liberation medal"><i></i></div>',
+  star_pin: '<div class="acc starpin" title="Star pin">★</div>',
+  family_crest: '<div class="acc crest" title="Family crest"></div>',
+};
+function leaderFigure(look, outfit, accessories, age) {
+  const grey = Math.max(0, Math.min(0.55, (age - 50) / 40));  // greying hair with age (a tint, not new models)
+  return `<div class="figure"><img src="leaders/${look}_${outfit}.webp" alt="" onerror="this.src='leaders/${look}_civilian.webp'">
+    ${grey ? `<div class="grey" style="opacity:${grey.toFixed(2)}"></div>` : ""}${(accessories || []).map((a) => ACCESSORY_ART[a] || "").join("")}</div>`;
+}
+function leaderPortrait(look, outfit, cls = "") {
+  return `<img class="lportrait ${cls}" alt="" src="leaders/${look}_${outfit}_portrait.webp" onerror="this.src='leaders/${look}_civilian_portrait.webp'">`;
+}
+function unlockText(u) {
+  if (!u) return "Always available";
+  return "Career: " + Object.entries(u).map(([k, v]) => `${v} ${k.replace(/_/g, " ").replace("cities liberated", "cities freed").replace("leader children", "children grown")}`).join(", ");
+}
+function leaderScreen(d) {
+  const pct = Math.max(0, Math.min(100, Math.round(100 * (d.xp - d.xp_level) / Math.max(1, d.xp_next - d.xp_level))));
+  const traits = d.traits.map((t) => `<span class="ltrait" data-tip="<b>${esc(t.name)}</b><div>${esc(t.note)}</div>">${esc(t.name)}</span>`).join("");
+  const skills = ["food", "production", "military", "science", "gold", "beacon"].map((k) => [k, d.skills[k]]).map(([k, v]) => `<div class="lskill" style="--c:${SKILL_COLOR[k]}" data-tip="<b>${pretty(k)} +${v}</b><div>${SKILL_NOTE[k]}${k === "military" ? ` (+${v * d.military_strength} strength)` : ""}</div>">
+      <span class="ico">${ICON[k] || ""}</span><span class="lname">${pretty(k)}</span><span class="lval">+${v}</span>
+      ${d.points ? `<button class="small primary" data-raise="${k}" title="Spend a skill point">+</button>` : ""}</div>`).join("");
+  const choices = d.choices.map((c) => `<div class="lchoice"><div class="ltitle">${esc(c.title)}</div><div class="lopts">${c.options.map((o) =>
+    `<button data-choice="${esc(c.id)}" data-option="${esc(o.id)}" data-tip="${esc(o.note)}"><b>${esc(o.name)}</b><span class="muted small">${esc(o.note)}</span></button>`).join("")}</div></div>`).join("");
+  const kids = d.children.map((k) => `<div class="lkid${k.hybrid ? " hybrid" : ""}" data-tip="<b>${esc(k.name)}</b>${k.hybrid ? " (hybrid)" : ""}<div>${esc(k.city)} · ${k.adult ? "grown" : `growing up ${k.growth}/${k.growth_needed}`}</div><div>${Object.entries(k.stats).map(([s, v]) => `+${v} ${s}`).join(", ")}</div>">
+      ${portraitImg("citizen", k.id, "avatar")}<div class="small">${esc(k.name)}${k.hybrid ? ' <span class="htag">H</span>' : ""}</div><div class="muted small">${k.adult ? "grown" : "child"}</div></div>`).join("");
+  const family = d.expecting
+    ? `<p>A child with <b>${esc(d.expecting.partner)}</b> is on the way: born on turn ${d.expecting.due}.</p>`
+    : d.family_block ? `<p class="muted">${esc(d.family_block)}.</p>`
+    : d.partners.length ? `<div class="row"><select id="lpartner">${d.partners.map((p) => `<option value="${p.id}">${esc(p.name)}, ${esc(p.kind)} (${p.total} points)</option>`).join("")}</select>
+        <button class="primary" id="lfamily" title="The child is born in the capital ${d.birth_turns} turns later. An alien partner's child is a hybrid: stronger, but some cities refuse hybrids.">Start a family</button></div>`
+    : '<p class="muted">No grown citizen or seated recruit to start a family with yet.</p>';
+  const outfits = d.wardrobe.outfits.map((o) => `<button class="${o.id === d.outfit ? "primary" : ""}" data-outfit="${o.id}" ${o.unlocked ? "" : "disabled"} data-tip="<b>${esc(o.name)}</b><div>${unlockText(o.unlock)}</div>">${o.unlocked ? "" : "🔒 "}${esc(o.name)}</button>`).join("");
+  const accs = d.wardrobe.accessories.map((a) => `<button class="${d.accessories.includes(a.id) ? "primary" : ""}" data-acc="${a.id}" ${a.unlocked ? "" : "disabled"} data-tip="<b>${esc(a.name)}</b><div>${unlockText(a.unlock)}</div>">${a.unlocked ? "" : "🔒 "}${esc(a.name)}</button>`).join("");
+  const stones = d.milestones.map((m) => `<span class="lstone">${esc(m.name)}: ${m.have} ${esc(m.key)} <span class="muted">(at ${m.at.join(" / ")})</span></span>`).join("");
+  const career = Object.entries(d.career).map(([k, v]) => `<span class="lstone">${v} ${esc(k.replace(/_/g, " ").replace("cities liberated", "cities freed").replace("leader children", "children grown"))}</span>`).join("");
+  const others = d.others.map((o) => `<div class="lother" data-tip="<b>${esc(o.name)}</b><div>President of ${esc(o.continent)} · level ${o.level} · age ${o.age}</div>">${leaderPortrait(o.look, o.outfit)}<div class="small">${esc(o.name)}</div><div class="muted small">${esc(o.continent)}</div></div>`).join("");
+  return `<div class="leader">
+    <div class="lstage" style="background-image:url(leaders/backdrop_hall.webp)">${leaderFigure(d.look, d.outfit, d.accessories, d.age)}
+      <div class="lbanner"><div class="lnm">${esc(d.name)}</div><div class="ltl">${esc(d.title)}</div></div></div>
+    <div class="lside">
+      <div class="lhead"><div><h2>${esc(d.name)}</h2><div class="muted">${esc(d.title)} · age ${d.age} · ${d.sex === "man" ? "Man" : "Woman"}</div></div>
+        <div class="llevel" title="Leader level">${d.level}</div></div>
+      <div class="lxp" title="${d.xp} XP; level ${d.level + 1} at ${d.xp_next}"><div style="width:${pct}%"></div><span>${d.xp} / ${d.xp_next} XP${d.points ? ` · <b>${d.points} skill point${d.points > 1 ? "s" : ""} to spend</b>` : ""}</span></div>
+      <h3>Traits</h3><div class="ltraits">${traits}</div>
+      <h3>Skills <span class="muted small">(the leader heads the council: each skill counts in every city)</span></h3><div class="lskills">${skills}</div>
+      ${choices ? `<h3>Choose a bonus</h3>${choices}` : ""}
+      ${d.bonuses.length ? `<h3>Bonuses this game</h3><div class="ltraits">${d.bonuses.map((b) => `<span class="ltrait" data-tip="${esc(b.note)}">${esc(b.name)}</span>`).join("")}</div>` : ""}
+      <h3>Family</h3>${kids ? `<div class="lkids">${kids}</div>` : ""}${family}
+      <h3>Wardrobe <span class="muted small">(cosmetic; unlocked by your career)</span></h3><div class="row wrap">${outfits}</div><div class="row wrap">${accs}</div>
+      <h3>Milestones</h3><div class="row wrap">${stones}</div>
+      <h3>Career</h3><div class="row wrap">${career}</div>
+      ${others ? `<h3>Leaders you have met</h3><div class="lothers">${others}</div>` : ""}
+      ${d.can_create ? '<div class="row"><button id="lremake">Remake your leader</button><span class="muted small">until the first turn ends</span></div>' : ""}
+    </div></div>`;
+}
+function creationScreen(d) {
+  const c = S.creating || (S.creating = { name: d.name, look: d.look, age: d.age, traits: d.traits.map((t) => t.id) });
+  const looks = d.catalog.looks.map((l) => `<button class="${l.id === c.look ? "primary" : ""}" data-look="${l.id}">${l.sex === "man" ? "Man" : "Woman"}</button>`).join("");
+  const traits = d.catalog.traits.map((t) => `<button class="${c.traits.includes(t.id) ? "primary" : ""}" data-ctrait="${t.id}" data-tip="${esc(t.note)}"><b>${esc(t.name)}</b><span class="muted small">${esc(t.note)}</span></button>`).join("");
+  return `<div class="leader">
+    <div class="lstage" style="background-image:url(leaders/backdrop_hall.webp)">${leaderFigure(c.look, "civilian", [], c.age)}
+      <div class="lbanner"><div class="lnm">${esc(c.name || "…")}</div><div class="ltl">${esc(d.title)}</div></div></div>
+    <div class="lside">
+      <h2>Create your leader</h2>
+      <p class="muted">Your leader heads ${esc(d.continent)}'s council. Skills start at +1 and grow with each level; the leader ages but never dies.</p>
+      <h3>Name</h3><input id="cname" maxlength="40" value="${esc(c.name)}">
+      <h3>Look</h3><div class="row">${looks}</div>
+      <h3>Age <span id="cagev">${c.age}</span></h3><input id="cage" type="range" min="${d.catalog.age_min}" max="${d.catalog.age_max}" value="${c.age}">
+      <h3>Traits <span class="muted small">(choose ${d.catalog.trait_count}; a third comes at level 5)</span></h3><div class="ctraits">${traits}</div>
+      <div class="row" style="margin-top:14px"><button class="primary" id="ccreate" ${c.traits.length === d.catalog.trait_count && c.name.trim() ? "" : "disabled"}>Lead ${esc(d.continent)}</button>
+        <button id="ckeep">Keep ${esc(d.name)}</button></div>
+    </div></div>`;
+}
+function wireLeader(body, create) {
+  const d = S.leaderData;
+  const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => el.onclick = () => fn(el));
+  if (create) {
+    const c = S.creating, redraw = () => { body.innerHTML = creationScreen(d); wireLeader(body, true); };
+    $("cname").oninput = (e) => { c.name = e.target.value; body.querySelector(".lnm").textContent = c.name || "…"; $("ccreate").disabled = !(c.traits.length === d.catalog.trait_count && c.name.trim()); };
+    $("cage").oninput = (e) => { c.age = Number(e.target.value); $("cagev").textContent = c.age; };
+    $("cage").onchange = redraw;
+    on("[data-look]", (el) => { c.look = el.dataset.look; redraw(); });
+    on("[data-ctrait]", (el) => {
+      const t = el.dataset.ctrait;
+      c.traits = c.traits.includes(t) ? c.traits.filter((x) => x !== t) : [...c.traits, t].slice(-d.catalog.trait_count);
+      redraw();
+    });
+    $("ccreate").onclick = () => {
+      const sex = d.catalog.looks.find((l) => l.id === c.look).sex;
+      S.creating = null;
+      act({ kind: "create_leader", name: c.name.trim(), sex, look: c.look, age: c.age, traits: c.traits }, "leader");
+    };
+    $("ckeep").onclick = () => { S.creating = null; closeModal(); };
+    return;
+  }
+  on("[data-raise]", (el) => act({ kind: "raise_skill", skill: el.dataset.raise }, "leader"));
+  on("[data-choice]", (el) => act({ kind: "choose_leader_bonus", choice: el.dataset.choice, option: el.dataset.option }, "leader"));
+  on("[data-outfit]", (el) => act({ kind: "set_wardrobe", outfit: el.dataset.outfit, accessories: d.accessories }, "leader"));
+  on("[data-acc]", (el) => {
+    const a = el.dataset.acc, accs = d.accessories.includes(a) ? d.accessories.filter((x) => x !== a) : [...d.accessories, a];
+    act({ kind: "set_wardrobe", outfit: d.outfit, accessories: accs }, "leader");
+  });
+  if ($("lfamily")) $("lfamily").onclick = () => act({ kind: "start_family", partner: $("lpartner").value }, "leader");
+  if ($("lremake")) $("lremake").onclick = () => openScreen("leader", "create");
+}
+
 function councilScreen(d) {
   const pick = S.councilPick || "";
   const slot = (seat, k) => {
@@ -2741,9 +2894,13 @@ function councilScreen(d) {
       <select data-giftto="${r.id}">${others.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select><button class="small" data-gift="${r.id}">Gift</button></div>`).join("");
   const offers = d.offers.map((o) => `<div class="row">${pretty(o.from_player)} offers recruit #${o.recruit} for ${o.price} gold
       <button class="small" data-accept-offer="${o.id}">Accept</button><button class="small" data-decline-offer="${o.id}">Decline</button></div>`).join("");
+  const L = d.leader;
+  const head = L ? `<div class="seatrow leaderhead"><div class="seat filled lseat" data-open-leader="1" title="Open the leader screen">
+      ${leaderPortrait(L.look, L.outfit, "avatar")}<div><div class="mname">${esc(L.name)}</div><div class="muted small">Leader · level ${L.level}</div>
+      <div>${Object.entries(L.skills).filter(([, v]) => v).map(([k, v]) => `<span class="tag ${k}">+${v} ${k}</span>`).join("")}</div></div></div></div>` : "";
   return `<h2>The Council</h2>
-    <p class="muted">General seats add all of a member's stats; a domain seat adds only that domain. Alien recruits give percentages to every city; a citizen gives its stats to its own city. ${pick ? "<b>Now click a seat.</b>" : "Click a member, then a seat."}</p>
-    <div class="seatrow general">${general}</div>
+    <p class="muted">General seats add all of a member's stats; a domain seat adds only that domain. Alien recruits give percentages to every city; a citizen adds its stats to every city. Your leader heads the council: click the leader for skills, traits and family. ${pick ? "<b>Now click a seat.</b>" : "Click a member, then a seat."}</p>
+    ${head}<div class="seatrow general">${general}</div>
     <div class="seatrow domains">${domains}</div>
     ${offers ? `<h3>Offers</h3>${offers}` : ""}
     <h3>Unassigned members</h3><div class="pool">${pool || '<p class="muted">Everyone is on a seat. Free a seat (×) to move someone.</p>'}</div>
@@ -2905,6 +3062,7 @@ function wireScreen(name) {
     body.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => act({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }, null).then(() => openScreen("population", S.screenArg)));
     if ($("pop-all")) $("pop-all").onclick = () => openScreen("population");
   }
+  if (name === "leader") wireLeader(body, S.screenArg === "create");
   if (name === "council") {
     const d = S.councilData;
     body.querySelectorAll("[data-member]").forEach((el) => el.onclick = (ev) => {
@@ -2918,6 +3076,7 @@ function wireScreen(name) {
       seatMember(key, el.dataset.seatSlot, d);
     });
     on("[data-free]", (el) => { S.councilPick = null; freeSeat(el.dataset.free, d); });
+    on("[data-open-leader]", () => openScreen("leader"));
     on("[data-gift]", (el) => act({ kind: "offer_recruit", recruit: Number(el.dataset.gift), to_player: body.querySelector(`[data-giftto="${el.dataset.gift}"]`).value, price: 0 }, "council"));
     on("[data-accept-offer]", (el) => act({ kind: "accept_offer", offer: Number(el.dataset.acceptOffer) }, "council"));
     on("[data-decline-offer]", (el) => act({ kind: "decline_offer", offer: Number(el.dataset.declineOffer) }, "council"));
@@ -3029,7 +3188,7 @@ $("btn-random").onclick = () => { $("new-seed").value = 1 + Math.floor(Math.rand
 document.querySelectorAll(".title-panel .back").forEach((b) => b.onclick = () => showPanel("title-main"));
 $("btn-start").onclick = async () => {
   $("btn-start").textContent = "Generating the world…";
-  try { await api("/api/new", { seed: Number($("new-seed").value) || 1, human: chosenContinent }); S.shownOutcome = false; await enterGame(); }
+  try { await api("/api/new", { seed: Number($("new-seed").value) || 1, human: chosenContinent }); S.shownOutcome = false; S.creationShown = false; await enterGame(); }
   catch (err) { toast(err.message); }
   $("btn-start").textContent = "Begin";
 };
@@ -3045,6 +3204,10 @@ async function enterGame() {
   S.cam.zoom = 1.6;
   if (capital) centerOnTile(capital.tile);
   splash(`${S.view.players.find((p) => p.id === S.view.me).name} · ${S.view.year}`);
+  try {  // a new game opens the creation screen once (SPEC_M11)
+    const d = await api("/api/leader");
+    if (d.can_create && !d.custom && !S.creationShown) { S.creationShown = true; S.creating = null; setTimeout(() => openScreen("leader", "create"), 900); }
+  } catch (err) { /* no leader */ }
 }
 
 // =============================================================================================
