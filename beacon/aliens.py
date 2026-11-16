@@ -22,6 +22,7 @@ from beacon.state import (
     EMPTY,
     OVERRUN,
     AlienOrder,
+    AlienPlan,
     City,
     GameState,
     Unit,
@@ -316,6 +317,7 @@ class Director:
     def __init__(self, state: GameState, cfg: Config):
         self.state, self.cfg = state, cfg
         self.d = cfg.alien("director")
+        self.p = cfg.alien("plans")
         self.w, self.h = state.width, state.height
         self.events: Events = []
         self._defence: dict[int, int] = {}
@@ -378,6 +380,11 @@ class Director:
                 self.state.turn - city.liberated_turn <= self.d["retake_turns"]
             ):
                 value += self.d["value_retake"]
+            from beacon.threat import heat  # SPEC_M12: louder players draw strikes
+
+            value += (
+                value * heat(self.state, self.cfg, city.owner) * self.p["heat_value_pct"] // 100
+            )
             score = (
                 value
                 - self.defence(city) * self.d["defence_per_strength"] // 100
@@ -453,10 +460,17 @@ class Director:
                 best = (key, u.id)
         return None if best is None else best[1]
 
-    def gather_cohort(self, leader: Unit, target: int) -> None:
-        """Nearby aliens without a siege join the leader's siege (a cohort of seeded size)."""
+    def gather_cohort(self, leader: Unit, target: int, kind: str = "siege") -> list[int]:
+        """Nearby aliens without a siege join the leader's siege (a cohort of seeded size, larger
+        against hotter players)."""
         r = rng.stream(self.state.seed, "events", self.state.turn, "cohort", leader.id)
         size = r.randint(self.d["cohort_min"], self.d["cohort_max"])
+        city = self.state.city_at(target)
+        if city is not None and city.owner in self.state.players:
+            from beacon.threat import heat
+
+            extra = heat(self.state, self.cfg, city.owner) // self.p["heat_per_extra"]
+            size += min(self.p["extra_max"], extra)
         orders = self.state.aliens.orders
         near = sorted(
             (
@@ -470,12 +484,13 @@ class Director:
                     self.state.city_at(u.tile) is not None
                     and _military_on(self.state, self.cfg, u.tile) is u
                 )
-                and (str(u.id) not in orders or orders[str(u.id)].kind != "siege")
+                and (str(u.id) not in orders or orders[str(u.id)].kind not in ("siege", "gather"))
             ),
             key=lambda u: (self.dist(u.tile, leader.tile), u.id),
         )
         for u in near[: size - 1]:
-            orders[str(u.id)] = AlienOrder(kind="siege", target=target)
+            orders[str(u.id)] = AlienOrder(kind=kind, target=target)
+        return [u.id for u in near[: size - 1]]
 
     def order_for(self, unit: Unit) -> AlienOrder | None:
         orders = self.state.aliens.orders
@@ -497,15 +512,71 @@ class Director:
                 "hunt": self.hunt_target,
             }[kind](unit)
             if target is not None:
+                if kind == "siege":  # announced first (SPEC_M12): gather, then strike
+                    return self.announce(unit, target)
                 orders[str(unit.id)] = AlienOrder(kind=kind, target=target)
-                if kind == "siege":
-                    self.gather_cohort(unit, target)
                 return orders[str(unit.id)]
         orders.pop(str(unit.id), None)
         return None
 
+    def announce(self, unit: Unit, target: int) -> AlienOrder:
+        """A strike plan on a player city: its units gather now and besiege on the launch turn."""
+        orders = self.state.aliens.orders
+        orders[str(unit.id)] = AlienOrder(kind="gather", target=target)
+        cohort = self.gather_cohort(unit, target, kind="gather")
+        city = self.state.city_at(target)
+        assert city is not None and city.owner is not None
+        pid = self.state.new_id()
+        plan = AlienPlan(
+            id=pid,
+            target=target,
+            player=city.owner,
+            source=unit.tile,
+            launch=self.state.turn + self.p["strike_turns"],
+            units=[unit.id, *cohort],
+        )
+        self.state.aliens.plans[str(pid)] = plan
+        self.events.append(
+            _ev(
+                self.state,
+                "strike_announced",
+                player=city.owner,
+                city=city.id,
+                launch=plan.launch,
+                units=len(plan.units),
+                source=plan.source,
+            )
+        )
+        return orders[str(unit.id)]
+
+    def launch_plans(self) -> None:
+        """Strikes whose turn has come become sieges; plans on lost targets are dropped."""
+        orders = self.state.aliens.orders
+        for key in sorted(self.state.aliens.plans, key=int):
+            plan = self.state.aliens.plans[key]
+            plan.units = [u for u in plan.units if str(u) in self.state.units]
+            city = self.state.city_at(plan.target)
+            valid = city is not None and city.status == ACTIVE and city.owner in self.state.players
+            if not plan.units or not valid:
+                for u in plan.units:
+                    orders.pop(str(u), None)
+                del self.state.aliens.plans[key]
+                continue
+            if self.state.turn >= plan.launch:
+                for u in plan.units:
+                    orders[str(u)] = AlienOrder(kind="siege", target=plan.target)
+                assert city is not None
+                self.events.append(
+                    _ev(self.state, "strike_launched", player=plan.player, city=city.id)
+                )
+                del self.state.aliens.plans[key]
+
     def order_valid(self, unit: Unit, order: AlienOrder) -> bool:
         tile = self.state.tiles[order.target]
+        if order.kind == "gather":
+            from beacon.threat import plan_of
+
+            return plan_of(self.state, unit.id) is not None
         if order.kind in ("mine", "escort"):
             from beacon.starfall import active
 
@@ -623,6 +694,9 @@ class Director:
         order = self.order_for(unit)
         if order is None:
             return
+        if order.kind == "gather":  # hold where the strike forms until it launches
+            unit.fortified = True
+            return
         if order.kind == "siege":
             city = self.state.city_at(order.target)
             assert city is not None
@@ -705,6 +779,7 @@ class Director:
                 orders[str(u.id)] = AlienOrder(kind="escort", target=shard.tile)
 
     def run(self) -> Events:
+        self.launch_plans()
         self.assign_miners()
         for unit in [u for u in self.state.sorted_units() if u.owner == ALIENS]:
             if self.alive(unit) and unit.moves_left > 0 and unit.attacks_left > 0:

@@ -28,6 +28,7 @@ from beacon import (
 from beacon.commands import (
     AcceptDeal,
     AcceptOffer,
+    ArmResistance,
     AssignBestCitizen,
     Attack,
     BuildImprovement,
@@ -52,6 +53,7 @@ from beacon.commands import (
     Purchase,
     RaiseSkill,
     RefoundCity,
+    Sabotage,
     SeatRecruit,
     SetCitizenJob,
     SetConvoy,
@@ -99,6 +101,9 @@ def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
     events = handler(state, cfg, cmd)
     if isinstance(cmd, MoveUnit):
         events.extend(contact.check(state, cfg, only=cmd.player))  # a scout may sight someone
+        from beacon.threat import update_intel  # a scout beside an alien city (SPEC_M12)
+
+        events.extend(update_intel(state, cfg))
     if isinstance(cmd, REPLACE_CITIZENS):
         citizens.assign_all(state, cfg)  # cities, seats or tiles changed: re-place everyone
     for e in events:
@@ -857,3 +862,34 @@ def _set_wardrobe(state: GameState, cfg: Config, cmd: SetWardrobe) -> Events:
         raise CommandError(problem)
     lead.outfit, lead.accessories = cmd.outfit, sorted(cmd.accessories)
     return [{"kind": "wardrobe_set", "outfit": cmd.outfit}]
+
+
+# -- freeing cities other than by siege (docs/SPEC_M12.md) -----------------------------------------
+
+
+def _alien_city(state: GameState, city_id: int) -> City:
+    if not 0 <= city_id < len(state.cities):
+        raise CommandError(f"no city {city_id}")
+    return state.cities[city_id]
+
+
+@handles(Sabotage)
+def _sabotage(state: GameState, cfg: Config, cmd: Sabotage) -> Events:
+    from beacon import threat
+
+    unit, city = own_unit(state, cmd.player, cmd.unit), _alien_city(state, cmd.city)
+    problem = threat.sabotage_problem(state, cfg, unit, city)
+    if problem:
+        raise CommandError(problem)
+    return threat.sabotage(state, cfg, unit, city)
+
+
+@handles(ArmResistance)
+def _arm_resistance(state: GameState, cfg: Config, cmd: ArmResistance) -> Events:
+    from beacon import threat
+
+    unit, city = own_unit(state, cmd.player, cmd.unit), _alien_city(state, cmd.city)
+    problem = threat.arm_problem(state, cfg, unit, city)
+    if problem:
+        raise CommandError(problem)
+    return threat.arm(state, cfg, unit, city)

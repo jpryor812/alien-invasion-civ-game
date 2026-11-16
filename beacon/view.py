@@ -15,7 +15,17 @@ from typing import Any
 
 from beacon import fog
 from beacon.config import Config
-from beacon.state import City, CityMemory, GameState, Player, Tile, Unit, bits_get, to_dict
+from beacon.state import (
+    OVERRUN,
+    City,
+    CityMemory,
+    GameState,
+    Player,
+    Tile,
+    Unit,
+    bits_get,
+    to_dict,
+)
 
 
 class PlayerView:
@@ -130,6 +140,7 @@ def observe(state: GameState, cfg: Config, pid: str) -> dict[str, Any]:
             "resource": t.resource,
             "continent": t.continent,
             "city": t.city,
+            "nest": t.nest,
             "visible": False,
         }
     cities = {}
@@ -139,6 +150,13 @@ def observe(state: GameState, cfg: Config, pid: str) -> dict[str, Any]:
             cities[str(cid)] = to_dict(city)
         else:
             cities[str(cid)] = {"name": city.name, "tile": city.tile, **to_dict(memory)}
+            if memory.status == OVERRUN and city.status == OVERRUN:  # SPEC_M12
+                from beacon.threat import rumour
+
+                cities[str(cid)]["rumour"] = rumour(cfg, city)
+                if cid in view.player.intel:
+                    cities[str(cid)]["contents"] = city.contents
+                cities[str(cid)]["resistance"] = city.armed_by.get(pid, 0) and city.resistance
     return {
         "turn": state.turn,
         "player": to_dict(view.player),

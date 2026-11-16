@@ -130,9 +130,10 @@ def test_director_besieges_a_weak_player_city(cfg):
     city.is_capital = True
     for tile in (at(4, 3), at(4, 5), at(4, 7)):
         create_unit(s, cfg, "alien_brute", ALIENS, tile)
-    for _ in range(8):
+    for _ in range(12):  # SPEC_M12: the strike is announced 3 turns ahead, then launched
         aliens.Director(s, cfg).run()
         reset_units(s, cfg)
+        s.turn += 1
         if city.status == OVERRUN:
             break
     assert city.status == OVERRUN

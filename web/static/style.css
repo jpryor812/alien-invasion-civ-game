@@ -472,3 +472,7 @@ th .icon.medal { width: 15px; height: 15px; }
 #leaderbadge .lvl { position: absolute; right: -4px; bottom: -4px; width: 28px; height: 28px; border-radius: 50%; font: 700 13px/24px var(--heading); color: #2a1d06; background: radial-gradient(circle at 35% 30%, #fff1c0, #d9ae55 60%, #7a5a1c); border: 2px solid #3a2a10; }
 #leaderbadge.alert { animation: lpulse 1.6s ease-in-out infinite; }
 @keyframes lpulse { 50% { box-shadow: 0 0 0 2px #05090c, 0 0 18px 4px rgba(242,211,138,0.8); } }
+
+/* -- M12: strikes and heat -- */
+#pending li.strike { color: #ffb4a8; border-left: 3px solid #e53c2d; padding-left: 6px; background: rgba(150,30,20,0.18); }
+.heatico { color: #ff8a5c; margin-right: 3px; }

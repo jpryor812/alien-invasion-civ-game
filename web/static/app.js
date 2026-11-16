@@ -900,6 +900,7 @@ function draw(t = performance.now()) {
     const t1 = S.tilesByIndex.get(i);
     if (t1.improvement && z > 0.3) { drawImprovedHex(i, t1.improvement, sx, sy, R); drawImprovement(t1.improvement, sx, sy, R, Math.floor(hash(i, 9) * 6)); }
     if (t1.turret && z > 0.3) drawTurret(t1, sx, sy, R);
+    if (t1.nest != null && z > 0.3) drawNest(sx, sy, R, i);
     if (t1.resource && t1.visible && z > 0.6) drawResource(t1.resource, sx, sy, R);
   }
   // 4b. territory borders: a line in the owner's colour along every edge where ownership changes,
@@ -943,6 +944,7 @@ function draw(t = performance.now()) {
   }
   for (const [i, sx, sy] of visible) { const us = S.unitsByTile.get(i); if (us) drawUnits(us, sx, sy, R, S.citiesByTile.has(i)); }
   for (const [i, sx, sy] of visible) { const c = S.citiesByTile.get(i); if (c) drawBanner(c, sx, sy, R); }
+  drawStrikes(R, t);  // announced alien strikes over everything (SPEC_M12)
   // 8. selection pulse
   if (S.selected && S.selected.kind === "unit") {
     const u = S.view.units.find((x) => x.id === S.selected.id);
@@ -1614,6 +1616,41 @@ function roundRect(x, y, w, h, r) {
 // Civ-style city banner: a dark plate with owner-coloured end caps (population on the left,
 // production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
 // and the city's health bar beneath.
+const CONTENTS_NAME = { survivors: "survivors", captive: "a captive specialist", lab: "a working lab", cache: "a weapons cache", depot: "a fuel depot", hive_heart: "a hive heart" };
+// An announced alien strike (SPEC_M12): a red arrow from where it gathers to the city, with the
+// turns left in a disc on the city.
+function drawStrikes(R, t) {
+  for (const st of S.view.strikes || []) {
+    const [tx, ty] = screenOf(st.target);
+    const pulse = 0.65 + 0.35 * Math.sin(t / 260);
+    if (st.source != null) {
+      const [fx, fy] = screenOf(st.source), ang = Math.atan2(ty - fy, fx === tx && fy === ty ? 1 : tx - fx);
+      const ex = tx - Math.cos(ang) * R * 0.9, ey = ty - Math.sin(ang) * R * 0.9;
+      ctx.strokeStyle = `rgba(230,60,45,${0.75 * pulse})`; ctx.lineWidth = Math.max(3, R * 0.16); ctx.lineCap = "round"; ctx.setLineDash([R * 0.35, R * 0.22]);
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.setLineDash([]);
+      const h = R * 0.45; ctx.fillStyle = `rgba(230,60,45,${pulse})`;
+      ctx.beginPath(); ctx.moveTo(ex + Math.cos(ang) * h * 0.6, ey + Math.sin(ang) * h * 0.6);
+      ctx.lineTo(ex - Math.cos(ang - 0.5) * h, ey - Math.sin(ang - 0.5) * h); ctx.lineTo(ex - Math.cos(ang + 0.5) * h, ey - Math.sin(ang + 0.5) * h); ctx.closePath(); ctx.fill();
+    }
+    const r = Math.max(9, R * 0.34), x = tx + R * 0.75, y = ty + R * 0.35;
+    ctx.fillStyle = "#5a0f0a"; ctx.strokeStyle = `rgba(255,120,100,${pulse})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffe2dc"; ctx.font = `700 ${Math.round(r * 1.1)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(String(st.turns), x, y + 1);
+  }
+  if ((S.view.strikes || []).length) S.dirty = true;
+}
+// An alien nest (SPEC_M12): a dark organic mound with red veins; a soldier ending a turn on it
+// destroys it.
+function drawNest(sx, sy, R, i) {
+  const r = R * 0.3, rnd = (k) => hash(i, k);
+  ctx.fillStyle = "rgba(25,6,10,0.85)"; ctx.beginPath(); ctx.ellipse(sx, sy + r * 0.3, r * 1.25, r * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#4a1420";
+  for (let k = 0; k < 5; k++) { const a = k * 1.26 + rnd(k), d = r * 0.55; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * d, sy + Math.sin(a) * d * 0.6, r * (0.35 + rnd(k + 9) * 0.2), 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = "rgba(230,60,70,0.8)"; ctx.lineWidth = Math.max(1, R * 0.03);
+  for (let k = 0; k < 4; k++) { const a = k * 1.6 + rnd(k + 3); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(sx + Math.cos(a) * r * 0.6, sy + Math.sin(a) * r * 0.2, sx + Math.cos(a) * r * 1.1, sy + Math.sin(a) * r * 0.6); ctx.stroke(); }
+  ctx.fillStyle = "rgba(255,90,80,0.9)"; ctx.beginPath(); ctx.arc(sx, sy, r * 0.18, 0, Math.PI * 2); ctx.fill();
+}
 function shieldPath(x, y, w, h) {
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h * 0.5);
   ctx.quadraticCurveTo(x + w, y + h * 0.85, x + w / 2, y + h); ctx.quadraticCurveTo(x, y + h * 0.85, x, y + h * 0.5); ctx.closePath();
@@ -1623,7 +1660,8 @@ function drawBanner(c, sx, sy, R) {
   const hive = c.status === "overrun";
   const owner = hive ? "#b8322a" : c.owner ? OWNER[c.owner] : "#7e858b";
   const mine = c.owner === S.view.me;
-  const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : "";
+  const known = hive && (c.contents || c.rumour);  // what an alien city holds (SPEC_M12)
+  const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : known ? ` · ${c.contents ? CONTENTS_NAME[c.contents] || pretty(c.contents) : `rumour: ${c.rumour}`}` : "";
   const label = c.name + status;
   const fs = Math.max(10, Math.round(11 * Math.min(1.35, S.cam.zoom)));
   ctx.font = `600 ${fs}px Roboto, Arial, sans-serif`;
@@ -1942,8 +1980,16 @@ function renderChrome() {
   for (const [id, y] of [["gold", "gold"], ["science", "science"], ["beacon", "beacon"]]) { $(id).dataset.tip = breakdownHtml(y, e); $(id).removeAttribute("title"); }
   const knownAlien = Object.values(v.cities).filter((c) => c.status === "overrun").length;
   $("threat").innerHTML = `${ICON.ship}${v.mothership_alive ? "Mothership <b class='bad'>active</b>" : "Mothership <b class='good'>destroyed</b>"} · alien cities <b>${knownAlien}</b>`;
+  $("heat").innerHTML = `<span class="heatico">♨</span>Heat <b>${v.heat}</b>${(v.strikes || []).length ? ` · <b class="bad">${v.strikes.length} strike${v.strikes.length > 1 ? "s" : ""} coming</b>` : ""}`;
+  $("heat").dataset.tip = `<b>Heat ${v.heat}</b><div>The attention you draw from the aliens. Hotter players are struck more often and by bigger forces.</div>${(v.heat_lines || []).map(([k, n]) => `<div>${pretty(k)}: ${n}</div>`).join("")}`;
   const ul = $("pending");
   ul.innerHTML = "";
+  for (const st of v.strikes || []) {  // announced alien strikes come first (SPEC_M12)
+    const li = document.createElement("li"); li.className = "strike";
+    li.textContent = `Strike on ${st.city_name} in ${st.turns} turn${st.turns === 1 ? "" : "s"}${st.strength != null ? ` (${st.strength} vs your ${st.defence})` : " (strength unknown)"}`;
+    li.onclick = () => { centerOnTile(st.target); selectCity(st.city); };
+    ul.appendChild(li);
+  }
   for (const p of v.pending.slice(0, 14)) {
     const li = document.createElement("li");
     li.textContent = describePending(p);
@@ -2021,6 +2067,14 @@ function describeEvent(e) {
     shard_claimed: () => e.by === S.view.me ? `You claimed the ${e.name} shard!` : e.by === "aliens" ? `The aliens claimed the ${e.name} shard.` : `${pretty(e.by)} claimed the ${e.name} shard.`,
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
+    strike_announced: () => `The aliens are gathering to strike ${cityName(e.city)} in ${e.launch - e.turn} turns.`,
+    strike_launched: () => `The alien strike on ${cityName(e.city)} has begun.`,
+    sabotage: () => `Sabotage at ${cityName(e.city)}: -${e.damage} HP (the saboteur took ${e.hurt}).`,
+    resistance_armed: () => `Weapons smuggled into ${cityName(e.city)} (resistance ${e.level}).`,
+    uprising: () => `Uprising in ${cityName(e.city)}! The garrison is hit.`,
+    nest_destroyed: () => `An alien nest near ${cityName(e.city)} destroyed.`,
+    city_intel: () => `Scouts report ${cityName(e.city)} holds ${CONTENTS_NAME[e.contents] || pretty(e.contents)}.`,
+    contents_found: () => `Found in ${cityName(e.city)}: ${(e.result || []).join(", ") || "nothing"}.`,
     story_event: () => e.pending ? `Event: ${pretty(e.event)} (a choice awaits)` : `${pretty(e.event)}: ${(e.result || []).join(", ") || "nothing"}.`,
     story_chosen: () => `${pretty(e.event)}: ${e.label}. ${(e.result || []).join(", ")}`,
     citizen_grew_up: () => `${e.name} of ${cityName(e.city)} has grown up and can work.`,
@@ -2137,6 +2191,8 @@ function renderUnitPanel() {
       toast("Click a highlighted shallow-water hex to bridge it");
     }, "A road over shallow water: land units, convoys and roads cross it (aliens too). 6 turns.");
   }
+  for (const cid of o.sabotage || []) add(`Sabotage ${cityName(cid)}`, () => send({ kind: "sabotage", unit: u.id, city: cid }), "Cut its hit points; the saboteur may be hurt");
+  for (const cid of o.arm || []) add(`Arm the resistance in ${cityName(cid)}`, () => send({ kind: "arm_resistance", unit: u.id, city: cid }), `${o.arm_gold} gold: each level gives a ${S.view.uprising_pct}% chance a turn of an uprising inside`);
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
   if (o.merges.length) a.insertAdjacentHTML("afterend", '<div class="muted small">Move onto the highlighted unit of the same type to merge into a stack of two.</div>');
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));

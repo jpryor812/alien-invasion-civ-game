@@ -203,3 +203,69 @@ legendary_recruits:
   oss_vanthe_archivist: {status: placeholder, note: Keeper of every lost record., name: Oss Vanthe the Archivist, scores: {science: 16, beacon: 8, food: 6}, lifespan: 100, traits: [scholar, immortal]}
   quen_morrow_forgemaster: {status: placeholder, note: Builder of the first engines., name: Quen Morrow the Forgemaster, scores: {production: 14, science: 8, gold: 8}, lifespan: 100, traits: [engineer, ambitious]}
   mireth_calla_echo: {status: placeholder, note: Voice that carries across the fog., name: Mireth Calla the Echo, scores: {beacon: 15, gold: 9, food: 6}, lifespan: 90, traits: [charismatic, traitor]}
+
+# -- M12: a readable alien that reacts to you (docs/SPEC_M12.md, designer 2026-11-15) ----------
+
+plans:
+  status: placeholder
+  note: A siege of a player city is announced as a strike plan strike_turns ahead; the committed
+    units gather where the plan formed and besiege on the launch turn. Each point of the target
+    owner's heat adds heat_value_pct percent to a city's value as a target, and every
+    heat_per_extra heat adds one unit to the cohort (up to extra_max).
+  strike_turns: 3
+  heat_value_pct: 2
+  heat_per_extra: 25
+  extra_max: 3
+
+heat:
+  status: placeholder
+  note: Attention a player draws from the aliens each turn - per_pop for each citizen, per active
+    convoy, plus the listed buildings (beacons, industry, labs, ports).
+  per_pop: 1
+  per_convoy: 2
+  buildings: {beacon_i: 3, beacon_ii: 4, beacon_iii: 5, beacon_iv: 6, beacon_v: 8, factory: 3,
+              autonomous_factory: 4, research_lab: 2, quantum_lab: 3, port: 1, shipyard: 2,
+              fusion_plant: 3, radio_tower: 1, sensor_array: 2}
+
+contents:
+  status: placeholder
+  note: What each alien-held city holds, seeded by weight at the start. Seeing the city tells its
+    rumour (a category); a recon unit beside it or a spy tells the truth. Freeing the city gives
+    the reward. hive_heart cities get an extra garrison unit (guard).
+  survivors: {rumour: people, weight: 5, pop: 2}
+  captive: {rumour: people, weight: 3, citizen_points: 9}
+  lab: {rumour: knowledge, weight: 3, science: 60}
+  cache: {rumour: arms, weight: 3, units: [infantry, infantry]}
+  depot: {rumour: wealth, weight: 3, gold: 120}
+  hive_heart: {rumour: danger, weight: 2, science: 100, guard: alien_brute, alien_tech: true}
+
+sabotage:
+  status: placeholder
+  note: Engineers or recon beside an alien city may sabotage it once a turn - it loses hp_pct of
+    its maximum hit points; the saboteur takes damage_min to damage_max (seeded, combat stream).
+  hp_pct: 15
+  damage_min: 5
+  damage_max: 25
+
+resistance:
+  status: placeholder
+  note: A unit beside an alien city may smuggle in weapons for gold (one level a turn, up to
+    max_level). Each turn an armed city rises with chance level x uprising_pct; an uprising
+    costs it hp_pct of its maximum hit points and its garrison garrison_damage, and uses one level.
+  gold: 40
+  max_level: 3
+  uprising_pct: 15
+  hp_pct: 40
+  garrison_damage: 30
+
+nests:
+  status: placeholder
+  note: Each alien city has min to max nests within radius hexes (seeded, on open land). Each nest
+    adds heal hit points to its city a turn and production to its store. A player military unit
+    ending a turn on a nest destroys it.
+  min: 1
+  max: 2
+  radius: 3
+  heal: 5
+  production: 1
+

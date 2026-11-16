@@ -760,3 +760,37 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   overlays placed on the figure.
 - **Recruit gifts (fix).** The bots and AI offer spare recruits only to players they have met
   (offers to unmet players were rejected; leaders made them common enough to notice).
+
+## M12: a readable alien that reacts to you (designer 2026-11-15, docs/SPEC_M12.md)
+
+- **Strike plans.** Every siege the director picks is announced as an `AlienPlan`: the unit and
+  its cohort get `gather` orders (they hold, fortified, but still take favourable attacks), and
+  the plan launches as siege orders `plans.strike_turns` (3) turns later. A plan whose target is
+  no longer a player city, or whose units are all dead, is dropped. Raids, hunts and patrols are
+  not announced.
+- **Who sees a plan.** The target city's owner always knows the city and the turns left (radio
+  intercepts); the gathering point, unit count and strength only if that hex is explored.
+- **Heat.** Population x 1, plus listed buildings (beacons 3-8, factories 3-4, labs 2-3, fusion 3,
+  ports and shipyards 1-2, radio and sensor 1-2), plus 2 per active convoy. A strike target's
+  value rises by heat x 2%, and the cohort gains one unit per 25 heat (at most 3).
+- **Contents.** Seeded per alien city at the start (map stream, by city id): survivors (+2
+  population), captive (a citizen with 9 points over 3 domains), lab (+60 science, or gold
+  with no research set), cache (two infantry), depot (+120 gold), hive heart (an extra alien
+  brute guard; +100 science and the first unknown alien tech). Only cities alien-held at the
+  start have contents; cities lost later have none.
+- **Rumours and intel.** A known alien city shows its rumour category. Full contents come from a
+  recon unit or engineers standing on or beside it (checked after moves and at turn end), kept
+  in `Player.intel`. Espionage does not reveal contents yet.
+- **Sabotage.** Engineers or recon beside an alien city, with moves and not having acted: -15%
+  of its maximum HP (counted as the saboteur's damage for liberation shares), the saboteur takes
+  5-25 damage (combat stream). Ends the unit's turn.
+- **Resistance.** Any unit beside an alien city, 40 gold, one level a turn, up to 3. Each turn
+  a city rises with chance 15% x level: -40% of its maximum HP, its garrison -30 HP, one level
+  used. Uprising damage is shared among the arming players.
+- **Nests.** 1-2 per alien city, 2-3 hexes away on open land, not on cities, finds or
+  improvements. Each heals its city 5 HP a turn (if not besieged) and adds 1 production to its
+  store. A player soldier (not a civilian) on a nest at turn end destroys it (counts as a kill).
+- **AI.** AI players do not sabotage, arm resistance or read plans yet; they defend as before.
+- **Balance.** Cities lost per game fell from 0-3 (M11) to 0-1, since announced strikes give
+  defenders 3 turns. Heat and cohort size are the levers if the aliens need more bite.
+

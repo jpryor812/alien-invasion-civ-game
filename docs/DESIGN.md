@@ -281,3 +281,14 @@ varied partners.
   skills, XP, choices, family, wardrobe, milestones and career. Outfits and accessories unlock
   from a local career profile and are cosmetic only.
 
+## M12: a readable alien (designer 2026-11-15, docs/SPEC_M12.md)
+
+- The aliens announce their strikes: a red arrow and a countdown on the target city, and a
+  Threats list. Units gather, then strike three turns later.
+- Heat: population and loud buildings (beacons, industry, labs) draw the aliens' attention.
+- Each alien city holds something (survivors, a lab, a captive, arms, wealth, a hive heart),
+  first heard as a rumour and confirmed by scouts; freeing the city gives it. Choosing which city
+  to free first replaces choosing where to found a city.
+- Other ways to free a city: sabotage, arming the resistance (uprisings), destroying nests.
+- docs/PRESSURE_AUDIT.md maps every building and unit to the pressure it answers.
+

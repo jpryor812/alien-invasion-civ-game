@@ -122,6 +122,10 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     from beacon.recruits import freed_by_liberation  # recruits imports this module
 
     events.extend(freed_by_liberation(state, city.id, by))
+    from beacon.threat import give_contents  # what the city held (SPEC_M12)
+
+    events.extend(give_contents(state, cfg, city, by))
+    city.resistance, city.armed_by = 0, {}
     return [
         {
             "kind": "city_liberated",

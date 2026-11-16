@@ -319,9 +319,12 @@ def test_a_hybrid_on_the_council_can_be_voted_out_and_moves(cfg):
 
 
 def test_ai_leaders_level_spend_points_and_start_families(cfg):
+    from beacon.ai import AIPlayer
     from beacon.runner import play
 
     state, events, _ = play(cfg, seed=2, turns=40, driver="ai")
+    for pid in state.player_ids():  # milestones reached on the last turn end are answered next
+        AIPlayer(state, cfg, pid, lambda c: apply_command(state, cfg, c)).lead()
     leaders = [p.leader for p in state.players.values()]
     assert any(lead.level > 1 for lead in leaders)
     for lead in leaders:

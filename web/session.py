@@ -31,6 +31,7 @@ from beacon import (
     tech,
     turrets,
 )
+from beacon import threat as threat_mod
 from beacon.actions import apply_command, pending_decisions
 from beacon.commands import CommandError, command_from_dict
 from beacon.config import DOMAINS, Config
@@ -293,6 +294,7 @@ class Session:
                 "mothership_alive": s.aliens.mothership_alive,
                 "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
                 **self._story_view(),
+                **self._threat_view(),
                 "leader": None  # the top-left badge (SPEC_M11)
                 if (lead := self.state.players[self.human].leader) is None
                 else {
@@ -449,8 +451,51 @@ class Session:
                 and unit.moves_left > 0
             ),
             "ships": ships,
+            "sabotage": [  # SPEC_M12
+                c.id for c in s.cities if threat_mod.sabotage_problem(s, cfg, unit, c) is None
+            ],
+            "arm": [c.id for c in s.cities if threat_mod.arm_problem(s, cfg, unit, c) is None],
+            "arm_gold": cfg.alien("resistance.gold"),
             "spec": cfg.units[unit.type],
             "promotion": self._promotion_info(unit),
+        }
+
+    def _threat_view(self) -> dict[str, Any]:
+        """Announced strikes on your cities, your heat (SPEC_M12)."""
+        from beacon import threat
+        from beacon.state import bits_get
+
+        s, cfg, me = self.state, self.cfg, self.human
+        bits = bits_get(s.players[me].explored)
+        strikes = []
+        for p in threat.plans_against(s, me):
+            city = s.city_at(p.target)
+            if city is None:
+                continue
+            seen = bool((bits >> p.source) & 1)
+            strength = sum(
+                combat.unit_strength(s, cfg, s.units[str(u)], ranged=False, defending=False).total
+                for u in p.units
+                if str(u) in s.units
+            )
+            strikes.append(
+                {
+                    "id": p.id,
+                    "city": city.id,
+                    "city_name": city.name,
+                    "target": p.target,
+                    "turns": max(0, p.launch - s.turn),
+                    "source": p.source if seen else None,
+                    "units": len(p.units) if seen else None,
+                    "strength": strength // 100 if seen else None,
+                    "defence": combat.city_strength(s, cfg, city).total // 100,
+                }
+            )
+        return {
+            "strikes": strikes,
+            "heat": threat.heat(s, cfg, me),
+            "heat_lines": threat.heat_lines(s, cfg, me),
+            "uprising_pct": cfg.alien("resistance.uprising_pct"),
         }
 
     def _story_view(self) -> dict[str, Any]:

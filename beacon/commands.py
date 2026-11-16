@@ -348,6 +348,25 @@ class ChooseEspionageTech(Command):
     tech: str
 
 
+# -- freeing cities other than by siege (docs/SPEC_M12.md) -----------------------------------------
+
+
+@register
+@dataclass(frozen=True)
+class Sabotage(Command):
+    kind: ClassVar[str] = "sabotage"
+    unit: int
+    city: int
+
+
+@register
+@dataclass(frozen=True)
+class ArmResistance(Command):
+    kind: ClassVar[str] = "arm_resistance"
+    unit: int
+    city: int
+
+
 # -- the leader (docs/SPEC_M11.md) ---------------------------------------------------------------
 
 

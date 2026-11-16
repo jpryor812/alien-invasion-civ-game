@@ -20,6 +20,7 @@ from beacon import (
     network,
     recruits,
     starfall,
+    threat,
 )
 from beacon.config import Config
 from beacon.state import GameState
@@ -98,6 +99,8 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     events.extend(combat.defences_fire(state, cfg))
     events.extend(alien_phase(state, cfg))
+    events.extend(threat.uprisings(state, cfg))  # SPEC_M12
+    events.extend(threat.nest_turn(state, cfg))
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
         events.extend(economy.player_turn(state, cfg, pid))
@@ -118,6 +121,7 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     events.extend(contact.check(state, cfg))
     events.extend(starfall.end_of_turn(state, cfg))
     events.extend(contact.fallen_known(state))
+    events.extend(threat.update_intel(state, cfg))
     citizens.assign_all(state, cfg)
     events.extend(endgame.check_outcome(state, cfg))
     return events

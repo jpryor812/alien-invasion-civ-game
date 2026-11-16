@@ -41,6 +41,7 @@ class Tile:
     turret: int = 0  # turret level on an improved tile (0: none); see beacon/turrets.py
     pillaged: str | None = None  # improvement aliens destroyed here (a repair crew restores it)
     turret_hp: int = 0
+    nest: int | None = None  # alien nest feeding this alien city (SPEC_M12)
 
 
 @dataclass
@@ -59,6 +60,9 @@ class City:
     convoy: dict[str, Any] | None = None  # {"to": city id, "kind": food|production, "pct"} (M10)
     incoming: dict[str, int] = field(default_factory=dict)  # convoy goods arriving next turn
     refuses_hybrids: bool = False  # the city's attitude, seeded at the start (SPEC_M11)
+    contents: str | None = None  # what an alien-held city holds (SPEC_M12, data/aliens.yaml)
+    resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
+    armed_by: dict[str, int] = field(default_factory=dict)  # resistance levels, by player
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
     buildings: list[str] = field(default_factory=list)
     hp: int = 0
@@ -152,6 +156,7 @@ class Player:
     boons: list[dict[str, Any]] = field(default_factory=list)  # shard effects (like tech effects)
     flags: list[str] = field(default_factory=list)  # story choices remembered
     leader: Leader | None = None  # docs/SPEC_M11.md
+    intel: list[int] = field(default_factory=list)  # alien cities whose contents are known (M12)
 
 
 @dataclass
@@ -288,6 +293,18 @@ class AlienOrder:
 
 
 @dataclass
+class AlienPlan:
+    """An announced alien strike (SPEC_M12): units gather, then besiege `target` at `launch`."""
+
+    id: int
+    target: int  # the player city's tile
+    player: str  # its owner when announced
+    source: int  # where the strike gathers
+    launch: int  # turn the siege begins
+    units: list[int] = field(default_factory=list)
+
+
+@dataclass
 class AlienState:
     progress: int = 0
     techs: list[str] = field(default_factory=list)
@@ -297,6 +314,7 @@ class AlienState:
     orders: dict[str, AlienOrder] = field(default_factory=dict)  # by unit id
     mothership_alive: bool = True
     reinforcements_stopped: bool = False  # once the barrage is researched (DESIGN.md 11)
+    plans: dict[str, AlienPlan] = field(default_factory=dict)  # announced strikes (SPEC_M12)
 
 
 @dataclass

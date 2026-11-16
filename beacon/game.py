@@ -14,6 +14,7 @@ from beacon import (
     rng,
     starfall,
     story,
+    threat,
 )
 from beacon.config import Config
 from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, Player
@@ -110,6 +111,8 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
     citizens.assign_all(state, cfg)
     story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
     starfall.place_remnants(state, cfg)  # meteor remnants (docs/SPEC_M10.md)
+    threat.seed_contents(state, cfg)  # what alien cities hold, and their nests (SPEC_M12)
+    threat.place_nests(state, cfg)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
     fog.refresh_all(state, cfg)
