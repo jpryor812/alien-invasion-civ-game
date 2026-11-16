@@ -260,6 +260,8 @@ varied partners.
 - Do aliens ever cross water? (assumed no.) Aliens see through fog (decided 2026-11-13).
 - Turn limit (decided 2026-11-13): none. A game runs until victory or defeat.
 - Trait list and recruit lifespans.
+- Later (designer 2026-11-16): eras, material banks instead of production points, walls built
+  from materials, a city builder view and battle scenes - see docs/FUTURE_SETTLEMENTS.md.
 - MVP weights.
 - Number of beacon investment levels and cost curves.
 
