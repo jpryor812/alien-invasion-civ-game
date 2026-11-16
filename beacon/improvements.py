@@ -55,18 +55,28 @@ def build_problem(
         return f"{unit.type} cannot build improvements"
     if unit.moves_left <= 0:
         return "no moves left"
-    player = state.players.get(unit.owner)
+    if spec["kind"] == "tile" and cfg.units[unit.type].get("can_build"):
+        return "tile works are ordered from the city (Develop city)"  # SPEC_M17
+    return site_problem(state, cfg, unit.owner, unit.tile, improvement)
+
+
+def site_problem(
+    state: GameState, cfg: Config, owner: str, where: int, improvement: str
+) -> str | None:
+    """The hex-level rules for building `improvement` on `where` for `owner`."""
+    spec = cfg.improvements[improvement]
+    player = state.players.get(owner)
     if player is None or not tech.knows(player, spec["tech"]):
         return f"needs tech {spec['tech']}"
-    tile = state.tiles[unit.tile]
+    tile = state.tiles[where]
     if not is_passable_land(cfg, tile):
         return "not buildable terrain"
-    if state.city_at(unit.tile) is not None:
+    if state.city_at(where) is not None:
         return "city hexes already count as roads"
     if tile.terrain not in spec["terrains"] or tile.elevation not in spec["elevations"]:
         return f"{improvement} cannot go on {tile.elevation} {tile.terrain}"
     if spec["kind"] == "turret":
-        if not tile.improvement or tile.built_by != unit.owner:
+        if not tile.improvement or tile.built_by != owner:
             return "a turret guards one of your improved tiles (farm, mine...)"
         if tile.turret:
             return "this tile already has a turret"
@@ -184,52 +194,22 @@ def auto_improve(state: GameState, cfg: Config, city: City, n: int, owner: str) 
     fog.touch_built(state)
 
 
-# -- tile works ordered from the city builder (designer 2026-11-16) ------------------------------
-
-
-def city_engineers(state: GameState, cfg: Config, city: City) -> list[Unit]:
-    """The owner's engineers standing on the city's land, idle or at work."""
-    from beacon import layout
-
-    land = set(layout.territory_tiles(state, cfg, city))
-    return [
-        u
-        for u in state.sorted_units()
-        if u.owner == city.owner and cfg.units[u.type].get("can_build") and u.tile in land
-    ]
+# -- tile works ordered from the city (docs/SPEC_M17.md) -----------------------------------------
 
 
 def tile_problem(
     state: GameState, cfg: Config, city: City, tile: int, improvement: str
 ) -> str | None:
-    """None if the city may send one of its free engineers to build `improvement` on `tile`."""
-    from dataclasses import replace
-
-    from beacon import layout
+    """None if the city's crew may build `improvement` on `tile` of its land."""
+    from beacon import layout, works
 
     spec = cfg.improvements.get(improvement)
     if spec is None or spec["kind"] != "tile":
-        return "only tile works (farms, mines, camps...) are ordered from the city"
+        return "only tile works (farms, mines, camps...) are built by the city's engineers"
     if tile not in layout.territory_tiles(state, cfg, city):
         return "that hex is not this city's land"
+    if works.tile_ordered(city, tile):
+        return "engineers are already working there"
     if any(u.tile == tile and u.owner != city.owner for u in state.units.values()):
         return "another unit stands there"
-    crew = city_engineers(state, cfg, city)
-    if any(u.job is not None and u.tile == tile for u in crew):
-        return "engineers already work there"
-    idle = [u for u in crew if u.job is None]
-    if not idle:
-        return "no free engineers on this city's land - train some"
-    probe = replace(idle[0], tile=tile, moves_left=max(1, idle[0].moves_left))
-    return build_problem(state, cfg, probe, improvement)
-
-
-def send_engineers(state: GameState, cfg: Config, city: City, tile: int, improvement: str) -> Unit:
-    """The free engineer nearest the hex walks there (within the city's land) and starts work."""
-    from beacon import hexgrid
-
-    idle = [u for u in city_engineers(state, cfg, city) if u.job is None]
-    unit = min(idle, key=lambda u: (hexgrid.distance(u.tile, tile, state.width), u.id))
-    unit.tile = tile
-    start_job(state, cfg, unit, improvement)
-    return unit
+    return site_problem(state, cfg, city.owner or "", tile, improvement)

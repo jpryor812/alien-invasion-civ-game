@@ -319,6 +319,9 @@ varied partners.
 
 ## M15: the settlement sandbox (designer 2026-11-16, docs/SPEC_M15.md)
 
+*Retired in M17: the sandbox's ideas (materials and labour, storage, the Galactic Exchange) now
+live in the main game, and the sandbox page is gone.*
+
 - A playable prototype of the material economy and the close-up city view, separate from the
   main game (title menu: Settlement Sandbox): goods from staffed buildings in hex slots, storage,
   people who eat grain, construction with materials and labour, walls on the outer edges, raids
@@ -340,4 +343,15 @@ varied partners.
   what you build it from decide the city's strength and HP.
 - Art: eight Meshy buildings (city hall, library, market, barracks, workshop, factory, radio
   tower, food depot) and Blender models for the rest.
+
+## M17: labour and materials, one game (designer 2026-11-16, docs/SPEC_M17.md)
+
+- Each city has a crew of **engineers**. Buildings, walls and tile works (farms, mines, camps)
+  are works: their materials are paid when ordered, and the crew's labour decides the turns -
+  more engineers, faster building. Engineers are trained from the city (and cost a little gold).
+- Production trains units and engineers and runs projects; gold buys units, not buildings.
+- The **Galactic Exchange** trades materials for gold in any city; prices move with trade.
+- **Develop city** opens the builder, the one city screen: crew, works, training, land and the
+  Exchange. The map's engineers unit is now the road crew (roads, railways, turrets, bridges).
+- The settlement sandbox is retired.
 

@@ -71,19 +71,7 @@ def test_placing_a_building_orders_it_and_it_waits_for_materials(cfg, world):
     apply_command(
         s, cfg, PlaceBuilding(player=EU, city=c.id, building="storehouse", x=spot[0], y=spot[1])
     )
-    assert "building:storehouse" in c.queue and layout.pending(c, "storehouse")["x"] == spot[0]
-    c.queue = ["building:storehouse"]
-    c.progress["building:storehouse"] = cfg.buildings["storehouse"]["cost"]
-    c.stores["timber"] = 0
-    events = economy.process_city(s, cfg, c, s.players[EU])[0]
-    stalled = next(e for e in events if e["kind"] == "production_stalled")
-    assert stalled["needs"]["timber"] > 0 and "storehouse" not in c.buildings
-    c.stores["timber"] = 100
-    economy.process_city(s, cfg, c, s.players[EU])
-    assert "storehouse" in c.buildings and layout.pending(c, "storehouse") is None
-    built = next(e for e in c.layout if e["what"] == "storehouse")
-    assert built["done"] and (built["x"], built["y"]) == spot
-    assert c.stores["timber"] < 100
+    assert layout.pending(c, "storehouse")["x"] == spot[0]  # built by the crew (SPEC_M17)
 
 
 def test_moving_a_building_and_unplaced_buildings_find_a_spot(cfg, world):
@@ -103,21 +91,23 @@ def test_moving_a_building_and_unplaced_buildings_find_a_spot(cfg, world):
 
 
 def test_walls_cost_materials_and_add_strength_and_hp(cfg, world):
+    from beacon import works
+
     s, c = world
     ring = layout.ai_ring(s, cfg, c)[:20]
     with pytest.raises(CommandError, match="tech"):
         apply_command(
             s, cfg, PlaceWalls(player=EU, city=c.id, cells=tuple(ring), material="plasma")
         )
-    apply_command(s, cfg, PlaceWalls(player=EU, city=c.id, cells=tuple(ring), material="stone"))
-    assert "walls" in c.queue and len(c.wall_orders) == 20
-    before_hp, before = cities.max_hp(cfg, c), combat.city_strength(s, cfg, c).total
     c.stores["stone"] = 100
-    assert economy.complete_item(s, cfg, c, "walls")["pieces"] == 20
+    apply_command(s, cfg, PlaceWalls(player=EU, city=c.id, cells=tuple(ring), material="stone"))
     w = cfg.materials("walls.stone")
+    assert len(c.wall_orders) == 20 and c.stores["stone"] == 100 - 20 * w["cost"]["stone"]
+    before_hp, before = cities.max_hp(cfg, c), combat.city_strength(s, cfg, c).total
+    while c.works:
+        works.progress(s, cfg, c)
     assert cities.max_hp(cfg, c) == before_hp + 20 * w["hp"]
-    assert combat.city_strength(s, cfg, c).total > before
-    assert c.stores["stone"] == 100 - 20 * w["cost"]["stone"]
+    assert combat.city_strength(s, cfg, c).total > before and not c.wall_orders
     with pytest.raises(CommandError, match="as strong"):
         apply_command(s, cfg, PlaceWalls(player=EU, city=c.id, cells=(ring[0],), material="wood"))
     with pytest.raises(CommandError, match="building"):
@@ -169,35 +159,3 @@ def test_builder_view(cfg, tmp_path, monkeypatch):
     assert set(d["stores"]) == {"timber", "stone", "iron"}
     detail = sess.city_detail(c.id)
     assert detail["stores"] and all("materials" in o for o in detail["options"])
-
-
-def test_engineers_work_the_land_from_the_city_builder(cfg, world):
-    from beacon import improvements
-    from beacon.actions import pending_decisions
-    from beacon.commands import ImproveTile
-
-    s, c = world
-    land = layout.territory_tiles(s, cfg, c)
-    crew = improvements.city_engineers(s, cfg, c)
-    assert crew  # the classic start gives engineers beside the capital
-    # engineers no longer ask for orders on the map
-    assert not any(
-        p["kind"] == "unit_needs_orders" and p["unit"] == u.id
-        for u in crew
-        for p in pending_decisions(s, cfg, EU)
-    )
-    target = next(t for t in land if improvements.tile_problem(s, cfg, c, t, "farm") is None)
-    with pytest.raises(CommandError, match="tile works"):
-        apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=target, improvement="road"))
-    outside = next(t for t in range(len(s.tiles)) if t not in land)
-    with pytest.raises(CommandError, match="land"):
-        apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=outside, improvement="farm"))
-    apply_command(s, cfg, ImproveTile(player=EU, city=c.id, tile=target, improvement="farm"))
-    worker = next(u for u in crew if u.job is not None)
-    assert worker.tile == target and worker.job.improvement == "farm"
-    if all(u.job for u in improvements.city_engineers(s, cfg, c)):
-        other = next(t for t in land if t != target)
-        assert "no free engineers" in (improvements.tile_problem(s, cfg, c, other, "farm") or "")
-    for _ in range(cfg.improvements["farm"]["turns"] + 1):
-        improvements.progress_jobs(s, cfg, EU)
-    assert s.tiles[target].improvement == "farm"

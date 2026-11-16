@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import diplomacy, economy, endgame, hexgrid, improvements, leader, tech
+from beacon import diplomacy, economy, endgame, hexgrid, improvements, leader, tech, works
 from beacon.bots import Bot, Submit
 from beacon.commands import (
     AcceptDeal,
@@ -165,11 +165,13 @@ class AIPlayer(Bot):
     def ensure_port(self) -> None:
         if diplomacy.ports(self.state, self.cfg, self.pid):
             return
-        if any("building:port" in c.queue for c in self.view.my_cities()):
+        if any(works.ordered(c, "building:port") for c in self.view.my_cities()):
             return
         for city in sorted(self.view.my_cities(), key=lambda c: (-c.pop, c.id)):
-            if city.connected and "building:port" in economy.production_options(
-                self.state, self.cfg, city
+            if (
+                city.connected
+                and "port" in economy.building_options(self.state, self.cfg, city)
+                and works.building_problem(self.state, self.cfg, city, "port") is None
             ):
                 self.submit(
                     SetProduction(
@@ -464,6 +466,9 @@ class AIPlayer(Bot):
         self.research()
         self.ensure_port()
         self.production()
+        self.buildings()  # SPEC_M17
+        self.land()
+        self.market()
         self.walls()  # SPEC_M16
         self.council()
         self.bombard()

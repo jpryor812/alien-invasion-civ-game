@@ -144,8 +144,10 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
 
 
 def item_allowed(state: GameState, cfg: Config, city: City, item: str) -> str | None:
-    if item == "walls":  # SPEC_M16: the wall pieces laid in the builder
-        return None if city.wall_orders else "no walls laid out"
+    if item == "walls":  # SPEC_M17: walls are works for the crew now
+        return "walls are built by the city's engineers"
+    if item == "engineer":  # one more engineer for the crew (SPEC_M17)
+        return None if city.owner in state.players else "city has no player owner"
     kind, _, ident = item.partition(":")
     if kind == "building":
         return building_allowed(state, cfg, city, ident) if ident in cfg.buildings else "unknown"
@@ -164,11 +166,23 @@ def item_allowed(state: GameState, cfg: Config, city: City, item: str) -> str | 
 
 
 def production_options(state: GameState, cfg: Config, city: City) -> list[str]:
-    items = [f"building:{b}" for b in sorted(cfg.buildings)]
-    items += [f"unit:{u}" for u in sorted(cfg.units)]
+    """What the production queue can hold: engineers, units and projects (SPEC_M17 - buildings
+    and walls are works for the crew)."""
+    items = ["engineer", *(f"unit:{u}" for u in sorted(cfg.units))]
     items += [f"project:{p}" for p in PROJECTS]
-    items += ["walls"]
     return [i for i in items if item_allowed(state, cfg, city, i) is None]
+
+
+def building_options(state: GameState, cfg: Config, city: City) -> list[str]:
+    """Buildings the city may order as works now (materials aside)."""
+    from beacon import works
+
+    return [
+        b
+        for b in sorted(cfg.buildings)
+        if building_allowed(state, cfg, city, b) is None
+        and not works.ordered(city, f"building:{b}")
+    ]
 
 
 def item_cost(
@@ -176,10 +190,12 @@ def item_cost(
 ) -> int:
     """Production cost; units cost less with Mass Production (tech effect unit_cost_pct). Walls
     (SPEC_M16) cost the production of the pieces the city has ordered."""
-    if item == "walls":
-        from beacon.layout import wall_production
+    if item == "engineer":
+        from beacon import works
 
-        return wall_production(cfg, city) if city is not None else 1
+        return (
+            works.engineer_cost(cfg, city) if city is not None else cfg.materials("engineers.cost")
+        )
     kind, _, ident = item.partition(":")
     if kind == "building":
         return cfg.buildings[ident]["cost"]
@@ -266,12 +282,12 @@ def complete_item(state: GameState, cfg: Config, city: City, item: str) -> dict[
     cost = materials.item_cost(cfg, city, item)
     if materials.short(city, cost):
         return None
-    if item == "walls":
-        materials.pay(city, cost)
-        gained = sum(cfg.materials(f"walls.{m}.hp") for _, _, m in city.wall_orders)
-        n = layout.finish_walls(city)
-        city.hp = min(max_hp(cfg, city), city.hp + gained)
-        return {"kind": "walls_built", "city": city.id, "pieces": n}
+    if item == "engineer":  # SPEC_M17
+        from beacon import works
+
+        works.ensure_crew(cfg, city)
+        city.engineers += 1
+        return {"kind": "engineer_trained", "city": city.id, "engineers": city.engineers}
     kind, _, ident = item.partition(":")
     if kind == "building":
         materials.pay(city, cost)
@@ -339,6 +355,10 @@ def process_city(
     from beacon import materials
 
     materials.gather(state, cfg, city, cy.worked)
+    # the crew's labour on the city's works (SPEC_M17)
+    from beacon import works
+
+    events.extend(works.progress(state, cfg, city))
     # production
     production = production_in + arrived.get("production", 0)
     head = city.queue[0] if city.queue else None
@@ -389,7 +409,9 @@ def process_city(
 
 
 def maintenance(state: GameState, cfg: Config, pid: str) -> int:
-    return sum(
+    from beacon import works  # the crew's pay (SPEC_M17)
+
+    return works.upkeep(state, cfg, pid) + sum(
         cfg.buildings[b]["maintenance"]
         for c in state.cities
         if c.owner == pid and c.status == ACTIVE

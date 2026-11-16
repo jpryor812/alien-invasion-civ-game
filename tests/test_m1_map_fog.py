@@ -124,10 +124,11 @@ def test_starting_units_near_capital(cfg, world):
         others = [c for c in world.cities if c.owner == pid and not c.is_capital]
         per_city = sum(e["count"] for e in cfg.t("start.other_cities.list"))
         assert len(field) == expected + per_city * len(others)
-        # the capital's army is at the capital; each other city has its own infantry and engineer
+        # the capital's army is at the capital; each other city has its own infantry (and a crew
+        # of engineers, SPEC_M17)
         for c in [capital, *others]:
             near = [u for u in field if hexgrid.distance(u.tile, c.tile, world.width) <= radius]
-            assert {"infantry", "engineers"} <= {u.type for u in near}, c.name
+            assert "infantry" in {u.type for u in near} and c.engineers >= 1, c.name
         # no farms or mines at the start: engineers build them (designer 2026-11-14)
         assert not any(t.improvement for t in world.tiles)
         # every starting city holds its city defence units, on the city tile (they never move)

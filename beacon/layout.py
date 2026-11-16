@@ -139,6 +139,15 @@ def ensure(state: GameState, cfg: Config, city: City) -> None:
     """Give a player city its hall and a place for every building it already has."""
     if city.owner not in state.players:
         return
+    from beacon import works  # every player city has a crew (SPEC_M17)
+
+    works.ensure_crew(cfg, city)
+    pieces = {(x, y) for w in city.works if w["what"] == "walls" for x, y, _ in w["cells"]}
+    loose = [o for o in city.wall_orders if (o[0], o[1]) not in pieces]
+    if loose:  # pieces ordered before M17 (unpaid then): the crew builds them now
+        works.add(city, "walls", works.wall_labour(cfg, loose), {}, cells=[list(o) for o in loose])
+    if "walls" in city.queue:
+        city.queue = [i for i in city.queue if i != "walls"]
     if not any(e["what"] == HALL for e in city.layout):
         n = size_of(cfg, HALL)
         city.layout.insert(

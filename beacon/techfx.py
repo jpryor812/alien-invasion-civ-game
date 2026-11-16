@@ -6,6 +6,7 @@ Keys (all integers):
   city_yields {yield: n}     flat yield in every city
   growth_pct                 faster births and children growing up
   build_turns                change to engineers' build time (negative is faster; at least 1)
+  labour_pct                 percent more labour from each city's engineers (SPEC_M17)
   unit_cost_pct              change to units' production cost
   free_upkeep_per_city       extra units per city with no gold upkeep
   flanking_pct               extra strength per flanking unit
@@ -78,6 +79,7 @@ def listed(cfg: Config, player: Player | None, key: str) -> set[str]:
 DESCRIBE = {
     "growth_pct": "Cities grow {v}% faster; children grow up {v}% faster",
     "build_turns": "Engineers build {n} turn faster",
+    "labour_pct": "+{v}% labour from engineers",
     "unit_cost_pct": "Units cost {n}% less production",
     "free_upkeep_per_city": "+{v} unit per city free of gold upkeep",
     "flanking_pct": "+{v}% strength per flanking unit",

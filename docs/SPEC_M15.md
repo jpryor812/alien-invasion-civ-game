@@ -1,5 +1,8 @@
 # M15 — The settlement sandbox (designer, 2026-11-16)
 
+> Retired in M17 (docs/SPEC_M17.md): its labour-and-materials loop and the Galactic Exchange were
+> merged into the main game and the sandbox code was removed. Kept as a record.
+
 Approved by the designer ("yes let's build this. go ahead and give it a shot"). A playable slice of
 the material economy and the zoomed-in city view, separate from the main game, to feel the loop
 before converting the whole game (docs/FUTURE_SETTLEMENTS.md). Every number is a tunable in

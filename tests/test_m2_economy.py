@@ -87,8 +87,9 @@ def test_building_completes_and_changes_yields(cfg, game):
     assert "water_treatment" not in city.buildings
     before = economy.city_yields(game, cfg, city).totals["food"]
     item = ("building:water_treatment",)
+    city.stores.update(timber=150, stone=150)  # paid up front, built by the crew (SPEC_M17)
     apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=item))
-    city.production_store = cfg.buildings["water_treatment"]["cost"]
+    city.works[0]["left"] = 1
     events, _ = economy.process_city(game, cfg, city, game.players[PID])
     assert any(e["kind"] == "building_completed" for e in events)
     assert "water_treatment" in city.buildings and city.queue == []
@@ -98,6 +99,7 @@ def test_building_completes_and_changes_yields(cfg, game):
 
 def test_tech_gating(cfg, game):
     city = capital(game)
+    city.stores.update(timber=150, stone=150, iron=80)
     with pytest.raises(CommandError, match="advanced_manufacturing"):
         apply_command(
             game, cfg, SetProduction(player=PID, city=city.id, items=("building:factory",))
@@ -109,9 +111,9 @@ def test_tech_gating(cfg, game):
     player.research_progress = cfg.techs["advanced_manufacturing"]["cost"] - 1
     advance_turn(game, cfg)
     assert "advanced_manufacturing" in player.techs and player.research is None
+    assert "factory" in economy.building_options(game, cfg, city)
     apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=("building:factory",)))
-    assert city.queue == ["building:factory"]
-    assert "building:factory" in economy.production_options(game, cfg, city)
+    assert city.works[-1]["what"] == "building:factory"  # a work for the crew (SPEC_M17)
 
 
 def test_unconnected_city_produces_and_a_road_adds_connection_gold(cfg, game):
@@ -195,17 +197,17 @@ def test_tank_needs_oil(cfg, game):
 def test_purchase(cfg, game):
     city = capital(game)
     player = game.players[PID]
-    item = ("building:air_defence_battery",)
+    item = ("unit:recon_team",)  # gold buys units (buildings are the crew's, SPEC_M17)
     apply_command(game, cfg, SetProduction(player=PID, city=city.id, items=item))
-    price = cfg.buildings["air_defence_battery"]["cost"] * cfg.t("economy.purchase_pct") // 100
+    price = economy.purchase_price(cfg, item[0], player, 0, city)
     player.gold = price - 1
     before = state_digest(game)
     with pytest.raises(CommandError, match="costs"):
         apply_command(game, cfg, Purchase(player=PID, city=city.id))
     assert state_digest(game) == before
     player.gold = price
-    apply_command(game, cfg, Purchase(player=PID, city=city.id))
-    assert "air_defence_battery" in city.buildings and player.gold == 0
+    events = apply_command(game, cfg, Purchase(player=PID, city=city.id))
+    assert any(e["kind"] == "unit_completed" for e in events) and player.gold == 0
 
 
 def test_gold_deficit_eats_research(cfg, game):

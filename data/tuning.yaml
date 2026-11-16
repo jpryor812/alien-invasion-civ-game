@@ -313,18 +313,16 @@ start:
   units:
     status: placeholder
     note: Units each player starts with, placed at and around the capital. Designer 2026-11-14 -
-      two infantry and one engineer at the capital (the scout is kept for exploring), and one
-      infantry and one engineer at every other starting city (other_cities).
+      two infantry at the capital (the scout is kept for exploring), and one infantry at every
+      other starting city (other_cities). SPEC_M17 - engineers are each city's crew, not units.
     list:
       - {type: infantry, count: 2}
       - {type: recon_team, count: 1}
-      - {type: engineers, count: 1}
   other_cities:
     status: placeholder
     note: Units placed at each starting city other than the capital (designer 2026-11-14).
     list:
       - {type: infantry, count: 1}
-      - {type: engineers, count: 1}
   city_units:
     status: placeholder
     note: City defence units placed on the tile of every city a player owns at the start
@@ -578,7 +576,7 @@ survivor:
     scrap: {weight: 3, scrap: 20}
   hunt_radius: 2
   escape_survivors: 2
-  founding_units: [engineers, recon_team]
+  founding_units: [recon_team]
   ai_attack_turn: 9
   ai_min_hp: 20
 

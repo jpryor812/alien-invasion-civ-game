@@ -20,10 +20,12 @@ from beacon import (
     hexgrid,
     improvements,
     liberation,
+    materials,
     movement,
     promotions,
     recruits,
     tech,
+    works,
 )
 from beacon.commands import (
     AcceptDeal,
@@ -33,6 +35,7 @@ from beacon.commands import (
     Attack,
     BuildImprovement,
     CancelJob,
+    CancelWork,
     CastVote,
     ChooseEspionageTech,
     ChooseLeaderBonus,
@@ -50,6 +53,7 @@ from beacon.commands import (
     MergeUnits,
     MoveBuilding,
     MoveUnit,
+    MoveWork,
     OfferRecruit,
     PlaceBuilding,
     PlaceWalls,
@@ -74,6 +78,7 @@ from beacon.commands import (
     StartBarrage,
     StartEspionage,
     StartFamily,
+    Trade,
     UnseatRecruit,
     UpgradeDefence,
     UpgradeTurret,
@@ -159,18 +164,30 @@ def _set_research(state: GameState, cfg: Config, cmd: SetResearch) -> Events:
 @handles(SetProduction)
 def _set_production(state: GameState, cfg: Config, cmd: SetProduction) -> Events:
     city = own_city(state, cmd.player, cmd.city)
-    buildings = [i for i in cmd.items if i.startswith("building:")]
+    buildings = [i.split(":", 1)[1] for i in cmd.items if i.startswith("building:")]
+    rest = [i for i in cmd.items if not i.startswith("building:") and i != "walls"]
     if len(buildings) != len(set(buildings)):
-        raise CommandError("a building appears twice in the queue")
-    for item in cmd.items:
+        raise CommandError("a building appears twice")
+    for b in buildings:  # SPEC_M17: buildings are works for the crew, paid in materials now
+        if works.ordered(city, f"building:{b}"):
+            continue
+        problem = works.building_problem(state, cfg, city, b)
+        if problem:
+            raise CommandError(f"{city.name} cannot build {b}: {problem}")
+    for item in rest:
         problem = economy.item_allowed(state, cfg, city, item)
         if problem:
             raise CommandError(f"{city.name} cannot produce {item}: {problem}")
-    city.queue = list(cmd.items)
-    from beacon.layout import drop_unqueued  # placed buildings taken off the queue lose their place
+    events: Events = []
+    from beacon import layout
 
-    drop_unqueued(city)
-    return [{"kind": "production_set", "city": city.id, "items": list(cmd.items)}]
+    layout.ensure(state, cfg, city)
+    for b in buildings:
+        if not works.ordered(city, f"building:{b}"):
+            job = works.order_building(state, cfg, city, b)
+            events.append({"kind": "work_ordered", "city": city.id, "work": job["id"], "what": b})
+    city.queue = rest
+    return [*events, {"kind": "production_set", "city": city.id, "items": rest}]
 
 
 @handles(Purchase)
@@ -179,6 +196,8 @@ def _purchase(state: GameState, cfg: Config, cmd: Purchase) -> Events:
     item = cmd.item or (city.queue[0] if city.queue else "")
     if not item or item.startswith("project:"):
         raise CommandError(f"{city.name} has nothing to buy")
+    if item.startswith("building:") or item == "walls":
+        raise CommandError("buildings and walls are built by engineers, not bought (SPEC_M17)")
     if item not in economy.production_options(state, cfg, city):
         raise CommandError(f"{city.name} cannot build {item}")
     problem = economy.item_allowed(state, cfg, city, item)
@@ -245,14 +264,45 @@ def _build(state: GameState, cfg: Config, cmd: BuildImprovement) -> Events:
     return [{"kind": "job_started", "unit": unit.id, "improvement": cmd.improvement}]
 
 
+@handles(CancelWork)
+def _cancel_work(state: GameState, cfg: Config, cmd: CancelWork) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    job = works.cancel(cfg, city, cmd.work)
+    if job is None:
+        raise CommandError("no such work in this city")
+    return [{"kind": "work_cancelled", "city": city.id, "what": job["what"]}]
+
+
+@handles(MoveWork)
+def _move_work(state: GameState, cfg: Config, cmd: MoveWork) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    job = next((w for w in city.works if w["id"] == cmd.work), None)
+    if job is None:
+        raise CommandError("no such work in this city")
+    city.works.remove(job)
+    city.works.insert(max(0, min(cmd.to, len(city.works))), job)
+    return [{"kind": "work_moved", "city": city.id, "work": job["id"]}]
+
+
+@handles(Trade)
+def _trade(state: GameState, cfg: Config, cmd: Trade) -> Events:
+    from beacon import exchange
+
+    city = own_city(state, cmd.player, cmd.city)
+    problem = exchange.trade_problem(state, cfg, city, cmd.good, cmd.amount, cmd.side)
+    if problem:
+        raise CommandError(problem)
+    return exchange.trade(state, cfg, city, cmd.good, cmd.amount, cmd.side)
+
+
 @handles(ImproveTile)
 def _improve_tile(state: GameState, cfg: Config, cmd: ImproveTile) -> Events:
     city = own_city(state, cmd.player, cmd.city)
     problem = improvements.tile_problem(state, cfg, city, cmd.tile, cmd.improvement)
     if problem:
         raise CommandError(problem)
-    unit = improvements.send_engineers(state, cfg, city, cmd.tile, cmd.improvement)
-    return [{"kind": "job_started", "unit": unit.id, "improvement": cmd.improvement}]
+    job = works.order_tile(state, cfg, city, cmd.tile, cmd.improvement)
+    return [{"kind": "work_ordered", "city": city.id, "work": job["id"], "what": job["what"]}]
 
 
 # -- units ------------------------------------------------------------------------------------
@@ -987,16 +1037,16 @@ def _place_building(state: GameState, cfg: Config, cmd: PlaceBuilding) -> Events
     if problem:
         raise CommandError(problem)
     if layout.pending(city, cmd.building) is not None:
-        raise CommandError(f"{cmd.building} is already placed and waiting to be built")
+        raise CommandError(f"{cmd.building} is already placed and being built")
     problem = layout.place_problem(state, cfg, city, cmd.building, cmd.x, cmd.y)
     if problem:
         raise CommandError(problem)
-    entry = layout.order(cfg, city, cmd.building, cmd.x, cmd.y)
-    item = f"building:{cmd.building}"
-    if item not in city.queue:
-        city.queue = [*city.queue, item]
+    problem = works.building_problem(state, cfg, city, cmd.building)
+    if problem:
+        raise CommandError(problem)
+    job = works.order_building(state, cfg, city, cmd.building, (cmd.x, cmd.y))
     return [
-        {"kind": "building_placed", "city": city.id, "building": cmd.building, "entry": entry["id"]}
+        {"kind": "building_placed", "city": city.id, "building": cmd.building, "work": job["id"]}
     ]
 
 
@@ -1025,7 +1075,10 @@ def _place_walls(state: GameState, cfg: Config, cmd: PlaceWalls) -> Events:
     problem = layout.wall_problem(state, cfg, city, cells, cmd.material)
     if problem:
         raise CommandError(problem)
-    layout.order_walls(city, cells, cmd.material)
-    if "walls" not in city.queue:
-        city.queue = [*city.queue, "walls"]
-    return [{"kind": "walls_ordered", "city": city.id, "pieces": len(cells)}]
+    taken = {(o[0], o[1]) for o in city.wall_orders}
+    new = [c for c in cells if c not in taken]
+    lack = materials.short(city, works.walls_cost(cfg, len(new), cmd.material))
+    if lack:
+        raise CommandError(works.short_text(lack))
+    works.order_walls(state, cfg, city, new, cmd.material)
+    return [{"kind": "walls_ordered", "city": city.id, "pieces": len(new)}]

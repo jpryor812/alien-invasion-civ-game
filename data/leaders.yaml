@@ -48,7 +48,7 @@ traits:
     merchant: {name: Merchant, info: +10% gold in every city., effects: {yield_pct: {gold: 10}}}
     mystic: {name: Mystic, info: +10% beacon in every city., effects: {yield_pct: {beacon: 10}}}
     tactician: {name: Tactician, info: +10% strength per flanking unit., effects: {flanking_pct: 10}}
-    builder: {name: Builder, info: Engineers build 1 turn faster., effects: {build_turns: -1}}
+    builder: {name: Builder, info: Engineers work 25% faster and tile works take 1 turn less., effects: {build_turns: -1, labour_pct: 25}}
     nurturing: {name: Nurturing, info: Cities grow and children grow up 25% faster., effects: {growth_pct: 25}}
 
 xp:

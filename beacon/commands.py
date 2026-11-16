@@ -416,6 +416,39 @@ class ImproveTile(Command):
     improvement: str
 
 
+@register
+@dataclass(frozen=True)
+class CancelWork(Command):
+    """Take a work off the city's list; its materials come back (SPEC_M17)."""
+
+    kind: ClassVar[str] = "cancel_work"
+    city: int
+    work: int
+
+
+@register
+@dataclass(frozen=True)
+class MoveWork(Command):
+    """Move a work to position `to` in the city's list (the crew works top down, SPEC_M17)."""
+
+    kind: ClassVar[str] = "move_work"
+    city: int
+    work: int
+    to: int
+
+
+@register
+@dataclass(frozen=True)
+class Trade(Command):
+    """Buy or sell materials at the Galactic Exchange for a city's stores (SPEC_M17)."""
+
+    kind: ClassVar[str] = "trade"
+    city: int
+    good: str
+    amount: int
+    side: str  # buy | sell
+
+
 # -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------
 
 

@@ -230,7 +230,7 @@ class Session:
                 turns = max(
                     0,
                     -(
-                        -(economy.item_cost(cfg, head, s.players[me]) - economy.stored(c, head))
+                        -(economy.item_cost(cfg, head, s.players[me], c) - economy.stored(c, head))
                         // prod
                     ),
                 )
@@ -687,7 +687,14 @@ class Session:
         c = s.cities[city_id]
         layout.ensure(s, cfg, c)
         cy = economy.city_yields(s, cfg, c)
-        from beacon import improvements
+        from beacon import exchange, improvements
+        from beacon import works as works_mod
+
+        rate = works_mod.rate(s, cfg, c)
+        backlog = sum(w["left"] for w in c.works)
+
+        def eta(labour: int) -> int | None:  # turns if ordered now, behind the current works
+            return -(-(backlog + labour) // rate) if rate > 0 else None
 
         def works(t: int) -> list[dict[str, Any]]:
             out = []
@@ -696,14 +703,15 @@ class Session:
                 if spec["kind"] != "tile":
                     continue
                 why = improvements.tile_problem(s, cfg, c, t, i)
-                if why and not why.startswith("no free engineers"):
-                    continue  # does not fit this hex, or not yet known
+                if why:
+                    continue  # does not fit this hex, not yet known, or already under way
                 out.append(
                     {
                         "id": i,
                         "name": i.replace("_", " ").capitalize(),
                         "note": note(cfg, "improvements", i),
-                        "turns": spec["turns"],
+                        "labour": works_mod.tile_labour(s, cfg, c, i),
+                        "turns": eta(works_mod.tile_labour(s, cfg, c, i)),
                         "yields": dict(spec.get("yields") or {}),
                         "goods": dict(cfg.materials("sources.improvements").get(i) or {}),
                         "why": why,
@@ -728,7 +736,6 @@ class Session:
                     "works": works(t),
                 }
             )
-        queued = [i.split(":", 1)[1] for i in c.queue if i.startswith("building:")]
         catalog = {}
         for b in sorted(cfg.buildings):
             why = economy.building_allowed(s, cfg, c, b)
@@ -738,18 +745,19 @@ class Session:
                 "name": b.replace("_", " ").capitalize(),
                 "note": note(cfg, "buildings", b),
                 "size": layout.size_of(cfg, b),
-                "production": cfg.buildings[b]["cost"],
+                "labour": works_mod.building_labour(cfg, b),
+                "turns": eta(works_mod.building_labour(cfg, b)),
                 "materials": materials.building_cost(cfg, b),
+                "short": materials.short(c, materials.building_cost(cfg, b)),
                 "why": why,
-                "placed": layout.pending(c, b) is not None,
-                "queued": b in queued,
+                "ordered": works_mod.ordered(c, f"building:{b}") is not None,
             }
         player = s.players[me]
         walls = {
             m: {
                 "name": w["name"],
                 "cost": w["cost"],
-                "production": w["production"],
+                "labour": w["production"] * cfg.materials("labour.per_wall"),
                 "strength": w["strength"],
                 "hp": w["hp"],
                 "why": None
@@ -786,15 +794,16 @@ class Session:
                 )
                 for i in c.queue
             ],
-            "engineers": [
-                {
-                    "id": u.id,
-                    "tile": u.tile,
-                    "job": u.job.improvement if u.job else None,
-                    "turns_left": u.job.turns_left if u.job else None,
-                }
-                for u in improvements.city_engineers(s, cfg, c)
-            ],
+            "works": _work_rows(s, cfg, c),
+            "crew": {
+                "engineers": works_mod.crew(c),
+                "labour": rate,
+                "per_engineer": cfg.materials("labour.per_engineer"),
+                "next_cost": works_mod.engineer_cost(cfg, c),
+                "upkeep": cfg.materials("engineers.upkeep"),
+            },
+            "exchange": exchange.quotes(s, cfg),
+            "gold": s.players[me].gold,
             "worked": cy.worked,
         }
 
@@ -806,8 +815,8 @@ class Session:
         options: list[dict[str, Any]] = []
         for item in economy.production_options(s, cfg, c):
             kind, _, ident = item.partition(":")
-            if item == "walls":  # the wall pieces laid in the builder (SPEC_M16)
-                kind = ident = "walls"
+            if item == "engineer":  # one more engineer for the crew (SPEC_M17)
+                kind = ident = "engineer"
             cost = economy.item_cost(cfg, item, s.players[me], c) if kind != "project" else None
             needs = materials.item_cost(cfg, c, item)
             options.append(
@@ -823,10 +832,10 @@ class Session:
                     ),
                     "note": note(cfg, "buildings" if kind == "building" else "units", ident)
                     if kind in ("building", "unit")
-                    else f"{len(c.wall_orders)} wall pieces laid out in the builder"
-                    if kind == "walls"
+                    else "Joins the city's crew: more engineers build its works faster"
+                    if kind == "engineer"
                     else "",
-                    "info": describe(cfg, kind, ident) if kind != "walls" else {},
+                    "info": describe(cfg, kind, ident) if kind != "engineer" else {},
                     "materials": needs,
                     "short": materials.short(c, needs),
                     "progress": economy.stored(c, item),
@@ -864,6 +873,8 @@ class Session:
             "growth_threshold": economy.growth_threshold(cfg, c.pop),
             "worked": cy.worked,
             "options": options,
+            "works": _work_rows(s, cfg, c),  # SPEC_M17
+            "crew": max(0, c.engineers),
             "stores": {g: c.stores.get(g, 0) for g in materials.goods(cfg)},
             "caps": materials.caps(cfg, c),
             "income": materials.income(s, cfg, c, cy.worked),
@@ -1554,9 +1565,35 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
     return {"lines": [], "tags": [], "note": ""}
 
 
+def _work_rows(s: GameState, cfg: Config, c: Any) -> list[dict[str, Any]]:
+    from beacon import works
+
+    out = []
+    for w, turns in zip(c.works, works.turns(s, cfg, c), strict=True):
+        what = w["what"]
+        if what == "walls":
+            name = f"{len(w['cells'])} wall pieces"
+        elif what.startswith("tile:"):
+            name = f"{w['improvement'].replace('_', ' ').capitalize()} on the land"
+        else:
+            name = what.split(":", 1)[1].replace("_", " ").capitalize()
+        out.append(
+            {
+                "id": w["id"],
+                "what": what,
+                "name": name,
+                "left": w["left"],
+                "total": w["total"],
+                "turns": turns,
+                "tile": w.get("tile"),
+            }
+        )
+    return out
+
+
 def _item_name(city: Any, item: str) -> str:
-    if item == "walls":
-        return f"Walls ({len(city.wall_orders)} pieces)"
+    if item == "engineer":
+        return "Engineer"
     return item.split(":", 1)[-1].replace("_", " ").capitalize()
 
 

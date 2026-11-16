@@ -148,7 +148,6 @@ FILES = (
     "story",
     "leaders",
     "council",
-    "settlement",
     "materials",
 )
 
@@ -260,10 +259,6 @@ class Config:
     def materials(self, path: str) -> Any:
         """A value from data/materials.yaml (materials and city layouts, docs/SPEC_M16.md)."""
         return self._section("materials", path)
-
-    def settlement(self, path: str) -> Any:
-        """A value from data/settlement.yaml (the settlement sandbox, docs/SPEC_M15.md)."""
-        return self._section("settlement", path)
 
     def council(self, path: str) -> Any:
         """A value from data/council.yaml (the council of continents, docs/SPEC_M13.md)."""

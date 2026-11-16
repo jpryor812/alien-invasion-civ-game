@@ -241,6 +241,10 @@ def found(state: GameState, cfg: Config, city: City, pid: str) -> Events:
 
     materials.start_stores(cfg, city)
     layout.ensure(state, cfg, city)
+    from beacon import works  # the town's first crew (SPEC_M17)
+
+    city.engineers = -1
+    works.ensure_crew(cfg, city, cfg.materials("labour.town_start"))
     scrap, player.scrap = player.scrap, 0
     for t in sv["founding_units"]:
         place_unit(state, cfg, t, pid, city.tile, cfg.t("cities.work_radius"))

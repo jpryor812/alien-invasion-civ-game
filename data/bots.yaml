@@ -3,12 +3,14 @@
 production:
   status: placeholder
   note: The bot keeps about this many military units per active city (one garrison plus one
-    field unit at 200) and this many engineers. The capital builds capital_priority (beacons)
+    field unit at 200), this many road crews (engineers units) and a city crew of `crew`
+    engineers (SPEC_M17). Buildings are ordered as works, one at a time. The capital builds capital_priority (beacons)
     once military reaches capital_build_military_pct of the city count. It keeps at least
     min_military units however few cities it has (one starting city, designer 2026-11-14).
   military_per_city_pct: 250
   min_military: 4
-  engineers: 2
+  engineers: 1
+  crew: 3
   recon: 2
   scout_boats: 1
   building_priority: [workshop, food_depot, market, school, military_base, port, factory,
@@ -91,3 +93,13 @@ tools:
   nest_radius: 4
   resistance_reserve: 120
   sabotage_min_hp_pct: 60
+
+market:
+  status: placeholder
+  note: SPEC_M17 - the Galactic Exchange. Sell sell_pct of a store's cap when it is at least
+    sell_at_pct full; buy a building's shortfall of up to buy_up_to units when gold stays above
+    reserve afterwards.
+  sell_at_pct: 90
+  sell_pct: 20
+  buy_up_to: 30
+  reserve: 150

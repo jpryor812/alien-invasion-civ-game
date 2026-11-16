@@ -993,3 +993,29 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - Engineers no longer ask for orders on the map, and the map no longer offers them tile works.
   Roads, railways, turrets and sea bridges stay map orders (they reach beyond a city's land).
   The AI still orders tile works from the map as before (same rules, same result).
+
+## M17: labour and materials (docs/SPEC_M17.md, designer 2026-11-16)
+- Engineers are a per-city count (the crew), not units. Each gives 8 labour a turn (placeholder);
+  a building needs labour equal to its old production cost, so a 45-cost library takes 3 turns with
+  2 engineers. Works are built top first; the first takes what it needs and the rest passes on.
+- Materials are paid when a work is ordered and refunded in full on cancel; refunds may exceed the
+  store cap. A city short of materials cannot order the work (the Exchange can cover a shortfall).
+- Training an engineer costs production (30 + 15 per engineer the city has) and each costs 1 gold
+  a turn. Capitals start with 2, other cities 1, a band's first town 2; a freed or captured city
+  gets 1 when it first works.
+- The Builder trait and Robotics now also give +25% labour (labour_pct); their -1 turn still
+  shortens tile works.
+- The map's engineers unit stays as the road crew for roads, railways, turrets and sea bridges;
+  starting and founding engineers units are removed. Repair crews still rebuild pillaged works.
+- The Exchange has no random drift (the sandbox had a seeded one): prices move only with trade and
+  drift 2 points a turn back to 100. One index per good, shared by all players.
+- The AI orders one building at a time (its old priorities), keeps a crew of 3, improves worked
+  tiles with the crew, sells stores at 90% of cap and buys small shortfalls when it has gold.
+- Old saves: buildings left in a production queue still finish from production; wall pieces
+  ordered before M17 become a crew work (still unpaid, as they were never charged).
+- Balance after M17 (10 seeds, 100 turns, survivor start): first town median turn 9 (as M16);
+  cities freed median 62 (M16: 26.5); the barrage starts in 10 of 10 games (M16: 1). With
+  buildings off the production queue, all production trains units, so AI armies roughly double.
+  Needs tuning (alien strength or unit costs) once the designer has played it.
+- The AI re-chooses a filler project (wealth, research) every turn instead of keeping it, since
+  projects never finish and buildings no longer empty the queue.

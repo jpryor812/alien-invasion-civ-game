@@ -308,7 +308,7 @@ def test_moving_onto_a_twin_merges_and_jobs_can_be_cancelled(cfg):
     apply_command(s, cfg, MoveUnit(player=EU, unit=one.id, target=east(a)))
     assert two.count == 2 and str(one.id) not in s.units
     eng = create_unit(s, cfg, "engineers", EU, at(8, 8))
-    apply_command(s, cfg, BuildImprovement(player=EU, unit=eng.id, improvement="farm"))
+    apply_command(s, cfg, BuildImprovement(player=EU, unit=eng.id, improvement="road"))
     apply_command(s, cfg, CancelJob(player=EU, unit=eng.id))
     assert eng.job is None and eng.order == "none"
 

@@ -19,7 +19,7 @@
   const load = (key, src, fallback) => { const im = new Image(); im.onload = () => { IMG[key] = im; }; im.onerror = () => { if (fallback) load(key, fallback); }; im.src = src; };
   for (const [k, src] of Object.entries({ grass: "terrain/grass.jpg", rock: "terrain/rock.jpg", sand: "terrain/sand.jpg", tundra: "terrain/tundra.jpg", snow: "terrain/snow.jpg",
     forest0: "features/forest_0.png", forest1: "features/forest_1.png", forest2: "features/forest_2.png" })) load(k, src);
-  // Building art: builder/<id>.webp (Meshy and Blender renders), else the sandbox's closest model.
+  // Building art: builder/<id>.webp (Meshy and Blender renders), else the closest kit model.
   const STAND_IN = { city_hall: "city_hall", food_depot: "granary", workshop: "workshop", market: "warehouse", library: "house", school: "house",
     military_base: "watchtower", radio_tower: "watchtower", storehouse: "warehouse", factory: "workshop", port: "warehouse", shipyard: "warehouse" };
   function sprite(id) {
@@ -164,14 +164,14 @@
       const [, sy] = toScreen(0, (e.y + e.size - 0.5) * cellW());
       items.push({ y: sy, draw: () => drawBuilding(e.what, e.x, e.y, e.size, e.done ? 1 : 0.6, B.sel === e.id ? "rgba(255,230,120,0.18)" : e.done ? null : "rgba(110,180,255,0.18)") });
     }
-    for (const en of d.engineers) {  // the city's engineers, where they stand or work
-      const t = d.tiles.find((x) => x.tile === en.tile); if (!t) continue;
-      const [sx, sy] = toScreen(t.x / 1000 - 0.35, t.y / 1000 + 0.45);
+    for (const w of d.works.filter((x) => x.tile != null)) {  // tile works under way: crew marker
+      const t = d.tiles.find((x) => x.tile === w.tile); if (!t) continue;
+      const [sx, sy] = toScreen(t.x / 1000 - 0.35, t.y / 1000 + 0.45), n = w.turns == null ? "–" : `${w.turns}`;
       items.push({ y: sy, draw: () => {
-        g.fillStyle = en.job ? "rgba(240,170,60,0.95)" : "rgba(90,170,255,0.95)"; g.beginPath(); g.arc(sx, sy, 13, 0, 7); g.fill();
+        g.fillStyle = "rgba(240,170,60,0.95)"; g.beginPath(); g.arc(sx, sy, 13, 0, 7); g.fill();
         g.strokeStyle = "#fff"; g.lineWidth = 2; g.stroke();
         g.font = "14px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🛠", sx, sy + 1);
-        if (en.job) { g.font = "bold 12px sans-serif"; g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 3; g.strokeText(`${en.turns_left}`, sx + 15, sy - 10); g.fillText(`${en.turns_left}`, sx + 15, sy - 10); }
+        g.font = "bold 12px sans-serif"; g.fillStyle = "#fff"; g.strokeStyle = "#000"; g.lineWidth = 3; g.strokeText(n, sx + 15, sy - 10); g.fillText(n, sx + 15, sy - 10);
       } });
     }
     items.sort((a, b) => a.y - b.y).forEach((it) => it.draw());
@@ -199,26 +199,26 @@
   }
 
   // -- the panel ------------------------------------------------------------------------------
+  // SPEC_M17: the one city screen. Materials are paid when a work is ordered; the crew's labour
+  // decides the turns. Production trains engineers and units.
+  const turnsTxt = (n) => n == null ? "no engineers" : `${n} turn${n === 1 ? "" : "s"}`;
+  const shortTxt = (m) => Object.entries(m || {}).map(([k, n]) => `${n} more ${k}`).join(", ");
   function panel() {
     const d = B.d, p = document.getElementById("bpanel");
-    const stores = Object.keys(d.stores).map((k) => `<span class="store">${MAT[k]} ${d.stores[k]}<span class="muted">/${d.caps[k]} +${d.income[k]}</span></span>`).join(" ");
+    const stores = Object.keys(d.stores).map((k) => `<span class="store" title="${pr(k)}: stored / room, + a turn from worked tiles">${MAT[k]} ${d.stores[k]}<span class="muted">/${d.caps[k]} +${d.income[k]}</span></span>`).join(" ");
     const sel = B.sel != null ? d.layout.find((e) => e.id === B.sel) : null;
     const tab = B.tab || "build";
-    const list = tab === "land" ? landList() : tab === "train" ? trainList() : tab === "build"
-      ? Object.entries(d.catalog).filter(([, b]) => !b.why || !/needs tech/.test(b.why)).map(([id, b]) => {
-        const short = Object.entries(b.materials).filter(([k, n]) => d.stores[k] < n);
-        const why = b.placed ? "placed, waiting to be built" : b.why;
-        return `<button class="bopt" data-place="${id}" ${why ? "disabled" : ""} title="${ec(b.note || "")}"><b>${ec(b.name)}</b><span class="muted"> ${b.size}x${b.size}</span>
-          <span class="cost">${costTxt(b.materials)} · ${b.production} work${short.length ? ` <span class="bad">(short of ${short.map(([k, n]) => `${n - d.stores[k]} ${k}`).join(", ")}: it will wait)</span>` : ""}</span>${why ? `<span class="why">${ec(why)}</span>` : ""}</button>`;
-      }).join("")
-      : Object.entries(d.wall_types).map(([id, w]) => `<button class="bopt${B.tool && B.tool.material === id ? " on" : ""}" data-wall="${id}" ${w.why ? "disabled" : ""}><b>${ec(w.name)}</b><span class="cost">${costTxt(w.cost)} · ${w.production} work · each piece +${w.strength / 10} strength, +${w.hp} HP</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
+    const list = { land: landList, train: trainList, walls: wallList, trade: tradeList }[tab]?.() ?? buildList();
     const walls = Object.entries(d.wall_totals).map(([m, t]) => `${t.pieces} ${m}`).join(", ");
+    const tabs = [["build", "Buildings"], ["walls", "Walls"], ["land", "Land"], ["train", "Train"], ["trade", "Exchange"]];
     p.innerHTML = `<div class="title">${ec(d.city.name)}</div>
-      <div class="row">${stores}</div>
-      <div class="row muted">Strength ${d.strength} · HP ${d.city.hp}/${d.city.max_hp}${walls ? ` · walls: ${walls}` : ""}${d.wall_orders.length ? ` · <span class="good">${d.wall_orders.length} pieces being built</span>` : ""}</div>
+      <div class="row">${stores} <span class="store">💰 ${d.gold}</span></div>
+      <div class="row muted">Strength ${d.strength} · HP ${d.city.hp}/${d.city.max_hp}${walls ? ` · walls: ${walls}` : ""}</div>
+      ${crewHtml()}
+      ${worksHtml()}
       ${queueHtml()}
       ${sel ? `<div class="bsel"><b>${ec(pr(sel.what))}</b> ${sel.done ? "" : '<span class="muted">(being built)</span>'} ${sel.what !== "city_hall" ? '<button id="bmove">Move</button>' : ""}</div>` : ""}
-      <div class="row btabs"><button class="${tab === "build" ? "primary" : ""}" data-tab="build">Buildings</button><button class="${tab === "walls" ? "primary" : ""}" data-tab="walls">Walls</button><button class="${tab === "land" ? "primary" : ""}" data-tab="land">Land</button><button class="${tab === "train" ? "primary" : ""}" data-tab="train">Train</button></div>
+      <div class="row btabs">${tabs.map(([k, l]) => `<button class="${tab === k ? "primary" : ""}" data-tab="${k}">${l}</button>`).join("")}</div>
       <div class="blist">${list}</div>`;
     p.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { B.tab = b.dataset.tab; B.tool = null; panel(); hint(); });
     p.querySelectorAll("[data-place]").forEach((b) => b.onclick = () => { B.tool = { kind: "place", what: b.dataset.place, size: d.catalog[b.dataset.place].size }; B.sel = null; hint(); });
@@ -227,45 +227,78 @@
     p.querySelectorAll("[data-train]").forEach((b) => b.onclick = () => send({ kind: "set_production", city: B.city, items: [...d.queue, b.dataset.train] }));
     p.querySelectorAll("[data-buy]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); send({ kind: "purchase", city: B.city, item: b.dataset.buy }); });
     p.querySelectorAll("[data-unqueue]").forEach((b) => b.onclick = () => { const k = +b.dataset.unqueue; send({ kind: "set_production", city: B.city, items: d.queue.filter((_, i) => i !== k) }); });
+    p.querySelectorAll("[data-cancel]").forEach((b) => b.onclick = () => send({ kind: "cancel_work", city: B.city, work: +b.dataset.cancel }));
+    p.querySelectorAll("[data-up]").forEach((b) => b.onclick = () => send({ kind: "move_work", city: B.city, work: +b.dataset.up, to: 0 }));
+    p.querySelectorAll("[data-trade]").forEach((b) => b.onclick = () => { const [side, good, n] = b.dataset.trade.split(":"); send({ kind: "trade", city: B.city, good, amount: +n, side }); });
     if (document.getElementById("bmove")) document.getElementById("bmove").onclick = () => { B.tool = { kind: "move", entry: sel.id, what: sel.what, size: sel.size }; hint(); };
   }
   const yTxt = (y) => Object.entries(y || {}).map(([k, n]) => `+${n} ${k}`).join(", ");
-  function queueHtml() {
+  function crewHtml() {
+    const c = B.d.crew;
+    return `<div class="bcrew"><span>🛠 <b>${c.engineers}</b> engineer${c.engineers === 1 ? "" : "s"} · <b>${c.labour}</b> labour a turn</span>
+      <button data-train="engineer" title="Train one more engineer: ${c.next_cost} production, then ${c.upkeep} gold a turn. Each adds ${c.per_engineer} labour a turn.">+ Engineer</button></div>`;
+  }
+  function worksHtml() {
     const d = B.d;
-    if (!d.queue_rows.length) return `<div class="bqueue muted">Nothing being built. Place a building, lay walls or train a unit.</div>`;
-    return `<div class="bqueue"><div class="muted">Being built (${d.production} work a turn)</div>${d.queue_rows.map((q, i) => {
-      const short = Object.entries(q.short || {}).map(([k, n]) => `${n} ${k}`).join(", ");
-      return `<div class="bq${i ? "" : " head"}"><b>${ec(q.name)}</b> <span class="muted">${q.cost != null ? `${q.progress || 0}/${q.cost} work${q.turns != null ? ` · ${q.turns} turn${q.turns === 1 ? "" : "s"}` : ""}` : ""}</span>
-        ${short ? `<span class="bad">short of ${short}</span>` : ""}
-        ${!i && q.price ? `<button data-buy="${q.item}" title="Finish it now with gold">Buy 💰${q.price}</button>` : ""}<button class="x" data-unqueue="${i}" title="Take it off the queue">×</button></div>`;
+    if (!d.works.length) return `<div class="bqueue muted">The engineers are idle. Place a building, lay walls or work a hex of land.</div>`;
+    return `<div class="bqueue"><div class="muted">Engineers are building (top first)</div>${d.works.map((w, i) => {
+      const pct = Math.round(100 * (w.total - w.left) / w.total);
+      return `<div class="bq${i ? "" : " head"}"><b>${ec(w.name)}</b><span class="muted">${turnsTxt(w.turns)}</span>
+        ${i ? `<button data-up="${w.id}" title="Build this first">↑</button>` : ""}<button class="x" data-cancel="${w.id}" title="Cancel: its materials come back">×</button>
+        <div class="bar"><i style="width:${pct}%"></i></div></div>`;
     }).join("")}</div>`;
   }
+  function queueHtml() {
+    const d = B.d;
+    if (!d.queue_rows.length) return "";
+    return `<div class="bqueue"><div class="muted">Training (${d.production} production a turn)</div>${d.queue_rows.map((q, i) => {
+      const short = shortTxt(q.short);
+      return `<div class="bq${i ? "" : " head"}"><b>${ec(q.name)}</b> <span class="muted">${q.cost != null ? `${q.progress || 0}/${q.cost}${q.turns != null ? ` · ${turnsTxt(q.turns)}` : ""}` : ""}</span>
+        ${short ? `<span class="bad">needs ${short}</span>` : ""}
+        ${!i && q.price ? `<button data-buy="${q.item}" title="Finish it now with gold">Buy 💰${q.price}</button>` : ""}<button class="x" data-unqueue="${i}" title="Take it off">×</button></div>`;
+    }).join("")}</div>`;
+  }
+  function buildList() {
+    const d = B.d;
+    return Object.entries(d.catalog).filter(([, b]) => !b.why || !/needs tech/.test(b.why)).map(([id, b]) => {
+      const why = b.ordered ? "being built" : b.why || (Object.keys(b.short).length ? `needs ${shortTxt(b.short)}` : null);
+      return `<button class="bopt" data-place="${id}" ${why ? "disabled" : ""} title="${ec(b.note || "")}"><b>${ec(b.name)}</b><span class="muted"> ${b.size}x${b.size}</span>
+        <span class="cost">${costTxt(b.materials) || "free"} · ${b.labour} labour · ${turnsTxt(b.turns)}</span>${why ? `<span class="why">${ec(why)}</span>` : ""}</button>`;
+    }).join("") + `<div class="row muted small">Materials are paid when you place it; your engineers then build it.</div>`;
+  }
+  function wallList() {
+    return Object.entries(B.d.wall_types).map(([id, w]) => `<button class="bopt${B.tool && B.tool.material === id ? " on" : ""}" data-wall="${id}" ${w.why ? "disabled" : ""}><b>${ec(w.name)}</b><span class="cost">each piece ${costTxt(w.cost)} · ${w.labour} labour · +${w.strength / 10} strength, +${w.hp} HP</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
+  }
   function landList() {
-    const d = B.d, free = d.engineers.filter((e) => !e.job).length, busy = d.engineers.length - free;
-    const crew = `<div class="row">🛠 Engineers on this land: <b>${free}</b> free${busy ? `, ${busy} at work` : ""}${d.engineers.filter((e) => e.job).map((e) => ` · ${pr(e.job)} (${e.turns_left})`).join("")}</div>`
-      + (free ? "" : `<button class="bopt" data-train="unit:engineers"><b>Train engineers</b><span class="cost">They appear here and work the land you choose.</span></button>`);
-    const t = d.tiles.find((x) => x.tile === B.tile);
-    if (!t) return crew + `<div class="row muted">Click a hex of the city's land to choose what to build on it.</div>`;
-    const busyHere = d.engineers.find((e) => e.job && e.tile === t.tile);
-    const here = [pr(t.elevation === "hills" ? "hills" : ""), pr(t.terrain), t.feature ? pr(t.feature) : "", t.resource ? pr(t.resource) : ""].filter(Boolean).join(", ");
-    const works = t.works.map((w) => `<button class="bopt" data-work="${w.id}" ${w.why ? "disabled" : ""} title="${ec(w.note || "")}"><b>${ec(w.name)}</b>
-      <span class="cost">${w.turns} turns${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
-    return crew + `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
-      + (busyHere ? `<div class="row good">🛠 Engineers are building a ${ec(pr(busyHere.job).toLowerCase())} here: ${busyHere.turns_left} turn${busyHere.turns_left === 1 ? "" : "s"} left.</div>`
-        : works || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
+    const d = B.d, t = d.tiles.find((x) => x.tile === B.tile);
+    if (!t) return `<div class="row muted">Click a hex of the city's land to choose what your engineers build on it.</div>`;
+    const busy = d.works.find((w) => w.tile === t.tile);
+    const here = [t.elevation === "hills" ? "Hills" : "", pr(t.terrain), t.feature ? pr(t.feature) : "", t.resource ? pr(t.resource) : ""].filter(Boolean).join(", ");
+    const opts = t.works.map((w) => `<button class="bopt" data-work="${w.id}" title="${ec(w.note || "")}"><b>${ec(w.name)}</b>
+      <span class="cost">${w.labour} labour · ${turnsTxt(w.turns)}${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span></button>`).join("");
+    return `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
+      + (busy ? `<div class="row good">🛠 Your engineers are building a ${ec(busy.name.toLowerCase())}: ${turnsTxt(busy.turns)}.</div>`
+        : opts || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
   }
   function trainList() {
-    const d = B.d, units = d.options.filter((o) => o.kind === "unit" || o.kind === "project");
+    const d = B.d, units = d.options.filter((o) => o.kind === "unit" || o.kind === "project" || o.kind === "engineer");
     if (!units.length) return `<div class="row muted">Nothing to train here yet.</div>`;
-    return units.map((o) => `<button class="bopt" data-train="${o.item}" title="${ec(o.note || "")}"><b>${ec(pr(o.id))}</b>
-      <span class="cost">${o.cost != null ? `${o.cost} work${o.turns != null ? ` · ${o.turns} turns` : ""}` : "project"}${Object.keys(o.materials || {}).length ? ` · ${costTxt(o.materials)}` : ""}${Object.keys(o.short || {}).length ? ` <span class="bad">(short: it will wait)</span>` : ""}</span>
+    return units.map((o) => `<button class="bopt" data-train="${o.item}" title="${ec(o.note || "")}"><b>${o.kind === "engineer" ? "🛠 Engineer (joins the crew)" : o.id === "engineers" ? "Road crew (roads and bridges)" : ec(pr(o.id))}</b>
+      <span class="cost">${o.cost != null ? `${o.cost} production${o.turns != null ? ` · ${turnsTxt(o.turns)}` : ""}` : "project"}${Object.keys(o.materials || {}).length ? ` · ${costTxt(o.materials)}` : ""}${Object.keys(o.short || {}).length ? ` <span class="bad">(short: it will wait)</span>` : ""}</span>
       ${o.price ? `<span class="buy" data-buy="${o.item}" title="Buy it now">💰${o.price}</span>` : ""}</button>`).join("");
+  }
+  function tradeList() {
+    const d = B.d;
+    return `<div class="row muted small">The Galactic Exchange: alien traders buy and sell materials for gold. Prices move with trade and drift back.</div>`
+      + Object.entries(d.exchange).map(([g, q]) => `<div class="bopt trade"><b>${MAT[g]} ${pr(g)}</b> <span class="muted">price ${q.index}%</span>
+        <span class="cost">They pay 💰${q.sell} · they ask 💰${q.buy} (each)</span>
+        <span class="row">${[10, 50].map((n) => `<button data-trade="sell:${g}:${n}" ${d.stores[g] < n ? "disabled" : ""}>Sell ${n}</button>`).join("")}${[10, 50].map((n) => `<button data-trade="buy:${g}:${n}" ${d.gold < q.buy * n || d.stores[g] + n > d.caps[g] ? "disabled" : ""}>Buy ${n}</button>`).join("")}</span></div>`).join("");
   }
   function hint() {
     const t = B.tool, bar = document.getElementById("bbar");
     bar.innerHTML = !t ? (B.tab === "land" ? "Click a hex of land, then choose what your engineers build there. Drag to pan, wheel to zoom."
       : "Choose a building or a wall to build. Click a building to select it, or a hex of land to work it. Drag to pan, wheel to zoom.")
-      : t.kind === "wall" ? `Drag across the land to lay ${ec(B.d.wall_types[t.material].name.toLowerCase())} pieces. Esc to stop.`
+      : t.kind === "wall" ? `Drag across the land to lay ${ec(B.d.wall_types[t.material].name.toLowerCase())} pieces (paid when you let go). Esc to stop.`
       : `Move the ${ec(pr(t.what))} and click to ${t.kind === "move" ? "set it down" : "place it"}. Blue fits, red does not. Esc to cancel.`;
   }
 

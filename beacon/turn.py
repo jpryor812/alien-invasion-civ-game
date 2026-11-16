@@ -115,6 +115,9 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     events.extend(recruits.end_of_turn(state, cfg))
     events.extend(leader.end_of_turn(state, cfg))  # births, votes, levels (SPEC_M11)
     events.extend(council.end_of_turn(state, cfg))  # sessions and measures (SPEC_M13)
+    from beacon import exchange  # the Galactic Exchange drifts back toward its base (SPEC_M17)
+
+    exchange.drift(state, cfg)
     events.extend(survivors.pick_up(state, cfg))  # the survivor start (SPEC_M14)
     events.extend(survivors.escape(state, cfg))
     reset_units(state, cfg)

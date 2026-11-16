@@ -45,12 +45,15 @@ def test_any_item_can_be_bought_without_touching_the_queue(cfg):
     city.buildings = ["military_base"]
     city.stores = {"timber": 150, "stone": 150, "iron": 80}  # buildings cost materials (SPEC_M16)
     s.players[EU].gold = 10_000
-    full = economy.purchase_price(cfg, "building:market", s.players[EU])
-    city.progress["building:market"] = economy.item_cost(cfg, "building:market", s.players[EU]) // 2
-    events = apply_command(s, cfg, Purchase(player=EU, city=city.id, item="building:market"))
+    item = "unit:recon_team"  # SPEC_M17: gold buys units; buildings are the crew's
+    full = economy.purchase_price(cfg, item, s.players[EU])
+    city.progress[item] = economy.item_cost(cfg, item, s.players[EU]) // 2
+    events = apply_command(s, cfg, Purchase(player=EU, city=city.id, item=item))
     paid = next(e for e in events if e["kind"] == "purchased")["gold"]
-    assert paid < full and "market" in city.buildings
-    assert city.queue == ["unit:infantry"] and "building:market" not in city.progress
+    assert paid < full and any(e["kind"] == "unit_completed" for e in events)
+    assert city.queue == ["unit:infantry"] and item not in city.progress
+    with pytest.raises(CommandError, match="engineers"):
+        apply_command(s, cfg, Purchase(player=EU, city=city.id, item="building:market"))
 
 
 def test_a_convoy_needs_a_road_and_moves_a_share(cfg):
@@ -113,10 +116,10 @@ def test_beacon_theory_meets_everyone(cfg):
 def test_library_is_available_from_the_start_and_the_school_needs_it(cfg):
     s = arena(cfg)
     city = add_city(s, cfg, at(3, 3), ACTIVE, EU, pop=2)
-    options = economy.production_options(s, cfg, city)
-    assert "building:library" in options and "building:school" not in options
+    options = economy.building_options(s, cfg, city)
+    assert "library" in options and "school" not in options
     city.buildings = ["library"]
-    assert "building:school" in economy.production_options(s, cfg, city)
+    assert "school" in economy.building_options(s, cfg, city)
 
 
 def test_the_map_wraps_east_to_west_and_is_about_60_percent_land(cfg):

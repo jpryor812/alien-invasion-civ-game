@@ -525,3 +525,12 @@ button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 
 #bpanel .bopt { position: relative; }
 #bpanel .bopt .buy { position: absolute; right: 8px; top: 6px; font-size: 12px; padding: 1px 6px; border-radius: 4px; background: rgba(255,210,90,0.18); cursor: pointer; }
 #side .develop { font-size: 16px; padding: 9px 18px; width: 100%; }
+/* SPEC_M17: the crew, works with progress, the Exchange */
+#bpanel .bcrew { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 4px; padding: 6px 8px; border-radius: 6px; background: rgba(240,170,60,0.12); font-size: 13px; }
+#bpanel .bcrew button { padding: 2px 9px; font-size: 12px; }
+#bpanel .bq .bar { flex-basis: 100%; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
+#bpanel .bq .bar i { display: block; height: 100%; background: var(--brass-hi); }
+#bpanel .bopt.trade { cursor: default; }
+#bpanel .bopt.trade .row { display: flex; gap: 4px; margin-top: 4px; }
+#bpanel .bopt.trade button { padding: 2px 8px; font-size: 12px; }
+#bpanel .small { font-size: 12px; }

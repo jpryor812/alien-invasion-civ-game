@@ -66,3 +66,39 @@ walls:
   steel: {name: Steel wall, tech: mechanized_warfare, cost: {iron: 1, stone: 1}, production: 2, strength: 3, hp: 4}
   chitin: {name: Chitin bulwark, tech: organic_armour, cost: {timber: 1, stone: 1}, production: 2, strength: 4, hp: 5}
   plasma: {name: Plasma barrier, tech: directed_energy, cost: {iron: 2}, production: 3, strength: 5, hp: 6}
+
+labour:
+  status: placeholder
+  note: SPEC_M17 (designer 2026-11-16) - buildings, walls and tile works are works built by the
+    city's engineers. Each engineer adds per_engineer labour a turn. A building needs building_pct
+    of its production cost; a wall piece its production x per_wall; a tile work its turns x
+    per_engineer. Cities start with `start` engineers (capitals capital_start, a band's first
+    town town_start).
+  per_engineer: 8
+  building_pct: 100
+  per_wall: 4
+  start: 1
+  capital_start: 2
+  town_start: 2
+
+engineers:
+  status: placeholder
+  note: Training one more engineer (the "engineer" queue item) costs cost + cost_step for each
+    engineer the city has; each engineer costs upkeep gold a turn.
+  cost: 30
+  cost_step: 15
+  upkeep: 1
+
+exchange:
+  status: placeholder
+  note: The Galactic Exchange (from the M15 sandbox) - neutral alien traders any city can trade
+    with. They pay sell_pct and ask buy_pct of base x the shared price index (percent). The index
+    falls step_pct per 10 units sold and rises the same per 10 bought, stays within min_pct and
+    max_pct, and moves revert_pct back toward 100 each turn.
+  base: {timber: 4, stone: 5, iron: 10}
+  sell_pct: 60
+  buy_pct: 160
+  step_pct: 2
+  revert_pct: 2
+  min_pct: 50
+  max_pct: 180

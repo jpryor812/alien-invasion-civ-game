@@ -2030,6 +2030,7 @@ function unitLabel(id) { const u = S.view.units.find((x) => x.id === id); return
 // The band's lead unit is the leader in person (designer 2026-11-16): it carries the leader's name.
 function unitName(u) {
   if (u.type === "band_leader") return u.owner === S.view.me && S.view.leader ? S.view.leader.name : `${pretty(u.owner)}'s leader`;
+  if (u.type === "engineers") return "Road crew";  // SPEC_M17: the city's engineers are its crew
   return pretty(u.type);
 }
 function describePending(p) {
@@ -2260,9 +2261,11 @@ function renderCityPanel() {
     <div class="actions"><button class="primary develop" id="open-builder" title="Place buildings and walls, work the land with engineers and train units (B)">🏗 Develop city</button></div>
     <div class="yields">${YIELD_KEYS.map((k) => yieldBox(k, d.totals[k], d.lines)).join("")}</div>
     <div class="row">Focus <select id="focus">${d.focuses.map((f) => `<option ${f === c.focus ? "selected" : ""}>${f}</option>`).join("")}</select></div>
-    <h3>Being built</h3>
+    <h3>🛠 Engineers (${d.crew}) are building</h3>
+    <div class="row">${d.works.length ? d.works.map((w, i) => `<div${i ? ' class="muted"' : ""}>${esc(w.name)} <span class="muted">· ${w.turns == null ? "no engineers" : `${w.turns} turns`}</span></div>`).join("") : '<span class="muted">nothing: open Develop city</span>'}</div>
+    <h3>Training</h3>
     <div class="row">${c.queue.length ? c.queue.map((it, i) => { const o = d.options.find((x) => x.item === it); const short = Object.entries((o && o.short) || {}).map(([g, n]) => `${n} ${g}`).join(", ");
-      return `<div${i ? ' class="muted"' : ""}>${esc(pretty(it.split(":")[1] || it))}${o && o.turns != null ? ` <span class="muted">· ${o.turns} turns</span>` : ""}${short ? ` <span class="bad">· short of ${short}</span>` : ""}</div>`; }).join("") : '<span class="bad">nothing: open Develop city</span>'}</div>
+      return `<div${i ? ' class="muted"' : ""}>${esc(pretty(it.split(":")[1] || it))}${o && o.turns != null ? ` <span class="muted">· ${o.turns} turns</span>` : ""}${short ? ` <span class="bad">· short of ${short}</span>` : ""}</div>`; }).join("") : '<span class="bad">nothing</span>'}</div>
     <h3>Convoy</h3>
     ${convoyHtml(c)}
     <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>

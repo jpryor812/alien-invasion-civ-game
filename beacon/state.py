@@ -67,6 +67,10 @@ class City:
     )  # placed buildings (id, what, x, y, done)
     walls: dict[str, str] = field(default_factory=dict)  # "x,y" -> wall material, built
     wall_orders: list[list[Any]] = field(default_factory=list)  # [x, y, material] being built
+    engineers: int = -1  # the city's crew (SPEC_M17); -1 until the city first gets one
+    works: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # works the crew builds, in order: {id, what, left, total, paid} (SPEC_M17)
     resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
     armed_by: dict[str, int] = field(default_factory=dict)  # resistance levels, by player
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
@@ -405,6 +409,7 @@ class GameState:
     projects: dict[str, Project] = field(default_factory=dict)
     outcome: str | None = None  # victory | defeat (no turn limit)
     outcome_turn: int | None = None
+    exchange: dict[str, int] = field(default_factory=dict)  # Galactic Exchange index % (M17)
     wrap: bool = False  # the map wraps east to west (SPEC_M10); hexgrid.set_wrap registers it
     version: int = STATE_VERSION
 

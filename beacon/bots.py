@@ -22,6 +22,7 @@ from beacon import (
     promotions,
     recruits,
     tech,
+    works,
 )
 from beacon.commands import (
     AcceptOffer,
@@ -172,6 +173,7 @@ class Bot:
                 "min_military",
                 "scout_boats",
                 "engineers",
+                "crew",
                 "recon",
                 "building_priority",
             )
@@ -196,7 +198,9 @@ class Bot:
             starved = starved or bool(
                 head and materials.short(city, materials.item_cost(self.cfg, city, head))
             )
-            if city.queue and not starved:
+            # a filler project (wealth, research) never ends: look again each turn (SPEC_M17)
+            filler = head.startswith("project:") and head != "project:barrage"
+            if city.queue and not starved and not filler:
                 continue
             options = economy.production_options(self.state, self.cfg, city)
             # buildings only when the city has the materials (SPEC_M16)
@@ -206,26 +210,8 @@ class Bot:
                 if not materials.short(city, materials.item_cost(self.cfg, city, o))
             ]
             item = None
-            barracks = f"building:{self.cfg.materials('barracks.building')}"
-            radio = f"building:{self.cfg.t('contact.radio_building')}"
-            if radio in options and self.pid not in on_air(self.state, self.cfg):
-                item = radio  # reach the other continents first (designer 2026-11-16)
-            elif barracks in options and city.is_capital:
-                item = barracks  # soldiers need a barracks (designer 2026-11-16)
-            elif "unit:uav_patrol" in options and counts["military"] >= 2:
+            if "unit:uav_patrol" in options and counts["military"] >= 2:
                 item = "unit:uav_patrol"  # sees strikes coming (designer 2026-11-16)
-            elif (
-                city.is_capital
-                and counts["military"] * 100 >= len(cities) * bot["capital_build_military_pct"]
-            ):
-                item = next(
-                    (
-                        f"building:{b}"
-                        for b in bot["capital_priority"]
-                        if f"building:{b}" in options
-                    ),
-                    None,
-                )
             if item is not None:
                 pass
             elif (
@@ -246,24 +232,18 @@ class Bot:
                 len(cities) * bot["military_per_city_pct"], bot["min_military"] * 100
             ):
                 item = self._military_choice(city, counts)
+            elif works.crew(city) < bot["crew"] and "engineer" in options:
+                item = "engineer"  # the city's crew builds its works (SPEC_M17)
             elif counts["engineers"] < bot["engineers"] and "unit:engineers" in options:
-                item = "unit:engineers"
+                item = "unit:engineers"  # road crews
             elif counts["recon"] < bot["recon"] and "unit:recon_team" in options:
                 item = "unit:recon_team"
             if item is None:
-                order = bot["building_priority"]
-                if city.is_capital:
-                    order = bot["capital_priority"] + order
-                for b in order:
-                    if b.startswith("beacon_") and not city.is_capital:
-                        continue
-                    if f"building:{b}" in options:
-                        item = f"building:{b}"
-                        break
-            if item is None:
                 item = self._military_choice(city, counts) or "project:wealth"
+            if [item] == city.queue:
+                continue
             if self.submit(SetProduction(player=self.pid, city=city.id, items=(item,))):
-                kind = item.split(":", 1)[1]
+                kind = item.split(":", 1)[-1]
                 if kind == "engineers":
                     counts["engineers"] += 1
                 elif kind == "restoration_team":
@@ -333,13 +313,7 @@ class Bot:
                 todo = self._road_todo(city.tile, net)
                 if todo is not None and todo not in claimed:
                     targets.append((todo, "road"))
-        if not targets:
-            for city in self.view.my_cities():  # every city produces now (SPEC_M10)
-                for t in cities.work_tiles(self.state, self.cfg, city):
-                    imp = self._improvement_for(t)
-                    if imp and t not in claimed and self.state.city_at(t) is None:
-                        targets.append((t, imp))
-        if not targets:
+        if not targets:  # road crews build roads only; the city crew works the land (SPEC_M17)
             self.submit(SkipUnit(player=self.pid, unit=unit.id))
             return
         tile, imp = min(targets, key=lambda ti: (self.dist(unit.tile, ti[0]), ti[0]))
@@ -827,6 +801,9 @@ class Bot:
         self.promote()
         self.research()
         self.production()
+        self.buildings()  # SPEC_M17
+        self.land()
+        self.market()
         self.walls()  # SPEC_M16
         self.council()
         self.bombard()
@@ -834,6 +811,93 @@ class Bot:
         claimed: set[int] = set()
         garrisons = {uid: tile for tile, uid in self._garrisons().items()}
         self.play_units(net, claimed, garrisons)
+
+    # -- works: buildings, tile works and the Exchange (SPEC_M17) ---------------------------------
+
+    def _wanted_buildings(self, city: Any, counts: dict[str, int]) -> list[str]:
+        order: list[str] = []
+        radio = self.cfg.t("contact.radio_building")
+        if self.pid not in on_air(self.state, self.cfg):
+            order.append(radio)  # reach the other continents first (designer 2026-11-16)
+        if city.is_capital:
+            order.append(self.cfg.materials("barracks.building"))  # soldiers need a barracks
+            cities_n = len([c for c in self.view.my_cities() if c.status == "active"])
+            pct = self.param("production.capital_build_military_pct")
+            if counts["military"] * 100 >= cities_n * pct:
+                order += self.param("production.capital_priority")
+        for b in self.param("production.building_priority"):
+            if b.startswith("beacon_") and not city.is_capital:
+                continue
+            order.append(b)
+        allowed = set(economy.building_options(self.state, self.cfg, city))
+        return [b for b in dict.fromkeys(order) if b in allowed]
+
+    def buildings(self) -> None:
+        """One building at a time per city, the first wanted one it has materials for; buy a
+        small shortfall at the Exchange when the treasury is comfortable."""
+        from beacon import exchange
+        from beacon.commands import Trade
+
+        counts = self._counts()
+        for city in self.view.my_cities():
+            if city.status != "active" or any(
+                w["what"].startswith("building:") for w in city.works
+            ):
+                continue
+            wanted = self._wanted_buildings(city, counts)
+            pick = next(
+                (
+                    b
+                    for b in wanted
+                    if not materials.short(city, materials.building_cost(self.cfg, b))
+                ),
+                None,
+            )
+            if pick is None and wanted:
+                lack = materials.short(city, materials.building_cost(self.cfg, wanted[0]))
+                q = exchange.quotes(self.state, self.cfg)
+                gold = sum(q[g]["buy"] * n for g, n in lack.items())
+                if sum(lack.values()) <= self.param("market.buy_up_to") and (
+                    self.view.player.gold >= gold + self.param("market.reserve")
+                ):
+                    for g, n in sorted(lack.items()):
+                        self.submit(
+                            Trade(player=self.pid, city=city.id, good=g, amount=n, side="buy")
+                        )
+                    if not materials.short(city, materials.building_cost(self.cfg, wanted[0])):
+                        pick = wanted[0]
+            if pick is not None:
+                self.submit(
+                    SetProduction(
+                        player=self.pid, city=city.id, items=(f"building:{pick}", *city.queue)
+                    )
+                )
+
+    def land(self) -> None:
+        """The crew improves the tiles the city works, one at a time."""
+        from beacon.commands import ImproveTile
+
+        for city in self.view.my_cities():
+            if city.status != "active" or any(w["what"].startswith("tile:") for w in city.works):
+                continue
+            for t in cities.work_tiles(self.state, self.cfg, city):
+                imp = self._improvement_for(t)
+                if imp and improvements.tile_problem(self.state, self.cfg, city, t, imp) is None:
+                    self.submit(ImproveTile(player=self.pid, city=city.id, tile=t, improvement=imp))
+                    break
+
+    def market(self) -> None:
+        """Sell what is about to overflow its store."""
+        from beacon.commands import Trade
+
+        for city in self.view.my_cities():
+            if city.status != "active":
+                continue
+            cap = materials.caps(self.cfg, city)
+            for g in materials.goods(self.cfg):
+                if city.stores.get(g, 0) * 100 >= cap[g] * self.param("market.sell_at_pct"):
+                    n = cap[g] * self.param("market.sell_pct") // 100
+                    self.submit(Trade(player=self.pid, city=city.id, good=g, amount=n, side="sell"))
 
     def walls(self) -> None:
         """Lay a wall ring around each city once its stores allow, in the best material known;

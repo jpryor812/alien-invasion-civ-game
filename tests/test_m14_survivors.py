@@ -97,7 +97,8 @@ def test_the_town_holds_against_a_bare_band_and_falls_after_a_find(cfg):
     p = s.players[EU]
     assert p.founded and not any(u.type == "band_leader" for u in band_of(s, EU))
     assert town.pop >= 2 + 3  # the bare survivors moved in
-    assert {u.type for u in s.units.values() if u.owner == EU} >= {"engineers", "recon_team"}
+    assert {u.type for u in s.units.values() if u.owner == EU} >= {"recon_team"}
+    assert town.engineers == cfg.materials("labour.town_start")  # the crew (SPEC_M17)
 
 
 def test_a_fallen_leader_escapes_with_two_survivors(cfg):
@@ -198,8 +199,9 @@ def test_the_ai_builds_its_radio_first_and_a_uav_when_it_can(cfg):
     capital = next(c for c in s.cities if c.owner == EU and c.is_capital)
     capital.buildings = [b for b in capital.buildings if b != "radio_tower"]
     capital.queue = []
-    AIPlayer(s, cfg, EU, lambda c: apply_command(s, cfg, c)).production()
-    assert capital.queue == ["building:radio_tower"]
+    AIPlayer(s, cfg, EU, lambda c: apply_command(s, cfg, c)).buildings()
+    assert capital.works[0]["what"] == "building:radio_tower"  # a work for the crew (SPEC_M17)
+    capital.works = []
     capital.buildings.append("radio_tower")
     capital.queue = []
     s.players[EU].techs.append("drone_warfare")

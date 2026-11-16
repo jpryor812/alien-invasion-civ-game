@@ -1,4 +1,6 @@
-# Settlement sandbox art (docs/SPEC_M15.md)
+# Building kit art (made for the M15 sandbox, docs/SPEC_M15.md)
+
+Now used by the city builder as stand-ins and for tile works (the sandbox was retired in M17).
 
 Each building is a low-poly model built from primitives (boxes, gables, cylinders, cones with a
 bevel) by a script in Blender in this repo (2026-11-16), and rendered with a transparent
