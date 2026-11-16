@@ -293,6 +293,15 @@ class Session:
                 "mothership_alive": s.aliens.mothership_alive,
                 "has_barrage_tech": cfg.t("endgame.barrage_tech") in player.techs,
                 **self._story_view(),
+                "leader": None  # the top-left badge (SPEC_M11)
+                if (lead := self.state.players[self.human].leader) is None
+                else {
+                    "name": lead.name,
+                    "look": lead.look,
+                    "outfit": lead.outfit,
+                    "level": lead.level,
+                    "alert": leader.points(self.cfg, lead) > 0 or bool(lead.choices),
+                },
                 "turret_rules": {
                     **cfg.t("turrets"),
                     "costs": {

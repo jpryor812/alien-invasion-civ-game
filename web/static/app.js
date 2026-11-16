@@ -1927,6 +1927,13 @@ function centerOnTile(i) { centerOnWorld(...center(i)); }
 function renderChrome() {
   const v = S.view, e = v.economy;
   $("turninfo").innerHTML = `${ICON.turn}Turn <b>${v.turn}</b> · ${v.year}`;
+  const L = v.leader, lb = $("leaderbadge");  // the leader in the top-left corner (Civ style)
+  if (L) {
+    lb.classList.remove("hidden"); lb.classList.toggle("alert", L.alert);
+    lb.innerHTML = `${leaderPortrait(L.look, L.outfit)}<span class="lvl">${L.level}</span>`;
+    lb.title = `${L.name} · level ${L.level}${L.alert ? " · something to choose" : ""}`;
+    lb.onclick = () => openScreen("leader");
+  } else lb.classList.add("hidden");
   const gd = e.gold_per_turn;
   $("gold").innerHTML = `${ICON.gold}<b style="color:var(--gold)">${e.gold}</b> <span class="${gd >= 0 ? "good" : "bad"}">(${gd >= 0 ? "+" : ""}${gd})</span>`;
   const rs = v.research;
@@ -3608,6 +3615,14 @@ function showNewStory() {
     if (S.seenStory.has(c.key)) continue;
     S.seenStory.add(c.key);
     return showEventCard(c);
+  }
+  // an event that asks for a choice (a ? found by a unit) opens at once, not only from the list
+  for (const ev of S.view.story_pending || []) {
+    const key = `pending-${ev.story}`;
+    if (S.seenStory.has(key)) continue;
+    S.seenStory.add(key);
+    if (ev.tile != null) centerOnTile(ev.tile);
+    return showEventCard(ev);
   }
 }
 function drawSite(sx, sy, R, t) {
