@@ -30,6 +30,8 @@ def is_fixed(cfg: Config, unit_type: str) -> bool:
 def slot_kind(cfg: Config, unit_type: str) -> str:
     """Each hex holds one unit of each kind: a field military unit, a city defence unit and a
     civilian."""
+    if cfg.units[unit_type].get("air"):
+        return "air"  # a city's UAV patrol (SPEC_M12 revision): beside its guns
     if is_fixed(cfg, unit_type):
         return "fixed"
     return "civilian" if is_civilian(cfg, unit_type) else "military"

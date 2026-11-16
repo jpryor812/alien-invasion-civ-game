@@ -13,8 +13,11 @@ Factorio (the threat grows because you grow), Civ V (choosing where to found a c
   (`plans.strike_turns`). The committed units gather at the source; on the launch turn they get
   siege orders, as before.
 - **Raids** on roads and improvements stay unannounced (they are small).
-- Plans against a player's cities are always known to that player (radio intercepts). The
-  source city and the committed strength show if the player has explored the source.
+- ~~Plans against a player's cities are always known to that player (radio intercepts).~~
+  Revised (designer 2026-11-16): a player is warned only of strikes on cities with a **UAV
+  patrol** - a city unit unlocked by Drone Warfare (tier 3, mid-game) that cannot be ordered or
+  fight, circles its city, sees 4 hexes and shows where the strike gathers and its strength.
+  Without one, the first sign of a strike is the attack.
 - Client: a red arrow from source to target with the countdown, and a **Threats** list in the
   "Needs attention" panel (turns left, strength committed against your city's defence).
 

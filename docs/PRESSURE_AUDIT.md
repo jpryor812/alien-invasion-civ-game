@@ -29,7 +29,8 @@ here or flagged for a later change.
 | infantry, militia, marines, mech/exo infantry, home_guard, xeno_trooper | defend against an announced strike; take a weakened city |
 | tank, hover_tank, walker, swarm_drones | break a strike before it launches (attack the gathering force) |
 | artillery, howitzers, rockets, plasma cannon/lancer, city_artillery, anti_tank | hit a city or a gathering force without retaliation |
-| recon_team, drone_recon, armoured_recon, scout_boat | learn what an alien city holds (contents) and where strikes gather; sabotage |
+| recon_team, drone_recon, armoured_recon, scout_boat | learn what an alien city holds (contents); sabotage |
+| uav_patrol | an exposed city cannot see strikes coming; the UAV warns three turns ahead |
 | engineers | improvements, sea bridges, sabotage |
 | survey_team, medical_team, nanorepair_crew | **weak**: niche; review after M14 |
 | destroyer, railgun_cruiser, attack_submarine | aliens never cross water: **weak** until sea threats exist |

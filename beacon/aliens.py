@@ -546,11 +546,13 @@ class Director:
             units=[unit.id, *cohort],
         )
         self.state.aliens.plans[str(pid)] = plan
+        from beacon.threat import has_uav  # only a UAV patrol spots it (designer 2026-11-16)
+
         self.events.append(
             _ev(
                 self.state,
                 "strike_announced",
-                player=city.owner,
+                player=city.owner if has_uav(self.state, self.cfg, city) else ALIENS,
                 city=city.id,
                 launch=plan.launch,
                 units=len(plan.units),
@@ -576,8 +578,16 @@ class Director:
                 for u in plan.units:
                     orders[str(u)] = AlienOrder(kind="siege", target=plan.target)
                 assert city is not None
+                from beacon.threat import has_uav
+
+                seen = has_uav(self.state, self.cfg, city)
                 self.events.append(
-                    _ev(self.state, "strike_launched", player=plan.player, city=city.id)
+                    _ev(
+                        self.state,
+                        "strike_launched",
+                        player=plan.player if seen else ALIENS,
+                        city=city.id,
+                    )
                 )
                 del self.state.aliens.plans[key]
 

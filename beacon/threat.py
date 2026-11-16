@@ -57,10 +57,29 @@ def heat_lines(state: GameState, cfg: Config, pid: str) -> list[tuple[str, int]]
 # -- plans -----------------------------------------------------------------------------------------
 
 
+def has_uav(state: GameState, cfg: Config, city: City) -> bool:
+    """A UAV patrol over the city detects strikes gathering against it (designer 2026-11-16:
+    no warning without one)."""
+    return any(
+        u.owner == city.owner and cfg.units[u.type].get("detects_strikes")
+        for u in state.units_at(city.tile)
+    )
+
+
 def plans_against(state: GameState, pid: str) -> list:
     return sorted(
         (p for p in state.aliens.plans.values() if p.player == pid), key=lambda p: (p.launch, p.id)
     )
+
+
+def detected(state: GameState, cfg: Config, pid: str) -> list:
+    """The plans against a player that its UAVs have spotted."""
+    out = []
+    for p in plans_against(state, pid):
+        city = state.city_at(p.target)
+        if city is not None and has_uav(state, cfg, city):
+            out.append(p)
+    return out
 
 
 def plan_of(state: GameState, unit_id: int):

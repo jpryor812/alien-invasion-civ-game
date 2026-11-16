@@ -283,8 +283,9 @@ varied partners.
 
 ## M12: a readable alien (designer 2026-11-15, docs/SPEC_M12.md)
 
-- The aliens announce their strikes: a red arrow and a countdown on the target city, and a
-  Threats list. Units gather, then strike three turns later.
+- The aliens plan their strikes three turns ahead (units gather, then strike). A city with a UAV
+  patrol (Drone Warfare, mid-game) sees it coming: a red arrow and a countdown on the city, and a
+  Threats list. Without one, the first sign is the attack (designer 2026-11-16).
 - Heat: population and loud buildings (beacons, industry, labs) draw the aliens' attention.
 - Each alien city holds something (survivors, a lab, a captive, arms, wealth, a hive heart),
   first heard as a rumour and confirmed by scouts; freeing the city gives it. Choosing which city

@@ -768,8 +768,12 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   the plan launches as siege orders `plans.strike_turns` (3) turns later. A plan whose target is
   no longer a player city, or whose units are all dead, is dropped. Raids, hunts and patrols are
   not announced.
-- **Who sees a plan.** The target city's owner always knows the city and the turns left (radio
-  intercepts); the gathering point, unit count and strength only if that hex is explored.
+- **Who sees a plan.** Revised (designer 2026-11-16): only a city with a UAV patrol on its tile
+  gets the warning - the city, the turns left, where the strike gathers and its strength; the
+  announcement and launch events reach the player only then too. The UAV (`uav_patrol`, Drone
+  Warfare, 60 production) is a fixed, civilian-role unit with its own "air" slot, so it stands
+  beside the city's guns; it never moves or fights, sees 4 hexes, pays normal unit upkeep, and
+  a city holds one. AI players do not build it yet (they do not read plans).
 - **Heat.** Population x 1, plus listed buildings (beacons 3-8, factories 3-4, labs 2-3, fusion 3,
   ports and shipyards 1-2, radio and sensor 1-2), plus 2 per active convoy. A strike target's
   value rises by heat x 2%, and the cohort gains one unit per 25 heat (at most 3).

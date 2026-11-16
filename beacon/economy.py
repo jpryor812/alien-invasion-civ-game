@@ -14,7 +14,7 @@ from beacon.config import YIELDS, Config
 from beacon.recruits import council_lines
 from beacon.state import ACTIVE, City, GameState, Player
 from beacon.tiles import Line, resource_active, tile_yields, totals
-from beacon.units import is_fixed, place_unit
+from beacon.units import place_unit, slot_kind
 
 PROJECTS = ("wealth", "research", "barrage")
 COUNCIL_YIELDS = ("food", "production", "science", "gold", "beacon")  # military: combat
@@ -129,9 +129,12 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
     if spec["domain"] == "sea" and not is_coastal(state, cfg, city):
         return "needs a coastal city"
     if spec.get("fixed") and any(
-        u.owner == city.owner and is_fixed(cfg, u.type) for u in state.units_at(city.tile)
+        other.owner == city.owner and slot_kind(cfg, other.type) == slot_kind(cfg, u)
+        for other in state.units_at(city.tile)
     ):
-        return "the city already has a defence unit"
+        return (
+            "the city already has one" if spec.get("air") else "the city already has a defence unit"
+        )
     return None
 
 

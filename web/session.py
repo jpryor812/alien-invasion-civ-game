@@ -468,11 +468,11 @@ class Session:
         s, cfg, me = self.state, self.cfg, self.human
         bits = bits_get(s.players[me].explored)
         strikes = []
-        for p in threat.plans_against(s, me):
+        for p in threat.detected(s, cfg, me):  # only cities with a UAV patrol get a warning
             city = s.city_at(p.target)
             if city is None:
                 continue
-            seen = bool((bits >> p.source) & 1)
+            seen = True  # the drones see where it gathers
             strength = sum(
                 combat.unit_strength(s, cfg, s.units[str(u)], ranged=False, defending=False).total
                 for u in p.units

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from test_m3_units_combat import EU, NA, add_city, arena, at
 
-from beacon import config, liberation, threat
+from beacon import combat, config, liberation, threat
 from beacon.actions import apply_command
 from beacon.aliens import Director
 from beacon.commands import ArmResistance, CommandError, Sabotage
@@ -37,7 +37,11 @@ def test_a_siege_is_announced_then_launched_on_time(cfg):
     assert plan.player == EU and plan.launch == 40 + cfg.alien("plans.strike_turns")
     assert set(plan.units) >= {a.id, b.id}
     assert s.aliens.orders[str(a.id)].kind == "gather"
-    assert any(e["kind"] == "strike_announced" and e["player"] == EU for e in d.events)
+    # no UAV over the city: nobody is warned (designer 2026-11-16)
+    assert not any(e["kind"] == "strike_announced" and e["player"] == EU for e in d.events)
+    assert threat.detected(s, cfg, EU) == []
+    create_unit(s, cfg, "uav_patrol", EU, city.tile)
+    assert threat.detected(s, cfg, EU) == [plan]
     assert state_to_json(state_from_json(state_to_json(s))) == state_to_json(s)
     s.turn = plan.launch - 1
     Director(s, cfg).launch_plans()
@@ -159,5 +163,24 @@ def test_session_shows_strikes_heat_and_actions(cfg, tmp_path, monkeypatch):
     a = create_unit(s, cfg, "alien_warrior", ALIENS, capital.tile + 8)
     Director(s, cfg).announce(a, capital.tile)
     v = sess.view()
-    assert v["heat"] > 0 and v["strikes"][0]["city"] == capital.id
+    assert v["heat"] > 0 and v["strikes"] == []  # no UAV: no warning
+    create_unit(s, cfg, "uav_patrol", EU, capital.tile)
+    v = sess.view()
+    assert v["strikes"][0]["city"] == capital.id and v["strikes"][0]["strength"] > 0
     assert v["strikes"][0]["turns"] == cfg.alien("plans.strike_turns")
+
+
+def test_a_uav_patrol_is_a_mid_game_city_unit_beside_the_guns(cfg):
+    from beacon import economy
+
+    s = arena(cfg)
+    city = add_city(s, cfg, at(3, 3), ACTIVE, EU, pop=3)
+    create_unit(s, cfg, "city_artillery", EU, city.tile)
+    spec = cfg.units["uav_patrol"]
+    assert spec["tech"] == "drone_warfare" and cfg.techs["drone_warfare"]["tier"] == 3
+    assert economy.unit_allowed(s, cfg, city, "uav_patrol") == "needs tech drone_warfare"
+    s.players[EU].techs.append("drone_warfare")
+    assert economy.unit_allowed(s, cfg, city, "uav_patrol") is None  # beside the city's guns
+    uav = create_unit(s, cfg, "uav_patrol", EU, city.tile)
+    assert economy.unit_allowed(s, cfg, city, "uav_patrol") == "the city already has one"
+    assert uav.moves_left == 0 and combat.attack_problem(s, cfg, uav, at(4, 3)) is not None

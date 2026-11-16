@@ -1758,7 +1758,7 @@ const UNIT_ART = {
   tank: "tank", mech_infantry: "tank", armoured_recon: "tank", hover_tank: "hover_tank", trade_convoy: "tank",
   artillery: "artillery", city_artillery: "artillery", railgun_artillery: "artillery", self_propelled_howitzer: "artillery",
   rocket_battery: "artillery", plasma_cannon: "artillery", walker: "walker",
-  drone_recon: "drone", swarm_drones: "drone",
+  drone_recon: "drone", swarm_drones: "drone", uav_patrol: "drone",
   scout_boat: "patrol_boat", destroyer: "destroyer", railgun_cruiser: "destroyer", attack_submarine: "submarine",
   alien_drone: "alien_small", alien_hatchling: "alien_small", alien_warrior: "alien_warrior", alien_pillager: "alien_warrior",
   alien_wraith: "alien_warrior", alien_spitter: "alien_spitter", alien_sporecaster: "alien_spitter",
@@ -2174,7 +2174,8 @@ function renderUnitPanel() {
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
     ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: take caches (crates) for weapons, armour and people, then free your first town. Scrap ${S.view.scrap}.</div>` : ""}
-    ${spec.fixed ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
+    ${spec.air ? '<div class="muted">Circles its city on its own: it cannot be ordered or fight, sees 4 hexes, and warns you of alien strikes gathering against the city.</div>' : ""}
+    ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
     <div class="bar"><i style="width:${Math.round(100 * u.hp / (100 * u.count))}%"></i></div>
     <div class="actions" id="uactions"></div>
