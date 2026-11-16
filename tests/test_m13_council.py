@@ -13,6 +13,14 @@ from beacon.state import ACTIVE, ALIENS, OVERRUN, Measure, state_from_json, stat
 from beacon.units import create_unit
 
 
+def on_air(s, cfg):
+    """The arena's two players each hold a city with a radio tower (they sit on the council)."""
+    for pid, tile in ((EU, at(1, 1)), (NA, at(12, 8))):
+        city = add_city(s, cfg, tile, ACTIVE, pid, pop=1, continent=pid)
+        city.buildings = [cfg.t("contact.radio_building")]
+    return s
+
+
 def test_radio_contact_at_the_start_without_sharing_cities(cfg):
     s = new_game(cfg, seed=2)
     ids = s.player_ids()
@@ -40,7 +48,7 @@ def test_influence_comes_from_credits_and_agenda(cfg):
 
 
 def test_sessions_open_on_schedule_and_elect_a_chair(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     s.turn = 4
     events = council.end_of_turn(s, cfg)
     assert any(e["kind"] == "council_session" for e in events)
@@ -57,7 +65,7 @@ def test_sessions_open_on_schedule_and_elect_a_chair(cfg):
 
 
 def test_a_passed_research_pact_applies_to_everyone_then_expires(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     m = Measure(id=s.new_id(), kind="research_pact")
     s.council.measures = [m]
     apply_command(s, cfg, CastVote(player=EU, measure=m.id, choice="yes"))
@@ -70,7 +78,7 @@ def test_a_passed_research_pact_applies_to_everyone_then_expires(cfg):
 
 
 def test_weighted_votes_extra_votes_and_the_chairs_tie_break(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     s.players[EU].credits["cities_liberated"] = 3  # 30 influence
     m = Measure(id=s.new_id(), kind="shared_arms")
     s.council.measures = [m]
@@ -86,7 +94,7 @@ def test_weighted_votes_extra_votes_and_the_chairs_tie_break(cfg):
 
 
 def test_relief_fund_pays_the_weakest_and_pledges_count(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     add_city(s, cfg, at(2, 2), ACTIVE, EU, pop=3)
     add_city(s, cfg, at(5, 2), ACTIVE, EU, pop=3)
     add_city(s, cfg, at(9, 7), ACTIVE, NA, pop=3, continent=NA)
@@ -100,7 +108,7 @@ def test_relief_fund_pays_the_weakest_and_pledges_count(cfg):
 
 
 def test_a_joint_strike_boosts_attacks_near_its_city(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     alien = add_city(s, cfg, at(8, 4), OVERRUN, ALIENS, pop=3)
     foe = create_unit(s, cfg, "alien_warrior", ALIENS, at(7, 4))
     inf = create_unit(s, cfg, "infantry", EU, at(6, 4))
@@ -114,7 +122,7 @@ def test_a_joint_strike_boosts_attacks_near_its_city(cfg):
 
 
 def test_proposals_and_agenda_and_objective_points(cfg):
-    s = arena(cfg)
+    s = on_air(arena(cfg), cfg)
     with pytest.raises(CommandError, match="influence"):
         apply_command(s, cfg, ProposeMeasure(player=EU, measure="research_pact"))
     s.players[EU].credits["cities_liberated"] = 2

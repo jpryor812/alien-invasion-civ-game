@@ -869,6 +869,7 @@ class Session:
         player = s.players[me]
         objective = cfg.council(f"objectives.{player.objective}") if player.objective else None
         return {
+            "member": me in council.members(s, cfg),
             "open": [row(m) for m in c.measures],
             "proposals": [row(m) for m in c.proposals],
             "next_session": (s.turn // every + 1) * every,  # the next turn with a vote

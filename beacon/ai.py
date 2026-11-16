@@ -322,11 +322,11 @@ class AIPlayer(Bot):
         me = self.state.players[self.pid]
         agenda = self.cfg.council(f"agendas.{me.agenda}") if me.agenda else {}
         likes, dislikes = agenda.get("likes", []), agenda.get("dislikes", [])
-        for m in council.unvoted(self.state, self.pid):
+        for m in council.unvoted(self.state, self.pid, self.cfg):
             spec = self.cfg.council(f"measures.{m.kind}")
             if spec["kind"] == "chair":
                 choice = max(
-                    self.state.player_ids(),
+                    council.members(self.state, self.cfg),
                     key=lambda p: (
                         council.influence(self.cfg, self.state.players[p]),
                         p == self.pid,

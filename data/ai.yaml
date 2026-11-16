@@ -129,7 +129,7 @@ endgame:
   note: Research every AI pursues after its character's list, in order (each when available), so
     the radar and the barrage come in reach; spare gold above the reserve goes to the barrage at
     barrage_gold_pct.
-  research: [advanced_manufacturing, mechanized_warfare, powered_exoskeletons, railguns,
+  research: [advanced_manufacturing, mechanized_warfare, drone_warfare, powered_exoskeletons, railguns,
              urban_planning, beacon_theory, applied_ai, robotics, radio_beacon_network,
              deep_space_radar, orbital_barrage]
   barrage_gold_pct: 50

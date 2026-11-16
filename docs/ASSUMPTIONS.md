@@ -875,3 +875,27 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   turn 10, the last on turn 19. No player city was lost and no continent fell; liberations per
   game 15-30 (median 22, classic M13 25.5).
 
+## Before the first playtest (designer 2026-11-16)
+
+- **Crates and the town.** No crate in the band's sight at the start: the two gear crates lie one
+  hex past it (nearer than the town; the nearest unseen hexes where coast crowds the edge), the
+  rest out of sight within 7 hexes. The town starts 4 hexes away, out of sight and unknown (the
+  band finds its old towns again), at 70% HP. AI bands still head for it directly (they remember
+  where their capital was). AI first towns (10 seeds): all 60 taken, median turn 9, 39 by turn
+  10, the last on turn 25; first finds on turn 1.
+- **Barricades stay silent.** The rule is unchanged but no screen or advisor names it; the
+  advisor only says crates may hold gear and the town is near.
+- **Radio contact.** Players meet only by radio: a city holding a radio tower puts its player on
+  the air, and everyone on the air has met (no city locations shared). Sighting, beacon and
+  distress contact are off (`contact.radio_building`; `null` restores them). The radio tower costs
+  12 production (about 2 turns for a first city), needs no new tech, has no maintenance and still
+  widens city sight. Classic capitals start with one; a survivor band's old towns lost theirs.
+  Only players on the air sit on the council (vote, propose, receive relief, stand for chair).
+  Diplomacy, aid and gifts still need contact, so they wait for the radio too.
+- **AI tools.** The first city builds the radio tower first; every city builds a UAV patrol once
+  it has Drone Warfare (now on the AI's research path after Mechanized Warfare) and two military
+  units; soldiers within 6 hexes of a city whose UAV saw a strike go to defend it; a unit beside a
+  known alien city arms its resistance (one a turn, keeping 120 gold spare); idle soldiers clear
+  nests within 4 hexes; scouts beside an alien city sabotage it while above 60% HP. Seed 3 over
+  100 turns: 34-56 resistance armings, 28-36 nests cleared, 13-19 UAVs, 0-3 sabotages.
+

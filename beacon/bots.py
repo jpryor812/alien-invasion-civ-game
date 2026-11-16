@@ -44,6 +44,7 @@ from beacon.commands import (
     UpgradeDefence,
 )
 from beacon.config import Config
+from beacon.contact import on_air
 from beacon.paths import reachable, shortest_path
 from beacon.state import ALIENS, DORMANT, EMPTY, OVERRUN, GameState, Tile, Unit
 from beacon.tiles import is_passable_land, is_water
@@ -61,6 +62,7 @@ class Bot:
         self._frontier_cache: list[int] | None = None
         self._sea_frontier_cache: list[int] | None = None
         self.reserved: set[int] = set()  # units given other orders this turn (AI expeditions)
+        self._armed = False  # armed a resistance this turn
 
     # -- helpers ---------------------------------------------------------------------------
 
@@ -189,7 +191,12 @@ class Bot:
                 continue
             options = economy.production_options(self.state, self.cfg, city)
             item = None
-            if (
+            radio = f"building:{self.cfg.t('contact.radio_building')}"
+            if radio in options and self.pid not in on_air(self.state, self.cfg):
+                item = radio  # reach the other continents first (designer 2026-11-16)
+            elif "unit:uav_patrol" in options and counts["military"] >= 2:
+                item = "unit:uav_patrol"  # sees strikes coming (designer 2026-11-16)
+            elif (
                 city.is_capital
                 and counts["military"] * 100 >= len(cities) * bot["capital_build_military_pct"]
             ):
@@ -381,6 +388,8 @@ class Bot:
         self.submit(SkipUnit(player=self.pid, unit=unit.id))
 
     def explorer(self, unit: Unit) -> None:
+        if self.sabotage(unit):
+            return
         cont = self.state.tiles[unit.tile].continent
         finds = [
             s.tile
@@ -406,6 +415,73 @@ class Bot:
             if self.submit(MoveUnit(player=self.pid, unit=unit.id, target=t)):
                 return
         self.submit(Fortify(player=self.pid, unit=unit.id))
+
+    # -- the M12 tools: strikes, nests, resistance, sabotage ------------------------------
+
+    def _beside_alien(self, unit: Unit):
+        for n in hexgrid.neighbours(unit.tile, self.w, self.h):
+            city = self.state.city_at(n)
+            if (
+                city is not None
+                and city.status == OVERRUN
+                and str(city.id) in self.view.player.known_cities
+            ):
+                return city
+        return None
+
+    def sabotage(self, unit: Unit) -> bool:
+        """A scout beside an alien city sabotages it while it is healthy enough."""
+        from beacon import threat
+        from beacon.commands import Sabotage
+
+        city = self._beside_alien(unit)
+        t = self.param("tools")
+        if city is None or unit.hp * 100 < max_hp(self.cfg, unit) * t["sabotage_min_hp_pct"]:
+            return False
+        if threat.sabotage_problem(self.state, self.cfg, unit, city) is not None:
+            return False
+        return self.submit(Sabotage(player=self.pid, unit=unit.id, city=city.id))
+
+    def tools(self, unit: Unit) -> bool:
+        """Defend a city a UAV saw a strike coming to; arm a resistance; clear a nest."""
+        from beacon import threat
+        from beacon.commands import ArmResistance
+
+        t = self.param("tools")
+        danger = [
+            p.target
+            for p in threat.detected(self.state, self.cfg, self.pid)
+            if self.dist(unit.tile, p.target) <= t["strike_radius"]
+        ]
+        if danger:
+            city = min(danger, key=lambda x: (self.dist(unit.tile, x), x))
+            if self.dist(unit.tile, city) > 1:
+                if self._approach(unit, city):
+                    return True
+            elif self.alive(unit) and unit.moves_left > 0:
+                return self.submit(Fortify(player=self.pid, unit=unit.id))
+        city = self._beside_alien(unit)
+        rs = self.cfg.alien("resistance")
+        if (
+            city is not None
+            and not self._armed
+            and self.view.player.gold >= rs["gold"] + t["resistance_reserve"]
+            and threat.arm_problem(self.state, self.cfg, unit, city) is None
+            and self.submit(ArmResistance(player=self.pid, unit=unit.id, city=city.id))
+        ):
+            self._armed = True
+            return True
+        nests = [
+            i
+            for i in hexgrid.within(unit.tile, t["nest_radius"], self.w, self.h)
+            if self.state.tiles[i].nest is not None
+            and self.view.is_explored(i)
+            and not self.state.units_at(i)
+        ]
+        nest = self.nearest(unit.tile, nests)
+        return nest is not None and self.submit(
+            MoveUnit(player=self.pid, unit=unit.id, target=nest)
+        )
 
     # -- military --------------------------------------------------------------------------
 
@@ -573,6 +649,8 @@ class Bot:
                 self.submit(MoveUnit(player=self.pid, unit=unit.id, target=home))
             if self.alive(unit) and unit.moves_left > 0:
                 self.submit(Fortify(player=self.pid, unit=unit.id))
+            return
+        if self.tools(unit):  # strikes, nests, the resistance (designer 2026-11-16)
             return
         threat = self.nearest(unit.tile, self.threats())
         if threat is not None and self._approach(unit, threat):

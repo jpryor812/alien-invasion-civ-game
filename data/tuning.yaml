@@ -130,7 +130,7 @@ cities:
   start_buildings:
     status: placeholder
     note: Buildings present at the start, by role.
-    capital: [food_depot, workshop, market, library, school]
+    capital: [food_depot, workshop, market, library, school, radio_tower]
     known: [food_depot]
   refound_pop:
     value: 1
@@ -514,11 +514,13 @@ convoys:
       joined to it by road or rail (designer 2026-11-15, SPEC_M10).
 
 contact:
-  radio_start:
-    value: true
+  radio_building:
+    value: radio_tower
     status: calibrated
-    note: Designer 2026-11-15 (SPEC_M13) - every player has met every other at the start (the
-      council's radio); cities are still found by exploring.
+    note: Designer 2026-11-16 - players meet only by radio - every player with this building in
+      a city it holds is in contact with every other such player (and sits on the council).
+      Sighting, beacon and distress contact are off. Classic capitals start with it; a survivor
+      band rebuilds it in its first town (cheap, about 2 turns). Replaces radio_start (SPEC_M13).
   beacon_tech:
     value: beacon_theory
     status: placeholder
@@ -549,7 +551,8 @@ survivor:
   note: The survivor start (docs/SPEC_M14.md, designer 2026-11-15). Each player's band (band) starts
     band_distance hexes from its first town, the player's old capital held lightly by the aliens
     (town_garrison, at town_hp_pct of its HP). Caches hold loot (weights); near_caches of them lie
-    within near_radius of the band and always hold gear, the rest within radius. A unit holds one
+    just beyond the band's sight (none beside it, nearer than the town, which starts unseen) and
+    always hold gear; the rest lie within radius, out of sight (designer 2026-11-16). A unit holds one
     weapon (weapon or alien_weapon, the better counts) and one armour. Alien hunters ignore band
     units farther than hunt_radius (one less in forest or hills). If the leader falls before the
     first town, it escapes to the band's starting hex with escape_survivors survivors. The town's
@@ -560,13 +563,12 @@ survivor:
     once they have gear, six people or it is ai_attack_turn, attacking only when the unit keeps at
     least ai_min_hp after the worst counter-blow or the blow takes the town.
   band: [{type: band_leader, count: 1}, {type: survivor, count: 4}]
-  band_distance: 3
+  band_distance: 4
   town_garrison: [alien_hatchling]
   town_pop: 2
-  town_hp_pct: 100
+  town_hp_pct: 70
   caches: 8
   near_caches: 2
-  near_radius: 3
   radius: 7
   loot:
     weapon: {weight: 4, attack: 5}

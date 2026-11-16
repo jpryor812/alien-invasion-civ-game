@@ -28,6 +28,13 @@ dying map), Spore (eras on one world, but with everything carried over).
 - **Hiding**: alien patrols do not chase bands outside their sight; units in forest or hills are
   harder to spot (one hex less sight for aliens).
 
+## 3b. Revisions before the first playtest (designer 2026-11-16)
+- No crate beside the band: gear lies one hex past its sight; the town is found second.
+- The barricade rule is not told to the player.
+- Contact only by radio: a founded city must rebuild its radio tower (cheap, about 2 turns) to
+  reach other continents and the council (replaces radio contact at turn 1 from SPEC_M13).
+- The AI uses every new tool (radio, UAV, sabotage, resistance, nests, strike defence).
+
 ## 4. Losing the band
 - If the leader's unit is destroyed before the first town is taken, the leader escapes to a
   safe hex with two new survivors (designer); a few turns are lost.

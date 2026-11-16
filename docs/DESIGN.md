@@ -312,4 +312,6 @@ varied partners.
   survivors move in, scrap becomes production, and research and building begin.
 - If the leader falls first, it escapes with two survivors. A Classic start (cities and an army)
   remains as an option.
+- Contact is by radio only (designer 2026-11-16): a player reaches other continents and the
+  council once a city of theirs has a radio tower (cheap; the first thing a new city builds).
 

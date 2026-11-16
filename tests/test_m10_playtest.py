@@ -87,8 +87,18 @@ def test_every_continent_has_3_to_5_remnants_that_do_not_block_starfall(cfg):
 
 
 def test_beacon_theory_meets_everyone(cfg):
-    from beacon import contact
+    """Beacon contact as built in M10; off while contact is by radio only (2026-11-16)."""
+    from beacon import config, contact
 
+    s = arena(cfg)
+    s.players[EU].techs = sorted([*s.players[EU].techs, cfg.t("contact.beacon_tech")])
+    s.players[EU].met, s.players[NA].met = [], []
+    assert contact.beacon_contact(s, cfg, EU) == []  # radio only
+
+    def no_radio(raw):
+        raw["tuning"]["contact"]["radio_building"]["value"] = None
+
+    cfg = config.load(overrides=no_radio)
     s = arena(cfg)
     s.players[EU].met, s.players[NA].met = [], []
     assert contact.beacon_contact(s, cfg, EU) == []

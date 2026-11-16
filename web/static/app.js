@@ -2173,7 +2173,7 @@ function renderUnitPanel() {
     <div class="title">${esc(pretty(u.type))}${u.count > 1 ? " ×2" : ""}</div>
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
-    ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: take caches (crates) for weapons, armour and people, then free your first town. Scrap ${S.view.scrap}.</div>` : ""}
+    ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: explore. Abandoned crates may hold weapons, armour or people; somewhere near, the aliens hold your old town.${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
     ${spec.air ? '<div class="muted">Circles its city on its own: it cannot be ordered or fight, sees 4 hexes, and warns you of alien strikes gathering against the city.</div>' : ""}
     ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
@@ -2999,7 +2999,7 @@ function councilScreen(d) {
   const results = (sess.results || []).map((r) => `<span class="tag ${r.passed ? "good" : "bad"}">${esc((sess.measures[r.measure] || {}).name || r.measure)}: ${r.chair ? `chair ${esc(pname(r.chair))}` : r.passed ? "passed" : "failed"}</span>`).join(" ");
   const proposable = Object.entries(sess.can_propose).map(([k, why]) => `<option value="${k}" ${why ? "disabled" : ""}>${esc(sess.measures[k].name)}${why ? ` (${esc(why)})` : ""}</option>`).join("");
   const players = sess.players.map((p) => `<tr${p.id === me ? ' class="me"' : ""}><td>${esc(p.name)}${p.id === sess.chair ? " ★" : ""}</td><td>${esc(p.leader || "")}</td><td>${esc(p.agenda || "")}</td><td>${p.influence}</td><td>${p.weight}</td></tr>`).join("");
-  const sessionHtml = `<div class="session"><h3>Council of continents ${sess.open.length ? '<span class="good">· voting this turn</span>' : `<span class="muted">· next vote on turn ${sess.next_session}</span>`}</h3>
+  const sessionHtml = !sess.member ? '<div class="session"><h3>Council of continents</h3><p class="muted">Silence on every channel. Build a radio tower in a city to reach the other continents and take your seat on the council.</p></div>' : `<div class="session"><h3>Council of continents ${sess.open.length ? '<span class="good">· voting this turn</span>' : `<span class="muted">· next vote on turn ${sess.next_session}</span>`}</h3>
     ${sess.open.map(voteRow).join("")}
     <div class="row">Your influence <b>${sess.influence}</b> · vote weight <b>${sess.weight}</b>${sess.objective ? ` · <span title="Secret: only you see this">Secret objective: <b>${esc(sess.objective.name)}</b> (${esc(sess.objective.info)}, ${sess.objective.points} MVP)${sess.objective.met ? ' <span class="good">met</span>' : ""}</span>` : ""}</div>
     ${results ? `<div class="row">Last session: ${results}</div>` : ""}

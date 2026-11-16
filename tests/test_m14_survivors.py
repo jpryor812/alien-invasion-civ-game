@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from beacon import combat, hexgrid, survivors
+from beacon import combat, fog, hexgrid, survivors
 from beacon.actions import apply_command
 from beacon.commands import Attack, MoveUnit
 from beacon.game import new_game
@@ -39,13 +39,18 @@ def test_each_player_starts_as_a_band_near_its_first_town(cfg, world):
         town = world.cities[p.band_town]
         assert town.status == OVERRUN and not town.is_capital and town.contents is None
         assert hexgrid.distance(p.band_home, town.tile, world.width) == sv["band_distance"]
+        sight = fog.visible_tiles(world, cfg, pid)
+        assert town.tile not in sight  # the band finds its town second (designer 2026-11-16)
+        mine = [int(k) for k in world.caches if world.tiles[int(k)].continent == pid]
+        assert all(t not in sight for t in mine)  # no crate in view, none beside the band
+        to_town = hexgrid.distance(p.band_home, town.tile, world.width)
         near = [
-            int(k)
-            for k, kind in world.caches.items()
-            if hexgrid.distance(int(k), p.band_home, world.width) <= sv["near_radius"]
-            and kind in ("weapon", "armour")
+            t
+            for t in mine
+            if world.caches[str(t)] in ("weapon", "armour")
+            and hexgrid.distance(t, p.band_home, world.width) <= to_town
         ]
-        assert len(near) >= sv["near_caches"]  # an upgrade within the first few turns
+        assert len(near) >= sv["near_caches"]  # gear just past the band's sight, before the town
     assert state_to_json(state_from_json(state_to_json(world))) == state_to_json(world)
     assert update_fallen(world) == []  # a band without a city has not fallen
 
@@ -130,7 +135,7 @@ def test_ai_bands_take_their_towns(cfg):
     state, events, _ = play(cfg, seed=4, turns=14, driver="ai", start="survivor")
     turns = first_city_turns(state)
     taken = [t for t in turns.values() if t is not None]
-    assert len(taken) >= 4 and min(taken) <= 7
+    assert len(taken) >= 3 and min(taken) <= 10
     assert any(e["kind"] == "loot_found" for e in events)
 
 
@@ -154,3 +159,88 @@ def test_a_band_unit_moves_onto_a_cache(cfg):
     events = apply_command(s, cfg, MoveUnit(player=EU, unit=lead.id, target=tile))
     assert any(e["kind"] == "loot_found" for e in events) and lead.gear == ["armour"]
     advance_turn(s, cfg)
+
+
+# -- radio contact and the AI's tools (designer 2026-11-16) -------------------------------------
+
+
+def test_contact_needs_a_founded_city_with_a_radio_tower(cfg):
+    from beacon import contact, council
+    from beacon.state import Measure
+
+    s = new_game(cfg, seed=2, start="survivor")
+    assert all(p.met == [] for p in s.players.values())
+    assert all(
+        cfg.t("contact.radio_building") not in s.cities[p.band_town].buildings
+        for p in s.players.values()
+    )
+    towns = {}
+    for pid in ("europe", "asia", "africa"):
+        town = s.cities[s.players[pid].band_town]
+        town.status, town.owner = ACTIVE, pid
+        s.players[pid].founded = True
+        towns[pid] = town
+    towns["europe"].buildings.append(cfg.t("contact.radio_building"))
+    assert contact.radio(s, cfg) == []  # one on the air: nobody to hear
+    towns["asia"].buildings.append(cfg.t("contact.radio_building"))
+    contact.radio(s, cfg)
+    assert s.players["europe"].met == ["asia"] and s.players["africa"].met == []
+    assert council.members(s, cfg) == ["asia", "europe"]
+    s.council.measures = [Measure(id=s.new_id(), kind="research_pact")]
+    assert council.unvoted(s, "africa", cfg) == []  # off the air: no seat
+    assert "radio" in council.vote_problem(s, cfg, "africa", s.council.measures[0].id, "yes", 0)
+
+
+def test_the_ai_builds_its_radio_first_and_a_uav_when_it_can(cfg):
+    from beacon.ai import AIPlayer
+
+    s = new_game(cfg, seed=2, start="classic")
+    capital = next(c for c in s.cities if c.owner == EU and c.is_capital)
+    capital.buildings = [b for b in capital.buildings if b != "radio_tower"]
+    capital.queue = []
+    AIPlayer(s, cfg, EU, lambda c: apply_command(s, cfg, c)).production()
+    assert capital.queue == ["building:radio_tower"]
+    capital.buildings.append("radio_tower")
+    capital.queue = []
+    s.players[EU].techs.append("drone_warfare")
+    for _ in range(2):  # an army comes first
+        from beacon.units import place_unit
+
+        place_unit(s, cfg, "infantry", EU, capital.tile, 2)
+    AIPlayer(s, cfg, EU, lambda c: apply_command(s, cfg, c)).production()
+    assert capital.queue == ["unit:uav_patrol"]
+
+
+def test_ai_soldiers_arm_resistance_clear_nests_and_defend_seen_strikes(cfg):
+    from test_m3_units_combat import EU as E
+    from test_m3_units_combat import add_city, arena, at
+
+    from beacon.ai import AIPlayer
+    from beacon.aliens import Director
+
+    s = arena(cfg)
+    s.players[E].character = sorted(cfg.ai("characters"))[0]
+    home = add_city(s, cfg, at(2, 4), ACTIVE, E, pop=3)
+    home.is_capital = True
+    alien = add_city(s, cfg, at(9, 4), OVERRUN, "aliens", pop=3)
+    s.players[E].known_cities[str(alien.id)] = __import__(
+        "beacon.state", fromlist=["CityMemory"]
+    ).CityMemory(status=OVERRUN, owner="aliens", pop=3, turn_seen=0)
+    s.players[E].gold = 1000
+    inf = create_unit(s, cfg, "infantry", E, at(8, 4))
+    from beacon import fog
+
+    fog.reveal_around(s, cfg, E, at(6, 4), 6)
+    ai = AIPlayer(s, cfg, E, lambda c: apply_command(s, cfg, c))
+    assert ai.tools(inf) and alien.resistance == 1
+    s.tiles[at(7, 6)].nest = alien.id
+    sol = create_unit(s, cfg, "infantry", E, at(6, 6))
+    ai._armed = True
+    assert ai.tools(sol) and sol.tile == at(7, 6)
+    # a strike the city's UAV has seen pulls nearby soldiers home
+    s.turn = 40
+    raider = create_unit(s, cfg, "alien_warrior", "aliens", at(10, 7))
+    Director(s, cfg).announce(raider, home.tile)
+    create_unit(s, cfg, "uav_patrol", E, home.tile)
+    guard = create_unit(s, cfg, "infantry", E, at(5, 2))
+    assert ai.tools(guard) and hexgrid.distance(guard.tile, home.tile, s.width) < 3

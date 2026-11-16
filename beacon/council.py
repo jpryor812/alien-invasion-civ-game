@@ -96,6 +96,8 @@ def propose_problem(state: GameState, cfg: Config, pid: str, kind: str) -> str |
     cost = cfg.council("sessions.propose_cost")
     if influence(cfg, state.players[pid]) < cost:
         return f"needs {cost} influence"
+    if pid not in members(state, cfg):
+        return "build a radio tower to reach the council"
     if any(m.proposer == pid for m in state.council.proposals):
         return "you already have a proposal waiting"
     if any(m.kind == kind for m in state.council.proposals):
@@ -114,15 +116,24 @@ def measure(state: GameState, measure_id: int) -> Measure | None:
     return next((m for m in state.council.measures if m.id == measure_id), None)
 
 
+def members(state: GameState, cfg: Config) -> list[str]:
+    """Who sits on the council: players on the air (a radio tower; designer 2026-11-16)."""
+    from beacon.contact import on_air
+
+    return on_air(state, cfg)
+
+
 def vote_problem(
     state: GameState, cfg: Config, pid: str, measure_id: int, choice: str, extra: int
 ) -> str | None:
+    if pid not in members(state, cfg):
+        return "build a radio tower to reach the council"
     m = measure(state, measure_id)
     if m is None:
         return "no such measure before the council"
     spec = cfg.council(f"measures.{m.kind}")
     if spec["kind"] == "chair":
-        if choice not in state.players and choice != "abstain":
+        if choice not in members(state, cfg) and choice != "abstain":
             return "vote for a player (or abstain)"
     elif choice not in CHOICES:
         return f"vote one of {', '.join(CHOICES)}"
@@ -147,7 +158,9 @@ def vote(
     return [_ev(state, "vote_cast", player=pid, measure=m.kind, choice=choice)]
 
 
-def unvoted(state: GameState, pid: str) -> list[Measure]:
+def unvoted(state: GameState, pid: str, cfg: Config | None = None) -> list[Measure]:
+    if cfg is not None and pid not in members(state, cfg):
+        return []
     return [m for m in state.council.measures if pid not in m.votes]
 
 
@@ -187,7 +200,7 @@ def open_session(state: GameState, cfg: Config) -> Events:
     c.sessions += 1
     return [
         _ev(state, "council_session", player=pid, measures=[m.kind for m in table])
-        for pid in state.player_ids()
+        for pid in members(state, cfg)
     ]
 
 
@@ -262,7 +275,7 @@ def _enact(state: GameState, cfg: Config, m: Measure) -> Events:
         ]
         return []
     if spec["kind"] == "relief":
-        alive = [p for p in state.player_ids() if not state.players[p].fallen]
+        alive = [p for p in members(state, cfg) if not state.players[p].fallen]
         counts = {
             p: sum(1 for x in state.cities if x.owner == p and x.status == ACTIVE) for p in alive
         }

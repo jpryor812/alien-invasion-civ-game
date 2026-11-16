@@ -372,9 +372,13 @@ def test_layout_is_shuffled_by_seed(cfg):
 def test_contact_gates_diplomacy_and_is_made_by_sighting(cfg):
     from test_m3_units_combat import NA
 
-    from beacon import contact
+    from beacon import config, contact
     from beacon.commands import ProposeDeal
 
+    def no_radio(raw):  # sighting contact as built in M9; off while contact is by radio only
+        raw["tuning"]["contact"]["radio_building"]["value"] = None
+
+    cfg = config.load(overrides=no_radio)
     s = arena(cfg)
     s.players[EU].met, s.players[NA].met = [], []
     with pytest.raises(CommandError, match="not met"):

@@ -80,9 +80,10 @@ def setup(state: GameState, cfg: Config) -> None:
             if city is not capital and not state.units_at(city.tile):
                 place_unit(state, cfg, cfg.t("aliens.garrison.list")[0], ALIENS, city.tile, 0)
         player.founded, player.band_town = False, capital.id
-        player.known_cities[str(capital.id)] = player.known_cities.get(str(capital.id)) or _memory(
-            state, capital
-        )
+        for city in mine:  # the band must find its old towns again (designer 2026-11-16)
+            player.known_cities.pop(str(city.id), None)
+            # the aliens wrecked the radio: rebuilding it is the first job (SPEC_M14 revision)
+            city.buildings = [b for b in city.buildings if b != cfg.t("contact.radio_building")]
         r = rng.stream(state.seed, "map", "band", pid)
         ring = [
             i
@@ -93,23 +94,45 @@ def setup(state: GameState, cfg: Config) -> None:
         ]
         home = r.choice(sorted(ring)) if ring else capital.tile
         player.band_home = home
+        band: list[Unit] = []
         for entry in sv["band"]:
             for _ in range(entry["count"]):
-                unit = place_unit(state, cfg, entry["type"], pid, home, 2)
+                unit = place_unit(state, cfg, entry["type"], pid, home, 1)
+                if unit is None:
+                    unit = place_unit(state, cfg, entry["type"], pid, home, 2)
                 if unit is None:
                     unit = create_unit(state, cfg, entry["type"], pid, home)
+                band.append(unit)
                 taken.add(unit.tile)
-        # caches: near ones always hold gear (an upgrade within the first turns), the rest by weight
+        # caches lie just out of the band's sight (none beside it), nearer than the town, so the
+        # band finds gear before it finds the town (designer 2026-11-16); the rest by weight
+        from beacon.fog import visible_tiles
+
+        sight = visible_tiles(state, cfg, pid)
+        to_town = hexgrid.distance(home, capital.tile, state.width)
         area = [
             i
             for i in hexgrid.within(home, sv["radius"], state.width, state.height)
             if state.tiles[i].continent == pid
-            and hexgrid.distance(i, capital.tile, state.width) >= 2
+            and i not in sight
+            and hexgrid.distance(i, capital.tile, state.width) >= 3
+            and all(hexgrid.distance(i, u.tile, state.width) >= 2 for u in band)
             and _free(state, cfg, i, taken)
         ]
         r.shuffle(area)
-        near = [i for i in area if hexgrid.distance(i, home, state.width) <= sv["near_radius"]]
-        chosen = near[: sv["near_caches"]]
+        edge = [
+            i
+            for i in area
+            if hexgrid.distance(i, home, state.width) < to_town
+            and any(n in sight for n in hexgrid.neighbours(i, state.width, state.height))
+        ]
+        if len(edge) < sv["near_caches"]:  # crowded by coast or cities: the nearest unseen hexes
+            near = sorted(
+                (i for i in area if i not in edge),
+                key=lambda i: (hexgrid.distance(i, home, state.width), i),
+            )
+            edge += near[: sv["near_caches"] - len(edge)]
+        chosen = edge[: sv["near_caches"]]
         rest = [i for i in area if i not in chosen]
         chosen += rest[: max(0, sv["caches"] - len(chosen))]
         for k, i in enumerate(chosen):

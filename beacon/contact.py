@@ -45,8 +45,11 @@ def meet(state: GameState, a: str, b: str, how: str, share: bool = True) -> Even
 
 
 def check(state: GameState, cfg: Config, only: str | None = None) -> Events:
-    """Players meet when one sees the other's land (its continent's hexes) or units."""
+    """Players meet when one sees the other's land (its continent's hexes) or units. Off while
+    contact is by radio only (designer 2026-11-16)."""
     events: Events = []
+    if cfg.t("contact.radio_building"):
+        return events
     ids = state.player_ids()
     seers = [only] if only is not None else ids
     units_by_owner: dict[str, set[int]] = {}
@@ -70,25 +73,43 @@ def beacon_contact(state: GameState, cfg: Config, pid: str) -> Events:
     continent, so its player meets everyone without finding their cities."""
     if cfg.t("contact.beacon_tech") not in state.players[pid].techs:
         return []
+    if cfg.t("contact.radio_building"):
+        return []  # radio only (designer 2026-11-16)
     events: Events = []
     for other in state.player_ids():
         events.extend(meet(state, pid, other, "beacon"))
     return events
 
 
-def radio(state: GameState) -> None:
-    """The council's radio (SPEC_M13): everyone has met at the start; land and cities are still
-    found by exploring."""
-    ids = state.player_ids()
+def on_air(state: GameState, cfg: Config) -> list[str]:
+    """Players with a radio tower in a city they hold (designer 2026-11-16)."""
+    building = cfg.t("contact.radio_building")
+    return [
+        pid
+        for pid in state.player_ids()
+        if any(
+            c.owner == pid and c.status == ACTIVE and building in c.buildings for c in state.cities
+        )
+    ]
+
+
+def radio(state: GameState, cfg: Config) -> Events:
+    """Everyone on the air meets everyone else on the air; no city locations are shared."""
+    ids = on_air(state, cfg)
+    events: Events = []
     for a in ids:
         for b in ids:
             if a < b:
-                meet(state, a, b, "radio", share=False)
+                events.extend(meet(state, a, b, "radio", share=False))
+    return events
 
 
-def fallen_known(state: GameState) -> Events:
-    """A fallen continent is known to everyone (so a rescue can be sent)."""
+def fallen_known(state: GameState, cfg: Config) -> Events:
+    """A fallen continent is known to everyone (so a rescue can be sent). Off while contact is by
+    radio only."""
     events: Events = []
+    if cfg.t("contact.radio_building"):
+        return events
     for pid in state.player_ids():
         if not state.players[pid].fallen:
             continue

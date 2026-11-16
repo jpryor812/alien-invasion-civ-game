@@ -111,6 +111,8 @@ def apply_command(state: GameState, cfg: Config, cmd: Command) -> Events:
             from beacon.survivors import pick_up  # caches of the survivor start (SPEC_M14)
 
             events.extend(pick_up(state, cfg))
+    if isinstance(cmd, Purchase):
+        events.extend(contact.radio(state, cfg))  # a bought radio tower is on the air at once
     if isinstance(cmd, REPLACE_CITIZENS):
         citizens.assign_all(state, cfg)  # cities, seats or tiles changed: re-place everyone
     for e in events:
@@ -782,7 +784,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
             out.append({"kind": "deal_received", "deal": deal.id})
     from beacon.council import unvoted  # SPEC_M13
 
-    if unvoted(state, pid):
+    if unvoted(state, pid, cfg):
         out.append({"kind": "council_vote"})
     for project in sorted(state.projects.values(), key=lambda p: p.id):
         if project.kind == "espionage" and project.offered and project.chooser == pid:

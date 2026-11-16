@@ -78,3 +78,16 @@ starfall:
   reach: 30
   guards: 2
 
+
+tools:
+  status: placeholder
+  note: The M12-M14 tools (designer 2026-11-16 - the AI uses them all). The first city builds the
+    radio tower first; every city adds a UAV patrol once it can. Soldiers within strike_radius of
+    a city whose UAV saw a strike coming go to defend it; idle soldiers clear nests within
+    nest_radius. A unit beside an alien city arms its resistance when the treasury holds
+    resistance_reserve gold beyond the cost (one city a turn); scouts beside an alien city
+    sabotage it while they have at least sabotage_min_hp_pct of their HP.
+  strike_radius: 6
+  nest_radius: 4
+  resistance_reserve: 120
+  sabotage_min_hp_pct: 60

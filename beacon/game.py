@@ -129,7 +129,6 @@ def new_game(
     threat.place_nests(state, cfg)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
-    if cfg.t("contact.radio_start"):
-        contact.radio(state)  # everyone sits on the council from turn 1 (SPEC_M13)
+    contact.radio(state, cfg)  # capitals with a radio tower are in contact (designer 2026-11-16)
     fog.refresh_all(state, cfg)
     return state
