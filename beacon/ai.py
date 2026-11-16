@@ -310,6 +310,42 @@ class AIPlayer(Bot):
                 if gold > 0:
                     self.submit(FundProject(player=self.pid, project=p.id, gold=gold))
 
+    # -- the council of continents (SPEC_M13) ------------------------------------------------
+
+    def parliament(self) -> None:
+        """Vote by agenda (likes yes, dislikes no, else yes; a relief fund it cannot pay, no;
+        chair: itself when it has the most influence, else the most influential player), and
+        propose the first liked measure when influence allows."""
+        from beacon import council
+        from beacon.commands import CastVote, ProposeMeasure
+
+        me = self.state.players[self.pid]
+        agenda = self.cfg.council(f"agendas.{me.agenda}") if me.agenda else {}
+        likes, dislikes = agenda.get("likes", []), agenda.get("dislikes", [])
+        for m in council.unvoted(self.state, self.pid):
+            spec = self.cfg.council(f"measures.{m.kind}")
+            if spec["kind"] == "chair":
+                choice = max(
+                    self.state.player_ids(),
+                    key=lambda p: (
+                        council.influence(self.cfg, self.state.players[p]),
+                        p == self.pid,
+                        p,
+                    ),
+                )
+            elif m.kind in dislikes or spec["kind"] == "relief" and me.gold < spec["gold"]:
+                choice = "no"
+            else:
+                choice = "yes"
+            self.submit(CastVote(player=self.pid, measure=m.id, choice=choice, extra=0))
+        reserve = self.cfg.council("ai.propose_reserve")
+        cost = self.cfg.council("sessions.propose_cost")
+        if council.influence(self.cfg, me) >= cost + reserve:
+            for kind in likes:
+                if council.propose_problem(self.state, self.cfg, self.pid, kind) is None:
+                    self.submit(ProposeMeasure(player=self.pid, measure=kind))
+                    break
+
     # -- the leader (SPEC_M11) ----------------------------------------------------------------
 
     def lead(self) -> None:
@@ -424,6 +460,7 @@ class AIPlayer(Bot):
         self.starfall_duty()
         self.promote()
         self.lead()
+        self.parliament()
         self.research()
         self.ensure_port()
         self.production()

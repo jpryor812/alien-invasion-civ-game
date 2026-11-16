@@ -33,13 +33,14 @@ def _share_cities(state: GameState, to: str, of: str) -> None:
             )
 
 
-def meet(state: GameState, a: str, b: str, how: str) -> Events:
+def meet(state: GameState, a: str, b: str, how: str, share: bool = True) -> Events:
     if met(state, a, b):
         return []
     state.players[a].met = sorted({*state.players[a].met, b})
     state.players[b].met = sorted({*state.players[b].met, a})
-    _share_cities(state, a, b)
-    _share_cities(state, b, a)
+    if share:
+        _share_cities(state, a, b)
+        _share_cities(state, b, a)
     return [{"turn": state.turn, "kind": "contact_made", "player": a, "other": b, "how": how}]
 
 
@@ -73,6 +74,16 @@ def beacon_contact(state: GameState, cfg: Config, pid: str) -> Events:
     for other in state.player_ids():
         events.extend(meet(state, pid, other, "beacon"))
     return events
+
+
+def radio(state: GameState) -> None:
+    """The council's radio (SPEC_M13): everyone has met at the start; land and cities are still
+    found by exploring."""
+    ids = state.player_ids()
+    for a in ids:
+        for b in ids:
+            if a < b:
+                meet(state, a, b, "radio", share=False)
 
 
 def fallen_known(state: GameState) -> Events:

@@ -1980,6 +1980,8 @@ function renderChrome() {
   for (const [id, y] of [["gold", "gold"], ["science", "science"], ["beacon", "beacon"]]) { $(id).dataset.tip = breakdownHtml(y, e); $(id).removeAttribute("title"); }
   const knownAlien = Object.values(v.cities).filter((c) => c.status === "overrun").length;
   $("threat").innerHTML = `${ICON.ship}${v.mothership_alive ? "Mothership <b class='bad'>active</b>" : "Mothership <b class='good'>destroyed</b>"} · alien cities <b>${knownAlien}</b>`;
+  $("influence").innerHTML = `<span class="infico">⚖</span>Influence <b>${v.influence}</b> · MVP <b>#${v.mvp_rank}</b>${v.council_open ? ' · <b class="good">council voting</b>' : ""}`;
+  $("influence").onclick = () => openScreen(v.council_open ? "council" : "scores");
   $("heat").innerHTML = `<span class="heatico">♨</span>Heat <b>${v.heat}</b>${(v.strikes || []).length ? ` · <b class="bad">${v.strikes.length} strike${v.strikes.length > 1 ? "s" : ""} coming</b>` : ""}`;
   $("heat").dataset.tip = `<b>Heat ${v.heat}</b><div>The attention you draw from the aliens. Hotter players are struck more often and by bigger forces.</div>${(v.heat_lines || []).map(([k, n]) => `<div>${pretty(k)}: ${n}</div>`).join("")}`;
   const ul = $("pending");
@@ -2028,11 +2030,13 @@ function describePending(p) {
     choose_espionage_tech: "Choose your alien technology",
     city_can_attack: `${cityName(p.city)} can attack an enemy`,
     story_choice: `Event: ${pretty(p.event)}`,
+    council_vote: "The council is voting",
     unit_promotion: `${unitLabel(p.unit)} can be promoted`,
   }[p.kind] || pretty(p.kind);
 }
 async function resolvePending(p) {
   if (p.kind === "choose_research") return openScreen("techs");
+  if (p.kind === "council_vote") return openScreen("council");
   if (p.kind === "choose_production") { centerOnTile(S.view.cities[p.city].tile); return selectCity(p.city); }
   if (p.kind === "unit_needs_orders") { const u = S.view.units.find((x) => x.id === p.unit); if (u) centerOnTile(u.tile); return selectUnit(p.unit); }
   if (p.kind === "recruit_unseated" || p.kind === "offer_received") return openScreen("council");
@@ -2067,6 +2071,12 @@ function describeEvent(e) {
     shard_claimed: () => e.by === S.view.me ? `You claimed the ${e.name} shard!` : e.by === "aliens" ? `The aliens claimed the ${e.name} shard.` : `${pretty(e.by)} claimed the ${e.name} shard.`,
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
+    council_session: () => `The council meets: ${(e.measures || []).map(pretty).join(", ")}. Vote this turn.`,
+    measure_result: () => `Council: ${pretty(e.measure)} ${e.passed ? "passed" : "failed"}.`,
+    chair_elected: () => `${pretty(e.chair)} was elected chair of the council.`,
+    measure_proposed: () => `You proposed ${pretty(e.measure)} for the next session.`,
+    relief_paid: () => `The relief fund was paid to ${pretty(e.receiver)}.`,
+    vote_cast: () => `You voted ${e.choice} on ${pretty(e.measure)}.`,
     strike_announced: () => `The aliens are gathering to strike ${cityName(e.city)} in ${e.launch - e.turn} turns.`,
     strike_launched: () => `The alien strike on ${cityName(e.city)} has begun.`,
     sabotage: () => `Sabotage at ${cityName(e.city)}: -${e.damage} HP (the saboteur took ${e.hurt}).`,
@@ -2300,12 +2310,12 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["story_choice", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["story_choice", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
   choose_research: "Choose research", choose_production: "Choose production", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
-  recruit_unseated: "Seat a recruit", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
+  recruit_unseated: "Seat a recruit", council_vote: "Council vote", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
 function nextAction() {
   if (!S.view) return null;
@@ -2873,7 +2883,7 @@ function leaderScreen(d) {
     <div class="lstage" style="background-image:url(leaders/backdrop_hall.webp)">${leaderFigure(d.look, d.outfit, d.accessories, d.age)}
       <div class="lbanner"><div class="lnm">${esc(d.name)}</div><div class="ltl">${esc(d.title)}</div></div></div>
     <div class="lside">
-      <div class="lhead"><div><h2>${esc(d.name)}</h2><div class="muted">${esc(d.title)} · age ${d.age} · ${d.sex === "man" ? "Man" : "Woman"}</div></div>
+      <div class="lhead"><div><h2>${esc(d.name)}</h2><div class="muted">${esc(d.title)} · age ${d.age} · ${d.sex === "man" ? "Man" : "Woman"}${d.agenda ? ` · agenda: ${esc((d.catalog.agendas.find((a) => a.id === d.agenda) || {}).name || d.agenda)}` : ""}</div></div>
         <div class="llevel" title="Leader level">${d.level}</div></div>
       <div class="lxp" title="${d.xp} XP; level ${d.level + 1} at ${d.xp_next}"><div style="width:${pct}%"></div><span>${d.xp} / ${d.xp_next} XP${d.points ? ` · <b>${d.points} skill point${d.points > 1 ? "s" : ""} to spend</b>` : ""}</span></div>
       <h3>Traits</h3><div class="ltraits">${traits}</div>
@@ -2889,7 +2899,7 @@ function leaderScreen(d) {
     </div></div>`;
 }
 function creationScreen(d) {
-  const c = S.creating || (S.creating = { name: d.name, look: d.look, age: d.age, traits: d.traits.map((t) => t.id) });
+  const c = S.creating || (S.creating = { name: d.name, look: d.look, age: d.age, traits: d.traits.map((t) => t.id), agenda: d.agenda });
   const looks = d.catalog.looks.map((l) => `<button class="${l.id === c.look ? "primary" : ""}" data-look="${l.id}">${l.sex === "man" ? "Man" : "Woman"}</button>`).join("");
   const traits = d.catalog.traits.map((t) => `<button class="${c.traits.includes(t.id) ? "primary" : ""}" data-ctrait="${t.id}" data-tip="${esc(t.note)}"><b>${esc(t.name)}</b><span class="muted small">${esc(t.note)}</span></button>`).join("");
   return `<div class="leader">
@@ -2902,6 +2912,7 @@ function creationScreen(d) {
       <h3>Look</h3><div class="row">${looks}</div>
       <h3>Age <span id="cagev">${c.age}</span></h3><input id="cage" type="range" min="${d.catalog.age_min}" max="${d.catalog.age_max}" value="${c.age}">
       <h3>Traits <span class="muted small">(choose ${d.catalog.trait_count}; a third comes at level 5)</span></h3><div class="ctraits">${traits}</div>
+      <h3>Agenda <span class="muted small">(public: what you stand for on the council)</span></h3><div class="ctraits">${d.catalog.agendas.map((a) => `<button class="${a.id === c.agenda ? "primary" : ""}" data-cagenda="${a.id}"><b>${esc(a.name)}</b><span class="muted small">${esc(a.note)}</span></button>`).join("")}</div>
       <div class="row" style="margin-top:14px"><button class="primary" id="ccreate" ${c.traits.length === d.catalog.trait_count && c.name.trim() ? "" : "disabled"}>Lead ${esc(d.continent)}</button>
         <button id="ckeep">Keep ${esc(d.name)}</button></div>
     </div></div>`;
@@ -2915,6 +2926,7 @@ function wireLeader(body, create) {
     $("cage").oninput = (e) => { c.age = Number(e.target.value); $("cagev").textContent = c.age; };
     $("cage").onchange = redraw;
     on("[data-look]", (el) => { c.look = el.dataset.look; redraw(); });
+    on("[data-cagenda]", (el) => { c.agenda = el.dataset.cagenda; redraw(); });
     on("[data-ctrait]", (el) => {
       const t = el.dataset.ctrait;
       c.traits = c.traits.includes(t) ? c.traits.filter((x) => x !== t) : [...c.traits, t].slice(-d.catalog.trait_count);
@@ -2923,7 +2935,8 @@ function wireLeader(body, create) {
     $("ccreate").onclick = () => {
       const sex = d.catalog.looks.find((l) => l.id === c.look).sex;
       S.creating = null;
-      act({ kind: "create_leader", name: c.name.trim(), sex, look: c.look, age: c.age, traits: c.traits }, "leader");
+      api("/api/command", { kind: "set_agenda", agenda: c.agenda }).then(() =>
+        act({ kind: "create_leader", name: c.name.trim(), sex, look: c.look, age: c.age, traits: c.traits }, "leader"));
     };
     $("ckeep").onclick = () => { S.creating = null; closeModal(); };
     return;
@@ -2961,7 +2974,27 @@ function councilScreen(d) {
   const head = L ? `<div class="seatrow leaderhead"><div class="seat filled lseat" data-open-leader="1" title="Open the leader screen">
       ${leaderPortrait(L.look, L.outfit, "avatar")}<div><div class="mname">${esc(L.name)}</div><div class="muted small">Leader · level ${L.level}</div>
       <div>${Object.entries(L.skills).filter(([, v]) => v).map(([k, v]) => `<span class="tag ${k}">+${v} ${k}</span>`).join("")}</div></div></div></div>` : "";
-  return `<h2>The Council</h2>
+  const sess = d.session, me = S.view.me;
+  const pname = (id) => (sess.players.find((p) => p.id === id) || {}).name || pretty(id);
+  const voteRow = (m) => {
+    const others = Object.entries(m.votes).filter(([p]) => p !== me).map(([p, c]) => `<span class="tag">${esc(pname(p))}: ${esc(m.chair ? pname(c) : c)}</span>`).join(" ");
+    const buttons = m.chair
+      ? sess.players.map((p) => `<button class="${m.mine === p.id ? "primary" : ""}" data-vote="${m.id}" data-choice="${p.id}">${esc(p.name)}</button>`).join("")
+      : ["yes", "no", "abstain"].map((c) => `<button class="${m.mine === c ? "primary" : ""}" data-vote="${m.id}" data-choice="${c}">${pretty(c)}</button>`).join("");
+    return `<div class="measure${m.mine ? " voted" : ""}"><div><b>${esc(m.name)}</b>${m.target ? ` <span class="muted">at ${esc(m.target)}</span>` : ""}${m.proposer ? ` <span class="muted">· proposed by ${esc(pname(m.proposer))}</span>` : ""}</div>
+      <div class="muted small">${esc(m.info)}</div><div class="row">${buttons}<label class="small">extra votes <input type="number" min="0" max="9" value="${m.extra}" data-extra="${m.id}" style="width:44px"></label><span class="muted small">${sess.extra_cost} influence each</span></div>${others ? `<div class="small">${others}</div>` : ""}</div>`;
+  };
+  const results = (sess.results || []).map((r) => `<span class="tag ${r.passed ? "good" : "bad"}">${esc((sess.measures[r.measure] || {}).name || r.measure)}: ${r.chair ? `chair ${esc(pname(r.chair))}` : r.passed ? "passed" : "failed"}</span>`).join(" ");
+  const proposable = Object.entries(sess.can_propose).map(([k, why]) => `<option value="${k}" ${why ? "disabled" : ""}>${esc(sess.measures[k].name)}${why ? ` (${esc(why)})` : ""}</option>`).join("");
+  const players = sess.players.map((p) => `<tr${p.id === me ? ' class="me"' : ""}><td>${esc(p.name)}${p.id === sess.chair ? " ★" : ""}</td><td>${esc(p.leader || "")}</td><td>${esc(p.agenda || "")}</td><td>${p.influence}</td><td>${p.weight}</td></tr>`).join("");
+  const sessionHtml = `<div class="session"><h3>Council of continents ${sess.open.length ? '<span class="good">· voting this turn</span>' : `<span class="muted">· next vote on turn ${sess.next_session}</span>`}</h3>
+    ${sess.open.map(voteRow).join("")}
+    <div class="row">Your influence <b>${sess.influence}</b> · vote weight <b>${sess.weight}</b>${sess.objective ? ` · <span title="Secret: only you see this">Secret objective: <b>${esc(sess.objective.name)}</b> (${esc(sess.objective.info)}, ${sess.objective.points} MVP)${sess.objective.met ? ' <span class="good">met</span>' : ""}</span>` : ""}</div>
+    ${results ? `<div class="row">Last session: ${results}</div>` : ""}
+    ${sess.active.length ? `<div class="row">In force: ${sess.active.map((a) => `<span class="tag">${esc(a.name)} until turn ${a.until}</span>`).join(" ")}</div>` : ""}
+    <div class="row"><select id="propose"><option value="">Propose a measure…</option>${proposable}</select><button id="propose-btn">Propose for the next session (${sess.propose_cost} influence)</button>${sess.proposals.length ? `<span class="muted small">Waiting: ${sess.proposals.map((m) => esc(m.name)).join(", ")}</span>` : ""}</div>
+    <table class="sessplayers"><tr><th>Continent</th><th>Leader</th><th>Agenda</th><th>Influence</th><th>Weight</th></tr>${players}</table></div>`;
+  return `${sessionHtml}<h2>The Council</h2>
     <p class="muted">General seats add all of a member's stats; a domain seat adds only that domain. Alien recruits give percentages to every city; a citizen adds its stats to every city. Your leader heads the council: click the leader for skills, traits and family. ${pick ? "<b>Now click a seat.</b>" : "Click a member, then a seat."}</p>
     ${head}<div class="seatrow general">${general}</div>
     <div class="seatrow domains">${domains}</div>
@@ -3140,6 +3173,11 @@ function wireScreen(name) {
     });
     on("[data-free]", (el) => { S.councilPick = null; freeSeat(el.dataset.free, d); });
     on("[data-open-leader]", () => openScreen("leader"));
+    on("[data-vote]", (el) => {
+      const extra = Number((body.querySelector(`[data-extra="${el.dataset.vote}"]`) || {}).value || 0);
+      act({ kind: "cast_vote", measure: Number(el.dataset.vote), choice: el.dataset.choice, extra }, "council");
+    });
+    if ($("propose-btn")) $("propose-btn").onclick = () => $("propose").value ? act({ kind: "propose_measure", measure: $("propose").value }, "council") : toast("Choose a measure to propose");
     on("[data-gift]", (el) => act({ kind: "offer_recruit", recruit: Number(el.dataset.gift), to_player: body.querySelector(`[data-giftto="${el.dataset.gift}"]`).value, price: 0 }, "council"));
     on("[data-accept-offer]", (el) => act({ kind: "accept_offer", offer: Number(el.dataset.acceptOffer) }, "council"));
     on("[data-decline-offer]", (el) => act({ kind: "decline_offer", offer: Number(el.dataset.declineOffer) }, "council"));

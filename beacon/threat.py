@@ -33,7 +33,9 @@ def heat(state: GameState, cfg: Config, pid: str) -> int:
         total += sum(h["buildings"].get(b, 0) for b in city.buildings)
         if city.convoy:
             total += h["per_convoy"]
-    return total
+    from beacon.techfx import total as fx  # Beacon silence (council, SPEC_M13)
+
+    return max(0, total * (100 + fx(cfg, state.players.get(pid), "heat_pct")) // 100)
 
 
 def heat_lines(state: GameState, cfg: Config, pid: str) -> list[tuple[str, int]]:

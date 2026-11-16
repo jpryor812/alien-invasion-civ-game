@@ -30,6 +30,11 @@ def score(state: GameState, cfg: Config, pid: str) -> dict[str, Any]:
         points = raw * weights[wkey] // div
         if raw:
             lines.append({"entry": entry, "raw": raw, "points": points})
+    from beacon.council import objective_points  # the secret objective (SPEC_M13)
+
+    bonus = objective_points(state, cfg, pid)
+    if bonus:
+        lines.append({"entry": "objective", "raw": 1, "points": bonus})
     return {"player": pid, "total": sum(line["points"] for line in lines), "lines": lines}
 
 

@@ -794,3 +794,40 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - **Balance.** Cities lost per game fell from 0-3 (M11) to 0-1, since announced strikes give
   defenders 3 turns. Heat and cohort size are the levers if the aliens need more bite.
 
+## M13: the council of continents (designer 2026-11-15, docs/SPEC_M13.md)
+
+- **Radio contact.** `contact.radio_start` (true): every player has met every other at the
+  start, so trades, aid, alliances and gifts are open from turn 1. Radio contact shares no city
+  locations; those are still found by exploring. Sighting and beacon contact still exist but
+  have nothing left to do while radio is on.
+- **Influence.** Computed from the credit ledger (cities freed or reclaimed 10, aid 1 per 50
+  gold, 3 per unit, 5 per tech, shards 5, recruits given 3), plus the agenda bonus, plus
+  `Player.influence_adjust` (proposals -15, extra votes -10 each, pledges +2 paid, -5 missed).
+  Influence can go below zero through missed pledges; vote weight never drops below 1.
+- **Sessions.** A session opens at the end of every turn T with (T+1) divisible by 5: up to two
+  waiting proposals (oldest first) and one drawn measure (seeded; the chair election while no
+  chair sits). Players vote during turn T+1; votes not cast count as abstentions. The session
+  resolves at the end of T+1. The SPEC's "the chair picks the next drawn measure" is not built:
+  the chair only breaks ties.
+- **Weights.** 1 + influence / 50 (rounded down) plus extra votes bought. A measure passes when
+  weighted yes beats weighted no; on a tie it passes only if the chair voted yes. A chair
+  election goes to the most weighted candidate; ties keep the sitting chair, else the lowest id.
+- **Measures.** Research pact (+10% science, -5% gold), beacon silence (heat -25% via a new
+  `heat_pct` effect, beacon -25%), shared arsenals (units -10% production), all for 5 turns and
+  for every player through `Player.temp_effects` (read by techfx like tech effects); relief fund
+  (every other player pays 30 gold to the living player with the fewest cities, if it can);
+  joint strike (+15% attack for 5 turns for attacks on hexes within 2 of the alien city players
+  have damaged most, else the weakest). The SPEC's fuel quota became "shared arsenals" (lending
+  strategic resources has no shared-vote form yet); evacuation is the relief fund.
+- **Agendas.** Five public agendas (liberator, scientist, merchant, warden, mystic), dealt by seed
+  so the six players get all five; the human may change theirs on the creation screen (turn 0).
+  Each gives influence for one credit (for example 5 per city freed) and lists measures the AI
+  supports or opposes; anything else the AI votes yes, except a relief fund it cannot pay. AI
+  chair votes go to the most influential player (itself on a tie). AI leaders propose the first
+  liked measure when they have 20 influence to spare after the cost.
+- **Secret objectives.** Six, dealt by seed so no two players share one: free 3 cities on
+  another continent (a new credit `cities_liberated_abroad`), be elected chair 3 times, claim 3
+  shards, give 300 aid gold, defeat 40 aliens, have 2 hybrids on the council. Worth 30-40 MVP
+  points once met (hybrids: while it holds).
+- **Later (designer):** a hidden collaborator who wins with the aliens.
+

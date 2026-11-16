@@ -5,6 +5,8 @@ from __future__ import annotations
 from beacon import (
     cities,
     citizens,
+    contact,
+    council,
     fog,
     hexgrid,
     improvements,
@@ -100,6 +102,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
         state.players[pid].leader = leader.generate(cfg, seed, pid, taken)
         taken += (state.players[pid].leader.name,)
     leader.seed_attitudes(state, cfg)
+    council.deal_agendas(state, cfg)  # agendas and secret objectives (SPEC_M13)
     # Nobody knows the other continents at the start: they meet by exploring (beacon/contact.py,
     # designer 2026-11-14; replaces the M6 rule that everyone knew everyone's cities).
     # Only improved tiles can be worked (designer 2026-11-14): known cities start with farmland.
@@ -115,5 +118,7 @@ def new_game(cfg: Config, seed: int, continents: list[str] | None = None) -> Gam
     threat.place_nests(state, cfg)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)
+    if cfg.t("contact.radio_start"):
+        contact.radio(state)  # everyone sits on the council from turn 1 (SPEC_M13)
     fog.refresh_all(state, cfg)
     return state

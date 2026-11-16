@@ -33,6 +33,7 @@ from beacon.commands import (
     Attack,
     BuildImprovement,
     CancelJob,
+    CastVote,
     ChooseEspionageTech,
     ChooseLeaderBonus,
     ChooseStory,
@@ -50,11 +51,13 @@ from beacon.commands import (
     OfferRecruit,
     PromoteUnit,
     ProposeDeal,
+    ProposeMeasure,
     Purchase,
     RaiseSkill,
     RefoundCity,
     Sabotage,
     SeatRecruit,
+    SetAgenda,
     SetCitizenJob,
     SetConvoy,
     SetFocus,
@@ -773,6 +776,10 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for deal in sorted(state.deals.values(), key=lambda d: d.id):
         if deal.receiver == pid and not deal.active:
             out.append({"kind": "deal_received", "deal": deal.id})
+    from beacon.council import unvoted  # SPEC_M13
+
+    if unvoted(state, pid):
+        out.append({"kind": "council_vote"})
     for project in sorted(state.projects.values(), key=lambda p: p.id):
         if project.kind == "espionage" and project.offered and project.chooser == pid:
             out.append({"kind": "choose_espionage_tech", "project": project.id})
@@ -893,3 +900,36 @@ def _arm_resistance(state: GameState, cfg: Config, cmd: ArmResistance) -> Events
     if problem:
         raise CommandError(problem)
     return threat.arm(state, cfg, unit, city)
+
+
+# -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------
+
+
+@handles(ProposeMeasure)
+def _propose_measure(state: GameState, cfg: Config, cmd: ProposeMeasure) -> Events:
+    from beacon import council
+
+    problem = council.propose_problem(state, cfg, cmd.player, cmd.measure)
+    if problem:
+        raise CommandError(problem)
+    return council.propose(state, cfg, cmd.player, cmd.measure)
+
+
+@handles(CastVote)
+def _cast_vote(state: GameState, cfg: Config, cmd: CastVote) -> Events:
+    from beacon import council
+
+    problem = council.vote_problem(state, cfg, cmd.player, cmd.measure, cmd.choice, cmd.extra)
+    if problem:
+        raise CommandError(problem)
+    return council.vote(state, cfg, cmd.player, cmd.measure, cmd.choice, cmd.extra)
+
+
+@handles(SetAgenda)
+def _set_agenda(state: GameState, cfg: Config, cmd: SetAgenda) -> Events:
+    if state.turn != 0:
+        raise CommandError("the agenda is chosen before the first turn ends")
+    if cmd.agenda not in cfg.council("agendas"):
+        raise CommandError(f"unknown agenda {cmd.agenda!r}")
+    state.players[cmd.player].agenda = cmd.agenda
+    return [{"kind": "agenda_set", "agenda": cmd.agenda}]

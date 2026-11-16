@@ -476,3 +476,12 @@ th .icon.medal { width: 15px; height: 15px; }
 /* -- M12: strikes and heat -- */
 #pending li.strike { color: #ffb4a8; border-left: 3px solid #e53c2d; padding-left: 6px; background: rgba(150,30,20,0.18); }
 .heatico { color: #ff8a5c; margin-right: 3px; }
+
+/* -- M13: the council of continents -- */
+.session { border: 1px solid var(--brass-dim); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; background: rgba(217,174,85,0.05); }
+.measure { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 6px 0; background: #0f171f; }
+.measure.voted { border-color: var(--good); }
+.sessplayers { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+.sessplayers th, .sessplayers td { text-align: left; padding: 2px 6px; border-bottom: 1px solid rgba(59,77,94,0.5); }
+.sessplayers tr.me td { color: var(--brass-hi); }
+.infico { color: var(--brass-hi); margin-right: 3px; }

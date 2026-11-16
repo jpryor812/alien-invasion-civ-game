@@ -147,6 +147,7 @@ FILES = (
     "mvp",
     "story",
     "leaders",
+    "council",
 )
 
 YIELDS = ("food", "production", "science", "gold", "beacon")
@@ -253,6 +254,10 @@ class Config:
     def ai(self, path: str) -> Any:
         """A value from data/ai.yaml (cached; read-only)."""
         return self._section("ai", path)
+
+    def council(self, path: str) -> Any:
+        """A value from data/council.yaml (the council of continents, docs/SPEC_M13.md)."""
+        return self._section("council", path)
 
     def leader(self, path: str) -> Any:
         """A value from data/leaders.yaml (the leader, docs/SPEC_M11.md)."""

@@ -292,3 +292,13 @@ varied partners.
 - Other ways to free a city: sabotage, arming the resistance (uprisings), destroying nests.
 - docs/PRESSURE_AUDIT.md maps every building and unit to the pressure it answers.
 
+## M13: the council of continents (designer 2026-11-15, docs/SPEC_M13.md)
+
+- Everyone is on the council from turn 1 by radio; land and cities are still found by exploring.
+- Influence, earned by freeing cities, aid, shards and the leader's agenda, weighs votes and pays
+  for proposals. Every 5 turns the council votes on measures: research pact, beacon silence,
+  shared arsenals, relief fund, joint strike, chair election.
+- Each leader has a public agenda (how they vote) and a secret objective worth MVP points. The
+  top bar shows influence and MVP rank.
+- Noted for later (designer): a hidden collaborator who secretly wins with the aliens.
+

@@ -156,11 +156,12 @@ def test_view_hides_unexplored_tiles_and_unseen_units(cfg, world):
 
 
 def test_lost_cities_unknown_until_seen(cfg, world):
-    """At the start a player knows only its own continent's cities it holds; other continents are
-    unknown until met (designer 2026-11-14; in M6 everyone knew every active city)."""
+    """At the start a player knows only its own continent's cities it holds; other continents'
+    cities are unknown until seen (designer 2026-11-14; in M6 everyone knew every active city).
+    Since SPEC_M13 everyone has met by radio at the start, but meeting by radio shares no cities."""
     pid = "asia"
     player = world.players[pid]
-    assert player.met == []
+    assert len(player.met) == len(world.players) - 1
     for city in world.cities:
         known = str(city.id) in player.known_cities
         if city.continent != pid:

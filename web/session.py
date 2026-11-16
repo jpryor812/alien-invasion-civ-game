@@ -491,7 +491,14 @@ class Session:
                     "defence": combat.city_strength(s, cfg, city).total // 100,
                 }
             )
+        from beacon import council
+
+        rank = [r["player"] for r in mvp.ranking(s, cfg)]
         return {
+            "influence": council.influence(cfg, s.players[me]),
+            "mvp_rank": rank.index(me) + 1,
+            "council_open": bool(s.council.measures),
+            "chair": s.council.chair,
             "strikes": strikes,
             "heat": threat.heat(s, cfg, me),
             "heat_lines": threat.heat_lines(s, cfg, me),
@@ -815,6 +822,7 @@ class Session:
                 for seat in ["general", *DOMAINS]
             },
             "members": self._members(),
+            "session": self._session(),
             "leader": {  # the leader heads the council (SPEC_M11)
                 "name": player.leader.name,
                 "look": player.leader.look,
@@ -824,6 +832,75 @@ class Session:
             }
             if (player := s.players[me]).leader
             else None,
+        }
+
+    def _session(self) -> dict[str, Any]:
+        """The council of continents (SPEC_M13): the open session, proposals, measures in force,
+        agendas (public) and your secret objective."""
+        from beacon import council
+
+        s, cfg, me = self.state, self.cfg, self.human
+        c = s.council
+        specs = cfg.council("measures")
+
+        def row(m) -> dict[str, Any]:
+            spec = specs[m.kind]
+            return {
+                "id": m.id,
+                "kind": m.kind,
+                "name": spec["name"],
+                "info": spec["info"],
+                "chair": spec["kind"] == "chair",
+                "proposer": m.proposer,
+                "target": None if m.target is None else s.cities[m.target].name,
+                "votes": dict(m.votes),
+                "mine": m.votes.get(me),
+                "extra": m.extra.get(me, 0),
+            }
+
+        every = cfg.council("sessions.session_turns")
+        player = s.players[me]
+        objective = cfg.council(f"objectives.{player.objective}") if player.objective else None
+        return {
+            "open": [row(m) for m in c.measures],
+            "proposals": [row(m) for m in c.proposals],
+            "next_session": (s.turn // every + 1) * every,  # the next turn with a vote
+            "chair": c.chair,
+            "results": c.results,
+            "active": [
+                {"name": specs[a["measure"]]["name"], "until": a["until"]} for a in c.active
+            ],
+            "influence": council.influence(cfg, player),
+            "weight": council.weight(cfg, player),
+            "extra_cost": cfg.council("sessions.extra_vote_cost"),
+            "propose_cost": cfg.council("sessions.propose_cost"),
+            "can_propose": {
+                k: council.propose_problem(s, cfg, me, k)
+                for k in specs
+                if specs[k]["kind"] != "chair"
+            },
+            "measures": {k: {"name": v["name"], "info": v["info"]} for k, v in specs.items()},
+            "players": [
+                {
+                    "id": pid,
+                    "name": s.players[pid].name,
+                    "leader": s.players[pid].leader.name if s.players[pid].leader else None,
+                    "agenda": cfg.council(f"agendas.{s.players[pid].agenda}.name")
+                    if s.players[pid].agenda
+                    else None,
+                    "influence": council.influence(cfg, s.players[pid]),
+                    "weight": council.weight(cfg, s.players[pid]),
+                }
+                for pid in s.player_ids()
+            ],
+            "objective": None
+            if objective is None
+            else {
+                "name": objective["name"],
+                "info": objective["info"],
+                "points": objective["points"],
+                "met": council.objective_met(s, cfg, me),
+            },
         }
 
     def _members(self) -> list[dict[str, Any]]:
@@ -998,7 +1075,12 @@ class Session:
             "career": career,
             "can_create": s.turn == 0,
             "custom": lead.custom,
+            "agenda": player.agenda,
             "catalog": {
+                "agendas": [
+                    {"id": k, "name": v["name"], "note": v["info"]}
+                    for k, v in sorted(cfg.council("agendas").items())
+                ],
                 "looks": [{"id": k, "sex": v} for k, v in leader.looks(cfg).items()],
                 "traits": [trait_row(t) for t in sorted(traits)],
                 "age_min": start["age_min"],

@@ -367,6 +367,36 @@ class ArmResistance(Command):
     city: int
 
 
+# -- the council of continents (docs/SPEC_M13.md) -------------------------------------------------
+
+
+@register
+@dataclass(frozen=True)
+class ProposeMeasure(Command):
+    kind: ClassVar[str] = "propose_measure"
+    measure: str
+
+
+@register
+@dataclass(frozen=True)
+class CastVote(Command):
+    """`choice`: yes, no or abstain; for a chair election, a player id (or abstain)."""
+
+    kind: ClassVar[str] = "cast_vote"
+    measure: int
+    choice: str
+    extra: int = 0
+
+
+@register
+@dataclass(frozen=True)
+class SetAgenda(Command):
+    """The leader's public agenda, chosen on the creation screen (turn 0)."""
+
+    kind: ClassVar[str] = "set_agenda"
+    agenda: str
+
+
 # -- the leader (docs/SPEC_M11.md) ---------------------------------------------------------------
 
 

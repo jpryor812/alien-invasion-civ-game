@@ -1,0 +1,67 @@
+# The council of continents (docs/SPEC_M13.md, designer 2026-11-15).
+#
+# Every player sits on the council from turn 1 (radio). Every session_turns turns a session opens:
+# measures are put to a weighted vote during the next turn and resolved at its end. `effects` use
+# the tech-effect keys (beacon/techfx.py) and last `turns` turns for everyone.
+
+sessions:
+  status: placeholder
+  note: A session opens at the end of every session_turns-th turn with the players' proposals
+    (oldest first, up to max_proposals) and one measure drawn by seed (the chair's pick if a chair
+    sits). Votes weigh 1 + influence / influence_per_vote; each extra vote costs extra_vote_cost
+    influence. A measure passes when weighted yes beats weighted no; on a tie the chair decides.
+  session_turns: 5
+  max_proposals: 2
+  influence_per_vote: 50
+  extra_vote_cost: 10
+  propose_cost: 15
+
+influence:
+  status: placeholder
+  note: Influence is earned from the credit ledger (a weight per entry; `<key>_per_N` divides the
+    entry by N), plus the leader's agenda bonus, plus or minus pledges and spending.
+  earn: {cities_liberated: 10, cities_reclaimed: 10, aid_gold_per_50: 1, aid_units: 3, aid_techs: 5,
+         shards_claimed: 5, recruits_given: 3}
+  pledge_paid: 2
+  pledge_missed: -5
+
+measures:
+  status: placeholder
+  note: The measures the council can vote on. kind - effect (temporary effects for everyone),
+    relief (every member pays `gold` to the player with the fewest cities), strike (+pct attack
+    near a named alien city), chair (elects a chair; options are the players).
+  research_pact: {name: Research pact, info: "+10% science, -5% gold for everyone for 5 turns.", kind: effect, turns: 5, effects: {yield_pct: {science: 10, gold: -5}}}
+  beacon_silence: {name: Beacon silence, info: "Everyone's heat -25% and beacon points -25% for 5 turns.", kind: effect, turns: 5, effects: {heat_pct: -25, yield_pct: {beacon: -25}}}
+  shared_arms: {name: Shared arsenals, info: "Units cost 10% less production for everyone for 5 turns.", kind: effect, turns: 5, effects: {unit_cost_pct: -10}}
+  relief_fund: {name: Relief fund, info: "Every member pays 30 gold to the continent holding the fewest cities.", kind: relief, gold: 30}
+  joint_strike: {name: Joint strike, info: "+15% attack within 2 hexes of a named alien city for 5 turns.", kind: strike, turns: 5, pct: 15, radius: 2}
+  chair_election: {name: Chair election, info: "Elect the council chair, who breaks ties and picks the next drawn measure.", kind: chair}
+
+agendas:
+  status: placeholder
+  note: A leader's public agenda (seeded for the AI, chosen at creation by the human). It earns
+    `influence` per `per` of the named credit, and sets how AI leaders vote (likes - yes,
+    dislikes - no, otherwise yes).
+  liberator: {name: Liberator, info: Frees cities first., credit: cities_liberated, per: 1, influence: 5, likes: [joint_strike, shared_arms], dislikes: [beacon_silence]}
+  scientist: {name: Scientist, info: Science before everything., credit: shards_claimed, per: 1, influence: 5, likes: [research_pact], dislikes: [shared_arms]}
+  merchant: {name: Merchant, info: Gold and aid keep the world together., credit: aid_gold, per: 100, influence: 2, likes: [relief_fund], dislikes: [research_pact]}
+  warden: {name: Warden, info: Defence and quiet., credit: kills, per: 10, influence: 2, likes: [beacon_silence, shared_arms], dislikes: [joint_strike]}
+  mystic: {name: Mystic, info: The beacons are humanity's hope., credit: recruits_gained, per: 1, influence: 3, likes: [research_pact], dislikes: [beacon_silence]}
+
+objectives:
+  status: placeholder
+  note: One secret objective per player (seeded; different players get different ones when they
+    can). Met at any time; worth `points` MVP points. `credit` objectives compare a credit entry
+    with `at`; chair counts times elected; hybrids counts hybrids on the council.
+  liberate_abroad: {name: Liberator abroad, info: Free 3 cities on another continent., credit: cities_liberated_abroad, at: 3, points: 40}
+  chair_3: {name: Statesman, info: Be elected chair 3 times., chair: 3, points: 40}
+  shards_3: {name: Starcatcher, info: Claim 3 Starfall shards., credit: shards_claimed, at: 3, points: 30}
+  aid_300: {name: Benefactor, info: Give 300 gold in aid., credit: aid_gold, at: 300, points: 30}
+  kills_40: {name: Exterminator, info: Defeat 40 aliens., credit: kills, at: 40, points: 30}
+  hybrids_2: {name: New blood, info: Have 2 hybrids on your council at once., hybrids: 2, points: 40}
+
+ai:
+  status: placeholder
+  note: AI leaders propose the first measure they like when their influence is at least
+    propose_reserve above the cost, never more than one measure on the table each.
+  propose_reserve: 20

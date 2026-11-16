@@ -35,6 +35,7 @@ CREDIT_KEYS = (
     "barrage",
     "shards_claimed",
     "leader_children",  # the leader's children grown up (SPEC_M11)
+    "cities_liberated_abroad",  # freed on another continent (SPEC_M13 objectives)
 )
 
 
@@ -116,6 +117,8 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
         n = city.pop * cfg.t("cities.liberated_improved_pct") // 100
         auto_improve(state, cfg, city, n, city.owner)
     credit(state, by, "cities_liberated")
+    if city.continent != by:
+        credit(state, by, "cities_liberated_abroad")
     credit(state, by, "pop_saved", city.pop)
     for pid, share in liberation_shares(state, city.damage_by, by).items():
         credit(state, pid, "liberation_share", share)

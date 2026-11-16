@@ -509,6 +509,11 @@ convoys:
       joined to it by road or rail (designer 2026-11-15, SPEC_M10).
 
 contact:
+  radio_start:
+    value: true
+    status: calibrated
+    note: Designer 2026-11-15 (SPEC_M13) - every player has met every other at the start (the
+      council's radio); cities are still found by exploring.
   beacon_tech:
     value: beacon_theory
     status: placeholder

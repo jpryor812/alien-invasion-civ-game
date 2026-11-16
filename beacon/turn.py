@@ -9,6 +9,7 @@ from beacon import (
     citizens,
     combat,
     contact,
+    council,
     diplomacy,
     economy,
     endgame,
@@ -112,6 +113,7 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
         events.extend(recruits.arrivals(state, cfg, pid))
     events.extend(recruits.end_of_turn(state, cfg))
     events.extend(leader.end_of_turn(state, cfg))  # births, votes, levels (SPEC_M11)
+    events.extend(council.end_of_turn(state, cfg))  # sessions and measures (SPEC_M13)
     reset_units(state, cfg)
     heal_cities(state, cfg)
     state.turn += 1

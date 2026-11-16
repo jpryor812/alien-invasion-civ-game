@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from beacon import ai, bots, canonical, endgame, mvp
+from beacon import ai, bots, canonical, council, endgame, mvp
 from beacon.actions import apply_command
 from beacon.commands import Command, CommandError, command_from_dict, command_to_dict
 from beacon.config import Config, load
@@ -160,6 +160,12 @@ def summary(
             if p.leader is not None
         },
         "hybrids_voted_out": sum(1 for c in state.citizens.values() if c.banned_until >= 0),
+        # SPEC_M13: the council of continents
+        "council_sessions": state.council.sessions,
+        "chair": state.council.chair,
+        "objectives_met": sorted(
+            pid for pid in state.player_ids() if council.objective_met(state, cfg, pid)
+        ),
     }
 
 

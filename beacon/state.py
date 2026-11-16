@@ -157,6 +157,11 @@ class Player:
     flags: list[str] = field(default_factory=list)  # story choices remembered
     leader: Leader | None = None  # docs/SPEC_M11.md
     intel: list[int] = field(default_factory=list)  # alien cities whose contents are known (M12)
+    influence_adjust: int = 0  # influence spent (-) and pledges (+/-) (SPEC_M13)
+    agenda: str | None = None  # the leader's public agenda (data/council.yaml)
+    objective: str | None = None  # secret objective (only its owner sees it)
+    times_chair: int = 0
+    temp_effects: list[dict[str, Any]] = field(default_factory=list)  # council measures in force
 
 
 @dataclass
@@ -305,6 +310,30 @@ class AlienPlan:
 
 
 @dataclass
+class Measure:
+    """A measure before the council (SPEC_M13)."""
+
+    id: int
+    kind: str  # id in data/council.yaml measures
+    proposer: str | None = None  # None: drawn by the council
+    target: int | None = None  # joint strike: the alien city id
+    votes: dict[str, str] = field(
+        default_factory=dict
+    )  # player -> yes | no | abstain | <candidate>
+    extra: dict[str, int] = field(default_factory=dict)  # extra votes bought, by player
+
+
+@dataclass
+class CouncilState:
+    sessions: int = 0
+    measures: list[Measure] = field(default_factory=list)  # the open session (votes this turn)
+    proposals: list[Measure] = field(default_factory=list)  # waiting for the next session
+    active: list[dict[str, Any]] = field(default_factory=list)  # passed measures in force
+    chair: str | None = None
+    results: list[dict[str, Any]] = field(default_factory=list)  # the last session's outcomes
+
+
+@dataclass
 class AlienState:
     progress: int = 0
     techs: list[str] = field(default_factory=list)
@@ -350,6 +379,7 @@ class GameState:
     next_id: int = 1
     combat_seq: int = 0
     aliens: AlienState = field(default_factory=AlienState)
+    council: CouncilState = field(default_factory=CouncilState)  # SPEC_M13
     recruits: dict[str, Recruit] = field(default_factory=dict)
     citizens: dict[str, Citizen] = field(default_factory=dict)
     story_events: dict[str, StoryEvent] = field(default_factory=dict)

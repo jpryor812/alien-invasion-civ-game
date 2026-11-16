@@ -33,7 +33,8 @@ def _effects(cfg: Config, player: Player | None) -> list[dict[str, Any]]:
 
     techs = [cfg.techs[t].get("effects") or {} for t in player.techs if t in cfg.techs]
     lead = [e for _, e in effects(cfg, player.leader)]  # leader traits and bonuses (SPEC_M11)
-    return techs + list(player.boons) + lead  # with Starfall shards claimed (beacon/starfall.py)
+    council = list(player.temp_effects)  # council measures in force (SPEC_M13)
+    return techs + list(player.boons) + lead + council  # with Starfall shards (beacon/starfall.py)
 
 
 def total(cfg: Config, player: Player | None, key: str) -> int:
@@ -63,6 +64,7 @@ def lines(cfg: Config, player: Player | None, key: str) -> list[tuple[str, Any]]
     from beacon.leader import effects
 
     out += [(src, e[key]) for src, e in effects(cfg, player.leader) if e.get(key)]
+    out += [(f"council: {e['source']}", e[key]) for e in player.temp_effects if e.get(key)]
     return out
 
 

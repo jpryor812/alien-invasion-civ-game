@@ -82,6 +82,12 @@ def unit_strength(
         mods.append(("open ground", spec["open_attack_pct"]))
     if defending and spec.get("rough_defence_pct") and not _open_ground(state, unit.tile):
         mods.append(("rough ground", spec["rough_defence_pct"]))
+    if not defending and target is not None and unit.owner in state.players:
+        from beacon.council import strike_pct  # a joint strike voted by the council (SPEC_M13)
+
+        joint = strike_pct(state, target)
+        if joint:
+            mods.append(("joint strike", joint))
     owner = state.players.get(unit.owner)
     alloy = techfx.total(cfg, owner, "unit_strength_pct")
     if alloy:
