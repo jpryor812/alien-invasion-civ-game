@@ -467,6 +467,7 @@ class AIPlayer(Bot):
         self.ensure_port()
         self.production()
         self.buildings()  # SPEC_M17
+        self.enlist()  # citizens as soldiers (2026-11-17)
         self.land()
         self.market()
         self.walls()  # SPEC_M16

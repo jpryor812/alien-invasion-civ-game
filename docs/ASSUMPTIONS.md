@@ -1047,3 +1047,17 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   strength; Mystic - +10% beacon. They stack with traits.
 - Batch (10 seeds, 100 turns): AI bands take their first town at median turn 3 (fund, then
   attack at once); cities freed median 70.5; the barrage starts in 10 of 10.
+
+## Required funding, finds, the builder and citizen soldiers (designer 2026-11-17)
+- The band's first town can be taken only once its resistance is funded (100 gold, 50%): crate
+  finds no longer open its barricades. The advisor's button reads "Fund the resistance" and opens
+  the offer, where an arrow points at the 100 gold button; there is no "attack without it" there.
+- The builder lists what each building gives (yields, strength, storage, training, contact).
+- Opening a city's builder answers its "Develop city" prompt for the turn (client-side), so the
+  big button moves on even when nothing is queued: the crew and training run on their own.
+- A crate find opens a card (rifles, armour, alien weapon, survivor, salvage).
+- At a barracks a grown citizen may train as a soldier on foot (militia, infantry, marines,
+  recon team, anti-tank team, exo infantry, xeno trooper; the unit's tech applies). It works no
+  tile and holds no seat while training, for max(2, strength / 10) turns (infantry 3, exo 6),
+  then leaves the city as the unit (population -1); no production is spent. A city always keeps
+  one citizen at home. The AI trains one at a time in cities of 6+ while its army is short.

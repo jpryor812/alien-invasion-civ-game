@@ -795,6 +795,9 @@ async function refresh(keepSelection = true) {
   else S.history[S.history.length - 1].events = v.events;
   if (S.history.length > 40) S.history.shift();
   S.view = v;
+  // a city whose builder was opened this turn has been seen to: its prompt clears (2026-11-17)
+  const dev = S.developed && S.developed.turn === v.turn ? S.developed.ids : [];
+  v.pending = v.pending.filter((p) => !(p.kind === "choose_production" && dev.includes(p.city)));
   S.explored = new Set(v.explored);
   S.tilesByIndex = new Map(Object.entries(v.tiles).map(([k, t]) => [Number(k), t]));
   if (newWorld) { TILE_SIG = new Map(); CHUNKS.clear(); CHUNK_VER.clear(); }
@@ -2088,6 +2091,8 @@ function describeEvent(e) {
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
     loot_found: () => `Cache found: ${(e.result || []).join(", ")}.`,
+    citizen_enlisted: () => `${e.citizen} of ${cityName(e.city)} finished training: a new ${pretty(e.type)}.`,
+    first_town_found: () => `Your band has found ${cityName(e.city)}: fund its resistance, then take it.`,
     first_city: () => `${cityName(e.city)} is free! Your band settles: ${e.citizens} citizens${e.scrap ? `, ${e.scrap} scrap into production` : ""}. The real work begins.`,
     leader_escaped: () => "Your leader escaped with two survivors to where the band began.",
     council_session: () => `The council meets: ${(e.measures || []).map(pretty).join(", ")}. Vote this turn.`,
@@ -2404,7 +2409,8 @@ async function onClick(e) {
     if (S.options.attacks.some((a) => a.tile === i)) {
       const target = S.citiesByTile.get(i);  // offer the resistance first, once (2026-11-17)
       S.fundAsked = S.fundAsked || {};
-      if (target && target.fund && target.fund.length && !target.funded_pct && !S.fundAsked[target.id]) {
+      const firstTown = S.view.pending.some((p) => p.kind === "fund_resistance" && p.city === target?.id);
+      if (target && target.fund && target.fund.length && !target.funded_pct && (firstTown || !S.fundAsked[target.id])) {
         S.fundAsked[target.id] = true;
         return showFundCard(target.id, true);
       }
@@ -3391,11 +3397,12 @@ function citizenRow(p, d) {
   const traits = p.traits.map((t) => `<span class="trait" title="${esc(t.note)}">${esc(pretty(t.id))}</span>`).join("");
   let where;
   if (!p.adult) where = `<span class="muted">child · grows up in ${p.turns_to_grow} turns (${p.growth}/${p.growth_needed})</span>`;
+  else if (p.job.startsWith("train:")) where = `<span class="good">training as ${esc(pretty(p.job.slice(6)))}: turn ${p.training} of ${p.train_turns}</span> (then leaves the city as a unit)`;
   else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}: ${hundredthsText(p.bonus) || "no extra"} (half its stats)`;
   else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${hundredthsText(p.bonus)}${p.military ? `, +${p.military} city strength` : ""}`;
   else where = '<span class="bad">idle: no improved tile or council seat free</span>';
   const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
-  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}</select>` : "";
+  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}${(d.train_options || []).map((o) => `<option value="train:${o.unit}" ${p.job === `train:${o.unit}` ? "selected" : ""} ${o.why ? "disabled" : ""}>Train as ${esc(o.name)} (${o.turns} turns)</option>`).join("")}</select>` : "";
   return `<div class="citizen">${portraitImg("citizen", p.id, "face", { child: !p.adult })}<div class="cbody"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div></div>`;
 }
 
@@ -3730,14 +3737,14 @@ function showFundCard(cityId, attacking = false) {
   if (!c) return;
   const first = S.view.pending.some((p) => p.kind === "fund_resistance" && p.city === cityId);
   const gold = S.view.economy.gold, strength = Math.round(c.strength / 100);
-  const offers = (c.fund || []).map((q, k) => `<button class="${k ? "" : "primary"}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defence falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
+  const offers = (c.fund || []).map((q, k) => `${first && !k ? '<div class="fundarrow" aria-hidden="true">▼</div>' : ""}<button class="${k ? "" : "primary"}${first && !k ? " pulse" : ""}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defence falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
   const body = $("modal-body");
   const text = first
-    ? `You have found ${esc(c.name)}: it will be your first city. The aliens hold it, but its people have not given up; they are hiding weapons and waiting for a signal. <b>Before you attack</b>, send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury) and they will rise with you: the town's defence falls by half and its barricades open.`
+    ? `You have found ${esc(c.name)}: it will be your first city. The aliens hold it, but its people have not given up; they are hiding weapons and waiting for a signal. Send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury): its defence falls by half and its gates open. <b>Your band cannot take it until you do.</b>`
     : `The people of ${esc(c.name)} want to fight back. Gold buys them weapons: its defence falls while they hold out, until the city is free. Stronger cities need more gold for the same effect.`;
   body.innerHTML = `<div class="evcard">${pictureSvg("survivors", false)}<h2>Fund the resistance in ${esc(c.name)}</h2>
     <p class="evbody">${text}</p>${c.funded_pct ? `<div class="evresult"><span class="tag">Already funded: -${c.funded_pct}%</span></div>` : ""}
-    <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">${attacking ? "Attack without it" : "Not now"}</button></div>
+    <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">${attacking && !first ? "Attack without it" : "Not now"}</button></div>
     <div class="muted small">Treasury: ${gold} gold · defence strength now ${strength}</div></div>`;
   document.querySelector(".modal-box").classList.add("narrow");
   $("modal").classList.remove("hidden"); S.screen = "event";
@@ -3749,7 +3756,7 @@ function showFundCard(cityId, attacking = false) {
   $("fund-no").onclick = () => {
     if (first) S.fundSkipped = cityId;
     closeModal(); renderChrome();
-    if (attacking && S.options) send({ kind: "attack", unit: S.options.unit.id, target: c.tile });
+    if (attacking && !first && S.options) send({ kind: "attack", unit: S.options.unit.id, target: c.tile });
   };
 }
 function showEventCard(ev) {
@@ -3791,6 +3798,22 @@ function showNewStory() {
     S.seenStory.add(c.key);
     if (c.by === S.view.me) return showShardScreen(c);
     toast(c.by === "aliens" ? `The aliens claimed the ${c.name} shard.` : `${pretty(c.by)} claimed the ${c.name} shard.`);
+  }
+  // what a crate held (designer 2026-11-17: a pop-up, so the find is never missed)
+  for (const e of S.view.events || []) {
+    if (e.kind !== "loot_found" || e.player !== S.view.me) continue;
+    const key = `loot-${e.turn}-${e.tile}`;
+    if (S.seenStory.has(key)) continue;
+    S.seenStory.add(key);
+    if (e.turn < S.view.turn - 1) continue;  // old news from a loaded game
+    const LOOT = {
+      weapon: ["Rifles!", "The crate holds working rifles. The unit that found it fights harder now."],
+      armour: ["Body armour", "Scavenged armour plates: the unit that found it is harder to hurt."],
+      alien_weapon: ["An alien weapon", "A weapon dropped by the aliens, still charged. Whoever carries it hits far harder."],
+      survivor: ["A survivor", "Someone was hiding by the crate and joins your band. One more pair of hands for the town."],
+      scrap: ["Salvage", "Scrap metal and parts: it will speed your first city's building."],
+    }[e.loot] || ["Supplies", "Your band found supplies."];
+    return showEventCard({ title: LOOT[0], body: LOOT[1], picture: "cache", result: e.result || [], tile: e.tile });
   }
   for (const c of S.view.story_cards || []) {
     if (S.seenStory.has(c.key)) continue;

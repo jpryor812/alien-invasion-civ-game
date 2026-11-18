@@ -108,7 +108,8 @@ class CityAttack(Command):
 @register
 @dataclass(frozen=True)
 class SetCitizenJob(Command):
-    """job: "auto", "council" or "tile:<index>" (an improved tile of the citizen's city)."""
+    """job: "auto", "council", "tile:<index>" (an improved tile of the citizen's city) or
+    "train:<unit>" (train as a soldier at the barracks, designer 2026-11-17)."""
 
     kind: ClassVar[str] = "set_citizen_job"
     citizen: int

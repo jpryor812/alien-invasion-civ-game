@@ -376,6 +376,8 @@ def _citizen_job(state: GameState, cfg: Config, cmd: SetCitizenJob) -> Events:
     problem = citizens.job_problem(state, cfg, cmd.player, c, cmd.job)
     if problem:
         raise CommandError(problem)
+    if c.job != cmd.job:
+        c.training = 0  # a new job starts afresh (training toward a unit, 2026-11-17)
     c.job = cmd.job
     return [{"kind": "citizen_job", "citizen": c.id, "job": cmd.job}]
 

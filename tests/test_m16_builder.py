@@ -136,10 +136,10 @@ def test_ai_cities_build_walls_and_keep_producing(cfg):
 
     s, events, _ = play(cfg, seed=1, turns=40, driver="ai", start="classic")
     kinds = [e["kind"] for e in events]
-    assert "walls_built" in kinds
+    assert "walls_ordered" in kinds  # building them takes the crew a while (SPEC_M17)
     stalls = [e for e in events if e["kind"] == "production_stalled" and e.get("needs")]
     assert len(stalls) < len(events) // 50  # the AI chooses what it has materials for
-    walled = [c for c in s.cities if c.owner in s.players and c.walls]
+    walled = [c for c in s.cities if c.owner in s.players and (c.walls or c.wall_orders)]
     assert walled
     advance_turn(s, cfg)
 
@@ -156,6 +156,8 @@ def test_builder_view(cfg, tmp_path, monkeypatch):
     d = sess.builder(c.id)
     assert d["cells"] and d["tiles"] and d["layout"][0]["what"] == layout.HALL
     assert "storehouse" in d["catalog"] and d["catalog"]["storehouse"]["size"] == 3
+    assert any("storage" in g for g in d["catalog"]["storehouse"]["gives"])  # its output
+    assert d["train_options"] and d["people"]  # the capital has a barracks
     assert set(d["stores"]) == {"timber", "stone", "iron"}
     detail = sess.city_detail(c.id)
     assert detail["stores"] and all("materials" in o for o in detail["options"])

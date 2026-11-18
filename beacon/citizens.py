@@ -277,7 +277,11 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
             for t in workable(state, cfg, city)
             if not any(hostile(u.owner, pid) for u in occ.get(t, []))
         }
-        workers = [c for c in people if c.city == city.id and c.adult and not c.seats]
+        workers = [
+            c
+            for c in people
+            if c.city == city.id and c.adult and not c.seats and not c.job.startswith("train:")
+        ]
         # a hybrid cannot work tiles in a city that refuses hybrids (SPEC_M11)
         spare += [c for c in workers if c.hybrid and city.refuses_hybrids]
         workers = [c for c in workers if not (c.hybrid and city.refuses_hybrids)]
@@ -356,6 +360,8 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
         elif _free_seat(cfg, used, c) is None:
             return "no free council seat for this citizen"
         return None
+    if job.startswith("train:"):
+        return train_problem(state, cfg, c, job[6:])
     if not job.startswith("tile:") or not job[5:].isdigit():
         return f"unknown job {job!r}"
     if not c.adult:
@@ -366,6 +372,71 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
     if t not in workable(state, cfg, city):
         return "that tile has no improvement in this city's area"
     return None
+
+
+# -- citizens who train as soldiers (designer 2026-11-17) ------------------------------------------
+
+
+HOME = "the city needs someone left at home"
+
+
+def train_turns(cfg: Config, unit_type: str) -> int:
+    b = cfg.materials("barracks")
+    return max(b["train_min_turns"], cfg.units[unit_type]["strength"] // b["train_per_strength"])
+
+
+def train_problem(state: GameState, cfg: Config, c: Citizen, unit_type: str) -> str | None:
+    from beacon import economy
+
+    city = state.cities[c.city]
+    if unit_type not in cfg.materials("barracks.trainable"):
+        return "citizens train only as soldiers on foot (not tanks, guns or ships)"
+    if not c.adult:
+        return f"{c.name} has not grown up yet"
+    if cfg.materials("barracks.building") not in city.buildings:
+        return "needs a barracks"
+    why = economy.unit_allowed(state, cfg, city, unit_type)
+    if why:
+        return why
+    training = sum(1 for x in of_city(state, city.id) if x.job.startswith("train:") and x is not c)
+    if city.pop - training <= 1:
+        return HOME
+    return None
+
+
+def train(state: GameState, cfg: Config, pid: str) -> Events:
+    """One turn of training; a citizen who is done leaves its city as the unit."""
+    from beacon.units import place_unit
+
+    events: Events = []
+    for c in of_player(state, pid):
+        if not c.job.startswith("train:"):
+            continue
+        city = state.cities[c.city]
+        unit_type = c.job[6:]
+        if train_problem(state, cfg, c, unit_type) not in (None, HOME):
+            c.job, c.training = "auto", 0  # lost the barracks or the tech: back to work
+            continue
+        c.training += 1
+        if c.training < train_turns(cfg, unit_type):
+            continue
+        unit = place_unit(state, cfg, unit_type, pid, city.tile, cfg.t("cities.work_radius"))
+        if unit is None:
+            continue  # no room: waits a turn
+        del state.citizens[str(c.id)]
+        city.pop -= 1
+        events.append(
+            {
+                "turn": state.turn,
+                "kind": "citizen_enlisted",
+                "player": pid,
+                "city": city.id,
+                "citizen": c.name,
+                "unit": unit.id,
+                "type": unit_type,
+            }
+        )
+    return events
 
 
 def best_for_tile(state: GameState, cfg: Config, city: City, t: int) -> Citizen | None:

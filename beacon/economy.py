@@ -458,6 +458,7 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
         city_events, city_science = process_city(state, cfg, city, player)
         events.extend(city_events)
         science += city_science
+    events.extend(citizens.train(state, cfg, pid))  # citizens become soldiers (2026-11-17)
     cost = (
         maintenance(state, cfg, pid) + unit_upkeep(state, cfg, pid) + road_upkeep(state, cfg, pid)
     )

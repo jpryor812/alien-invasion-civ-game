@@ -29,7 +29,8 @@
       body: "You have no city yet: just your leader and four survivors with makeshift weapons. Scout the land around you: abandoned crates may hold rifles, armour, alien weapons, or more people. You have no home: the first alien-held town you find becomes your first city.",
       more: "Wounded units heal when they rest (fortify). Alien hunters do not chase a band at a distance, and cover (forest, hills) hides you better. Free the town and your survivors become its first citizens; then research and building begin." },
     resistance: { who: "military", title: "A friend inside",
-      body: "You have found a town the aliens hold, and it will be your first city. Its people are ready to rise if someone pays for their weapons. <b>Before you attack</b>, send them your 100 gold: the town's defence falls by half and your band can take it.",
+      body: "You have found a town the aliens hold, and it will be your first city. Its people are ready to rise if someone pays for their weapons. You <b>must</b> send them your 100 gold before you can take it: the town's defence falls by half and its gates open.",
+      ok: "Fund the resistance", then: () => { const p = S.view.pending.find((x) => x.kind === "fund_resistance"); if (p && window.showFundCard) showFundCard(p.city); },
       more: "Later you can fund the resistance in any alien city you have found (click it on the map). Stronger cities need more gold: perhaps 500 gold for a quarter of their defence." },
     first_city: { who: "economic", title: "Your first city",
       body: "The town is yours, and it is your capital. Your survivors live there now; those carrying gear stay in the field. Rebuild the radio tower first: it is cheap, and until it stands you cannot reach the other continents or the council.",
@@ -129,7 +130,7 @@
         <div class="advisor-side">${portrait(a)}<div class="advisor-name">${a.name}</div></div>
         <div class="advisor-foot">
           <label><input type="checkbox" id="adv-off"> Don't show advice again</label>
-          <button class="primary" id="adv-ok">Thank you</button>
+          <button class="primary" id="adv-ok">${tip.ok || "Thank you"}</button>
         </div></div>`;
     box.classList.remove("hidden");
     const more = document.getElementById("adv-more");
@@ -141,8 +142,10 @@
     if (!showing) return;
     if (document.getElementById("adv-off").checked) { setOff(true); queue.length = 0; }
     markSeen(showing);
+    const then = TIPS[showing].then;
     showing = null;
     document.getElementById("advisor").classList.add("hidden");
+    if (then) { then(); return; }  // e.g. straight on to the funding offer
     setTimeout(next, 250);
   }
 

@@ -654,6 +654,29 @@ class Session:
             "city": city.name if city is not None and city.owner == self.human else None,
         }
 
+    def _train_options(self, city: Any) -> list[dict[str, Any]]:
+        """Soldiers a grown citizen of this city could train as, with turns and any reason not."""
+        s, cfg = self.state, self.cfg
+        if cfg.materials("barracks.building") not in city.buildings:
+            return []
+        out = []
+        for u in cfg.materials("barracks.trainable"):
+            from beacon import economy as econ
+
+            why = econ.unit_allowed(s, cfg, city, u)
+            if why and why.startswith("needs tech"):
+                continue
+            out.append(
+                {
+                    "unit": u,
+                    "name": u.replace("_", " ").capitalize(),
+                    "turns": citizens.train_turns(cfg, u),
+                    "strength": cfg.units[u]["strength"],
+                    "why": why,
+                }
+            )
+        return out
+
     def _citizen_row(self, c, surplus: int) -> dict[str, Any]:
         s, cfg = self.state, self.cfg
         traits = cfg.raw["tuning"]["citizens"]["traits"]
@@ -668,6 +691,10 @@ class Session:
             "growth_needed": cfg.t("citizens.growing_up.needed"),
             "turns_to_grow": None if c.adult else citizens.turns_to_grow(cfg, c, surplus),
             "job": c.job,
+            "training": c.training,
+            "train_turns": citizens.train_turns(cfg, c.job[6:])
+            if c.job.startswith("train:")
+            else 0,
             "tile": c.tile,
             "seats": c.seats,
             "improvement": s.tiles[c.tile].improvement if on_tile else None,
@@ -756,6 +783,7 @@ class Session:
                 "turns": eta(works_mod.building_labour(cfg, b)),
                 "materials": materials.building_cost(cfg, b),
                 "short": materials.short(c, materials.building_cost(cfg, b)),
+                "gives": _building_gives(cfg, b),  # what it does (designer 2026-11-17)
                 "why": why,
                 "ordered": works_mod.ordered(c, f"building:{b}") is not None,
             }
@@ -810,6 +838,18 @@ class Session:
                 "upkeep": cfg.materials("engineers.upkeep"),
             },
             "exchange": exchange.quotes(s, cfg, me),
+            "train_options": self._train_options(c),
+            "people": [
+                {
+                    "id": x.id,
+                    "name": x.name,
+                    "job": x.job,
+                    "training": x.training,
+                    "military": x.stats.get("military", 0),
+                }
+                for x in citizens.of_city(s, c.id)
+                if x.adult
+            ],
             "gold": s.players[me].gold,
             "worked": cy.worked,
         }
@@ -882,6 +922,7 @@ class Session:
             "options": options,
             "works": _work_rows(s, cfg, c),  # SPEC_M17
             "crew": max(0, c.engineers),
+            "train_options": self._train_options(c),  # citizens as soldiers (2026-11-17)
             "stores": {g: c.stores.get(g, 0) for g in materials.goods(cfg)},
             "caps": materials.caps(cfg, c),
             "income": materials.income(s, cfg, c, cy.worked),
@@ -1570,6 +1611,19 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
         lines.append(f"Engineers build it in {m['turns']} turns")
         return {"lines": lines, "tags": sorted(set(tags)), "note": note(cfg, "improvements", ident)}
     return {"lines": [], "tags": [], "note": ""}
+
+
+def _building_gives(cfg: Config, b: str) -> list[str]:
+    """A building's output for the builder: yields, strength and the M16/M17 extras."""
+    lines = describe(cfg, "building", b)["lines"]
+    extra = []
+    if b == "storehouse":
+        extra.append(f"+{cfg.materials('goods.storehouse_cap')} storage for each material")
+    if b == cfg.materials("barracks.building"):
+        extra.append("Trains soldiers, and citizens can train here to become units")
+    if b == cfg.t("contact.radio_building"):
+        extra.append("Puts you on the air: contact with the other continents and the council")
+    return extra + lines
 
 
 def _work_rows(s: GameState, cfg: Config, c: Any) -> list[dict[str, Any]]:

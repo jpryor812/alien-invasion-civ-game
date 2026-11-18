@@ -802,6 +802,7 @@ class Bot:
         self.research()
         self.production()
         self.buildings()  # SPEC_M17
+        self.enlist()  # citizens as soldiers (2026-11-17)
         self.land()
         self.market()
         self.walls()  # SPEC_M16
@@ -899,6 +900,45 @@ class Bot:
                     n = cap[g] * self.param("market.sell_pct") // 100
                     self.submit(Trade(player=self.pid, city=city.id, good=g, amount=n, side="sell"))
 
+    def enlist(self) -> None:
+        """Big cities with a barracks train a citizen as a soldier while the army is short
+        (designer 2026-11-17): one at a time per city, the strongest unit it can."""
+        from beacon import citizens
+        from beacon.commands import SetCitizenJob
+
+        counts = self._counts()
+        cities = [c for c in self.view.my_cities() if c.status == "active"]
+        want = max(
+            len(cities) * self.param("production.military_per_city_pct"),
+            self.param("production.min_military") * 100,
+        )
+        if counts["military"] * 100 >= want:
+            return
+        for city in cities:
+            people = [p for p in citizens.of_city(self.state, city.id) if p.adult]
+            if city.pop < self.param("enlist.min_pop") or any(
+                p.job.startswith("train:") for p in people
+            ):
+                continue
+            units = [
+                u
+                for u in reversed(self.cfg.materials("barracks.trainable"))
+                if self.cfg.units[u]["role"] == "melee"
+            ]
+            for p in sorted(people, key=lambda x: (-x.stats.get("military", 0), x.id)):
+                unit = next(
+                    (
+                        u
+                        for u in units
+                        if citizens.train_problem(self.state, self.cfg, p, u) is None
+                    ),
+                    None,
+                )
+                if unit and self.submit(
+                    SetCitizenJob(player=self.pid, citizen=p.id, job=f"train:{unit}")
+                ):
+                    break
+
     def walls(self) -> None:
         """Lay a wall ring around each city once its stores allow, in the best material known;
         upgrade the ring when a better material comes (SPEC_M16). Each city looks every few
@@ -955,7 +995,7 @@ class Bot:
         ):
             self.submit(FundResistance(player=self.pid, city=town.id, gold=first))
         mine = [u for u in self.view.my_units() if survivors.is_band(self.cfg, u)]
-        found = self.state.players[self.pid].band_finds > 0 or town.funded_pct > 0  # gates open
+        found = town.funded_pct > 0  # the gates open only once its resistance is funded
         ready = found and (
             any(u.gear for u in mine)
             or len(mine) >= 6

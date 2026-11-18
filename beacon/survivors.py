@@ -336,7 +336,8 @@ def barricades_hold(state: GameState, cfg: Config, city: City, pid: str) -> bool
     player = state.players.get(pid)
     if player is None or player.founded or player.band_town != city.id or not player.band_claimed:
         return False
-    return player.band_finds == 0 and city.funded_pct == 0  # funded: the people open the gates
+    # designer 2026-11-17: funding its resistance is required - the people open the gates
+    return city.funded_pct == 0
 
 
 def town_of(state: GameState, pid: str) -> City | None:

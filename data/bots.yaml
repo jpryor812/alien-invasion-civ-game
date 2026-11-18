@@ -103,3 +103,9 @@ market:
   sell_pct: 20
   buy_up_to: 30
   reserve: 150
+
+enlist:
+  status: placeholder
+  note: Designer 2026-11-17 - a city of at least min_pop with a barracks trains one citizen at a
+    time as a soldier while the army is below the production target.
+  min_pop: 6

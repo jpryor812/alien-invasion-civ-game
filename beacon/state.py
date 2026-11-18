@@ -253,7 +253,8 @@ class Citizen:
     born: int
     growth: int = 0  # points toward adulthood
     adult: bool = False
-    job: str = "auto"  # "auto", "council" or "tile:<index>" (the player's choice)
+    job: str = "auto"  # "auto", "council", "tile:<index>" or "train:<unit>" (the player's choice)
+    training: int = 0  # turns trained toward its unit (job "train:<unit>", designer 2026-11-17)
     tile: int | None = None  # the tile it works now (set by citizens.assign)
     seats: list[str] = field(default_factory=list)  # council seat held now ("general"/a domain)
     kin: bool = False  # a child of the leader (SPEC_M11)

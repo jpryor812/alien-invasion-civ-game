@@ -229,6 +229,10 @@
     p.querySelectorAll("[data-unqueue]").forEach((b) => b.onclick = () => { const k = +b.dataset.unqueue; send({ kind: "set_production", city: B.city, items: d.queue.filter((_, i) => i !== k) }); });
     p.querySelectorAll("[data-cancel]").forEach((b) => b.onclick = () => send({ kind: "cancel_work", city: B.city, work: +b.dataset.cancel }));
     p.querySelectorAll("[data-up]").forEach((b) => b.onclick = () => send({ kind: "move_work", city: B.city, work: +b.dataset.up, to: 0 }));
+    p.querySelectorAll("[data-enlist]").forEach((b) => b.onclick = () => {
+      const free = d.people.filter((x) => !x.job.startsWith("train:")).sort((a, c) => c.military - a.military || a.id - c.id);
+      if (free.length) send({ kind: "set_citizen_job", citizen: free[0].id, job: `train:${b.dataset.enlist}` });
+    });
     p.querySelectorAll("[data-trade]").forEach((b) => b.onclick = () => { const [side, good, n] = b.dataset.trade.split(":"); send({ kind: "trade", city: B.city, good, amount: +n, side }); });
     if (document.getElementById("bmove")) document.getElementById("bmove").onclick = () => { B.tool = { kind: "move", entry: sel.id, what: sel.what, size: sel.size }; hint(); };
   }
@@ -263,7 +267,8 @@
     return Object.entries(d.catalog).filter(([, b]) => !b.why || !/needs tech/.test(b.why)).map(([id, b]) => {
       const why = b.ordered ? "being built" : b.why || (Object.keys(b.short).length ? `needs ${shortTxt(b.short)}` : null);
       return `<button class="bopt" data-place="${id}" ${why ? "disabled" : ""} title="${ec(b.note || "")}"><b>${ec(b.name)}</b><span class="muted"> ${b.size}x${b.size}</span>
-        <span class="cost">${costTxt(b.materials) || "free"} · ${b.labour} labour · ${turnsTxt(b.turns)}</span>${why ? `<span class="why">${ec(why)}</span>` : ""}</button>`;
+        <span class="cost">${costTxt(b.materials) || "free"} · ${b.labour} labour · ${turnsTxt(b.turns)}</span>
+        ${(b.gives || []).length ? `<span class="gives">${b.gives.map((g) => `<span class="${/^Upkeep/.test(g) ? "muted" : ""}">${ec(g)}</span>`).join(" · ")}</span>` : ""}${why ? `<span class="why">${ec(why)}</span>` : ""}</button>`;
     }).join("") + `<div class="row muted small">Materials are paid when you place it; your engineers then build it.</div>`;
   }
   function wallList() {
@@ -280,10 +285,21 @@
       + (busy ? `<div class="row good">🛠 Your engineers are building a ${ec(busy.name.toLowerCase())}: ${turnsTxt(busy.turns)}.</div>`
         : opts || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
   }
+  function peopleHtml() {  // citizens who train as soldiers at the barracks (designer 2026-11-17)
+    const d = B.d;
+    if (!d.train_options.length) return `<div class="row muted small">Build a barracks to train your people as soldiers.</div>`;
+    const busy = d.people.filter((x) => x.job.startsWith("train:"));
+    const free = d.people.filter((x) => !x.job.startsWith("train:"));
+    const pick = free.slice().sort((a, b) => b.military - a.military || a.id - b.id)[0];
+    return `<div class="row"><b>Train your people</b> <span class="muted small">(a grown citizen trains, then leaves the city as the unit; no production)</span></div>`
+      + busy.map((x) => `<div class="row good small">${ec(x.name)}: training as ${ec(pr(x.job.slice(6)))}, turn ${x.training}</div>`).join("")
+      + d.train_options.map((o) => `<button class="bopt" data-enlist="${o.unit}" ${o.why || !pick ? "disabled" : ""}><b>👤 ${ec(o.name)}</b>
+        <span class="cost">strength ${o.strength} · ${o.turns} turns of training${pick ? ` · ${ec(pick.name)} goes` : ""}</span>${o.why ? `<span class="why">${ec(o.why)}</span>` : !pick ? '<span class="why">no grown citizen free</span>' : ""}</button>`).join("");
+  }
   function trainList() {
     const d = B.d, units = d.options.filter((o) => o.kind === "unit" || o.kind === "project" || o.kind === "engineer");
-    if (!units.length) return `<div class="row muted">Nothing to train here yet.</div>`;
-    return units.map((o) => `<button class="bopt" data-train="${o.item}" title="${ec(o.note || "")}"><b>${o.kind === "engineer" ? "🛠 Engineer (joins the crew)" : o.id === "engineers" ? "Road crew (roads and bridges)" : ec(pr(o.id))}</b>
+    if (!units.length) return peopleHtml() + `<div class="row muted">Nothing to train here yet.</div>`;
+    return peopleHtml() + `<div class="row" style="margin-top:8px"><b>Build with production</b></div>` + units.map((o) => `<button class="bopt" data-train="${o.item}" title="${ec(o.note || "")}"><b>${o.kind === "engineer" ? "🛠 Engineer (joins the crew)" : o.id === "engineers" ? "Road crew (roads and bridges)" : ec(pr(o.id))}</b>
       <span class="cost">${o.cost != null ? `${o.cost} production${o.turns != null ? ` · ${turnsTxt(o.turns)}` : ""}` : "project"}${Object.keys(o.materials || {}).length ? ` · ${costTxt(o.materials)}` : ""}${Object.keys(o.short || {}).length ? ` <span class="bad">(short: it will wait)</span>` : ""}</span>
       ${o.price ? `<span class="buy" data-buy="${o.item}" title="Buy it now">💰${o.price}</span>` : ""}</button>`).join("");
   }
@@ -369,6 +385,10 @@
   }, true);
 
   async function open(cityId, tab) {
+    if (typeof S !== "undefined" && S.view) {  // the Develop city prompt is answered by visiting (2026-11-17)
+      if (!S.developed || S.developed.turn !== S.view.turn) S.developed = { turn: S.view.turn, ids: [] };
+      if (!S.developed.ids.includes(cityId)) S.developed.ids.push(cityId);
+    }
     B.city = cityId; B.tool = null; B.sel = null; B.tile = null; B.tab = tab || "build";
     document.getElementById("builder").classList.remove("hidden");
     B.open = true;

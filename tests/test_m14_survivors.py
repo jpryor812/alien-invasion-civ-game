@@ -77,7 +77,7 @@ def test_caches_give_gear_people_and_scrap(cfg):
     assert s.players[EU].band_finds == 3 and not s.caches
 
 
-def test_the_town_holds_against_a_bare_band_and_falls_after_a_find(cfg):
+def test_the_town_holds_until_its_resistance_is_funded(cfg):
     s = new_game(cfg, seed=2, start="survivor")
     s.caches = {}
     town = s.cities[s.players[EU].band_town]
@@ -92,6 +92,10 @@ def test_the_town_holds_against_a_bare_band_and_falls_after_a_find(cfg):
     apply_command(s, cfg, Attack(player=EU, unit=lead.id, target=town.tile))
     assert town.hp == 1 and town.status == OVERRUN  # the barricades hold
     s.players[EU].band_finds = 1
+    lead.attacks_left, lead.moves_left, lead.hp = 1, 60, 100
+    apply_command(s, cfg, Attack(player=EU, unit=lead.id, target=town.tile))
+    assert town.status == OVERRUN  # a find no longer opens them (designer 2026-11-17)
+    town.funded_pct = 50  # funding its resistance does
     lead.attacks_left, lead.moves_left, lead.hp = 1, 60, 100
     apply_command(s, cfg, Attack(player=EU, unit=lead.id, target=town.tile))
     assert town.status == ACTIVE and town.owner == EU and town.is_capital

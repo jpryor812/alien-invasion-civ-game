@@ -40,6 +40,13 @@ barracks:
   note: Designer 2026-11-16 - military units are trained only in a city with a barracks (the
     military base). Recon units, civilians and city defence units do not need one.
   building: military_base
+  trainable: [militia, infantry, marines, recon_team, anti_tank_team, exo_infantry, xeno_trooper]
+  train_per_strength: 10
+  train_min_turns: 2
+  train_note: Designer 2026-11-17 - in a city with a barracks a grown citizen may train as a
+    soldier (people only - no tanks, guns or ships). It works no tile and holds no seat while it
+    trains, for max(train_min_turns, strength / train_per_strength) turns, then leaves the city
+    (population -1) as that unit. No production is spent; the unit's tech applies.
 
 layout:
   status: placeholder

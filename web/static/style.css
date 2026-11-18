@@ -540,3 +540,10 @@ button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 
 .cleft.big { margin: 0; padding: 6px 14px; font-size: 22px; line-height: 1; border-radius: 10px; }
 .cleft.big small { font-size: 12px; font-weight: 600; margin-left: 4px; opacity: 0.85; }
 .fundwarn { margin-bottom: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(214,150,40,0.22); border: 1px solid #d6962a; color: #ffe2a8; font-size: 13px; }
+/* the first town's funding offer: an arrow to the button (designer 2026-11-17) */
+.fundarrow { text-align: center; color: #ffd36a; font-size: 26px; line-height: 1; margin: 2px 0 -2px; animation: fundbob 0.9s ease-in-out infinite; text-shadow: 0 0 8px rgba(255,200,80,0.7); }
+@keyframes fundbob { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
+.evchoices button.pulse { box-shadow: 0 0 0 0 rgba(255,211,106,0.7); animation: fundpulse 1.4s ease-out infinite; }
+@keyframes fundpulse { 0% { box-shadow: 0 0 0 0 rgba(255,211,106,0.7); } 100% { box-shadow: 0 0 0 12px rgba(255,211,106,0); } }
+#bpanel .bopt .gives { font-size: 12px; color: #9fdc8a; }
+#bpanel .bopt .gives .muted { color: var(--muted); }
