@@ -32,7 +32,7 @@ def test_each_player_starts_as_a_band_near_its_first_town(cfg, world):
         band = band_of(world, pid)
         assert sorted(u.type for u in band) == ["band_leader"] + ["survivor"] * 4
         assert (
-            cfg.units["band_leader"]["strength"] == 20 and cfg.units["survivor"]["strength"] == 10
+            cfg.units["band_leader"]["strength"] == 30 and cfg.units["survivor"]["strength"] == 20
         )
         assert not p.founded and not p.fallen
         assert not any(c.owner == pid for c in world.cities)
@@ -81,6 +81,7 @@ def test_the_town_holds_against_a_bare_band_and_falls_after_a_find(cfg):
     s = new_game(cfg, seed=2, start="survivor")
     s.caches = {}
     town = s.cities[s.players[EU].band_town]
+    s.players[EU].band_claimed = True  # the band has found it (designer 2026-11-17)
     lead = next(u for u in band_of(s, EU) if u.type == "band_leader")
     lead.tile = next(
         n for n in hexgrid.neighbours(town.tile, s.width, s.height) if not s.units_at(n)

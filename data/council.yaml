@@ -40,13 +40,14 @@ measures:
 agendas:
   status: placeholder
   note: A leader's public agenda (seeded for the AI, chosen at creation by the human). It earns
-    `influence` per `per` of the named credit, and sets how AI leaders vote (likes - yes,
-    dislikes - no, otherwise yes).
-  liberator: {name: Liberator, info: Frees cities first., credit: cities_liberated, per: 1, influence: 5, likes: [joint_strike, shared_arms], dislikes: [beacon_silence]}
-  scientist: {name: Scientist, info: Science before everything., credit: shards_claimed, per: 1, influence: 5, likes: [research_pact], dislikes: [shared_arms]}
-  merchant: {name: Merchant, info: Gold and aid keep the world together., credit: aid_gold, per: 100, influence: 2, likes: [relief_fund], dislikes: [research_pact]}
-  warden: {name: Warden, info: Defence and quiet., credit: kills, per: 10, influence: 2, likes: [beacon_silence, shared_arms], dislikes: [joint_strike]}
-  mystic: {name: Mystic, info: The beacons are humanity's hope., credit: recruits_gained, per: 1, influence: 3, likes: [research_pact], dislikes: [beacon_silence]}
+    `influence` per `per` of the named credit, sets how AI leaders vote (likes - yes, dislikes -
+    no, otherwise yes), and gives a small perk (`effects`, the tech-effect format; designer
+    2026-11-17).
+  liberator: {name: Liberator, info: Frees cities first. Gold to a resistance goes 25% further., credit: cities_liberated, per: 1, influence: 5, likes: [joint_strike, shared_arms], dislikes: [beacon_silence], effects: {fund_pct: 25}}
+  scientist: {name: Scientist, info: Science before everything. +10% science in every city., credit: shards_claimed, per: 1, influence: 5, likes: [research_pact], dislikes: [shared_arms], effects: {yield_pct: {science: 10}}}
+  merchant: {name: Merchant, info: Gold and aid keep the world together. 10% better prices at the Galactic Exchange., credit: aid_gold, per: 100, influence: 2, likes: [relief_fund], dislikes: [research_pact], effects: {exchange_pct: 10}}
+  warden: {name: Warden, info: Defence and quiet. +3 strength for every city., credit: kills, per: 10, influence: 2, likes: [beacon_silence, shared_arms], dislikes: [joint_strike], effects: {city_strength: 3}}
+  mystic: {name: Mystic, info: The beacons are humanity's hope. +10% beacon in every city., credit: recruits_gained, per: 1, influence: 3, likes: [research_pact], dislikes: [beacon_silence], effects: {yield_pct: {beacon: 10}}}
 
 objectives:
   status: placeholder

@@ -374,12 +374,16 @@ def nest_turn(state: GameState, cfg: Config) -> Events:
 
 def _first_town(state: GameState, pid: str, city: City) -> bool:
     p = state.players.get(pid)
-    return p is not None and not p.founded and p.band_town == city.id
+    return p is not None and not p.founded and p.band_claimed and p.band_town == city.id
 
 
 def fund_pct(state: GameState, cfg: Config, pid: str, city: City, gold: int) -> int:
-    """Percent of defence strength `gold` takes off the city (before the cap)."""
+    """Percent of defence strength `gold` takes off the city (before the cap). A Liberator's
+    agenda (fund_pct) makes gold go further."""
+    from beacon import techfx
+
     f = cfg.alien("funding")
+    gold = gold * (100 + techfx.total(cfg, state.players.get(pid), "fund_pct")) // 100
     if _first_town(state, pid, city):
         return min(f["first_pct"], gold * f["first_pct"] // f["first_gold"])
     from beacon.combat import city_strength

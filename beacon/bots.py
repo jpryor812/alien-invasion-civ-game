@@ -855,7 +855,7 @@ class Bot:
             )
             if pick is None and wanted:
                 lack = materials.short(city, materials.building_cost(self.cfg, wanted[0]))
-                q = exchange.quotes(self.state, self.cfg)
+                q = exchange.quotes(self.state, self.cfg, self.pid)
                 gold = sum(q[g]["buy"] * n for g, n in lack.items())
                 if sum(lack.values()) <= self.param("market.buy_up_to") and (
                     self.view.player.gold >= gold + self.param("market.reserve")

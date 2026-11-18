@@ -19,14 +19,18 @@ def index(state: GameState, good: str) -> int:
     return state.exchange.get(good, 100)
 
 
-def quotes(state: GameState, cfg: Config) -> dict[str, dict[str, int]]:
-    """Gold per unit: what the Exchange pays (sell) and asks (buy) now."""
+def quotes(state: GameState, cfg: Config, pid: str | None = None) -> dict[str, dict[str, int]]:
+    """Gold per unit: what the Exchange pays (sell) and asks (buy) now. A Merchant's agenda
+    (exchange_pct) gets better prices both ways."""
+    from beacon import techfx
+
+    bonus = techfx.total(cfg, state.players.get(pid or ""), "exchange_pct")
     out = {}
     for g in materials.goods(cfg):
         p = X(cfg, "base")[g] * index(state, g)
         out[g] = {
-            "sell": max(1, p * X(cfg, "sell_pct") // 10000),
-            "buy": -(-p * X(cfg, "buy_pct") // 10000),
+            "sell": max(1, p * X(cfg, "sell_pct") * (100 + bonus) // 1000000),
+            "buy": -(-p * X(cfg, "buy_pct") * (100 - bonus) // 1000000),
             "index": index(state, g),
         }
     return out
@@ -39,7 +43,7 @@ def trade_problem(
         return f"unknown good {good!r}"
     if amount <= 0:
         return "trade a positive amount"
-    q = quotes(state, cfg)[good]
+    q = quotes(state, cfg, city.owner)[good]
     if side == "sell":
         have = city.stores.get(good, 0)
         return None if have >= amount else f"only {have} {good} to sell"
@@ -55,7 +59,7 @@ def trade_problem(
 def trade(
     state: GameState, cfg: Config, city: City, good: str, amount: int, side: str
 ) -> list[dict[str, Any]]:
-    q = quotes(state, cfg)[good]
+    q = quotes(state, cfg, city.owner)[good]
     player = state.players[city.owner or ""]
     step = X(cfg, "step_pct") * (amount // 10)
     if side == "sell":

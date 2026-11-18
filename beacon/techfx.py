@@ -17,6 +17,8 @@ Keys (all integers):
   city_strength              flat strength for every city
   keep_research_on_deficit   1: an empty treasury no longer drains research
   purchase_pct               change to the gold price of buying
+  fund_pct                   percent more effect from gold sent to a resistance
+  exchange_pct               percent better prices at the Galactic Exchange
 """
 
 from __future__ import annotations
@@ -35,7 +37,15 @@ def _effects(cfg: Config, player: Player | None) -> list[dict[str, Any]]:
     techs = [cfg.techs[t].get("effects") or {} for t in player.techs if t in cfg.techs]
     lead = [e for _, e in effects(cfg, player.leader)]  # leader traits and bonuses (SPEC_M11)
     council = list(player.temp_effects)  # council measures in force (SPEC_M13)
-    return techs + list(player.boons) + lead + council  # with Starfall shards (beacon/starfall.py)
+    agenda = _agenda(cfg, player)  # the agenda's perk (designer 2026-11-17)
+    return techs + list(player.boons) + lead + council + agenda  # with Starfall shards
+
+
+def _agenda(cfg: Config, player: Player) -> list[dict[str, Any]]:
+    if not player.agenda:
+        return []
+    spec = cfg.council("agendas").get(player.agenda) or {}
+    return [spec["effects"]] if spec.get("effects") else []
 
 
 def total(cfg: Config, player: Player | None, key: str) -> int:
@@ -66,6 +76,7 @@ def lines(cfg: Config, player: Player | None, key: str) -> list[tuple[str, Any]]
 
     out += [(src, e[key]) for src, e in effects(cfg, player.leader) if e.get(key)]
     out += [(f"council: {e['source']}", e[key]) for e in player.temp_effects if e.get(key)]
+    out += [(f"agenda {player.agenda}", e[key]) for e in _agenda(cfg, player) if e.get(key)]
     return out
 
 
@@ -80,6 +91,8 @@ DESCRIBE = {
     "growth_pct": "Cities grow {v}% faster; children grow up {v}% faster",
     "build_turns": "Engineers build {n} turn faster",
     "labour_pct": "+{v}% labour from engineers",
+    "fund_pct": "Gold to a resistance goes {v}% further",
+    "exchange_pct": "{v}% better prices at the Galactic Exchange",
     "unit_cost_pct": "Units cost {n}% less production",
     "free_upkeep_per_city": "+{v} unit per city free of gold upkeep",
     "flanking_pct": "+{v}% strength per flanking unit",

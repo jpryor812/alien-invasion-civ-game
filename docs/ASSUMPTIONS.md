@@ -1031,3 +1031,19 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - AI bands fund their first town as soon as they know it, then attack.
 - Leader creation keeps its scroll position on every click and shows the points left beside the
   Skills heading and the Start button.
+
+## The homeless start and agenda perks (designer 2026-11-17)
+- No first town is assigned: the first alien-held town of its own continent the band sights
+  becomes its first town (the old capital if several are sighted at once, else the nearest). It
+  is weakened when found like the old capital (pop 2, 70% HP, a hatchling garrison, no radio,
+  barracks or nests), and 100 gold to its resistance takes 50% off. Checked after each band move
+  and each turn. Old saves: a band that has sighted a town claims it on its next move.
+- The leader has 30 strength and survivors 20 (were 20 and 10).
+- The first attack click on an unfunded alien city opens the funding offer ("Attack without it"
+  attacks); the attack preview warns "Fund the resistance first".
+- Fortify and Skip close the unit panel when no other unit needs orders.
+- Agenda perks (tech-effect format in data/council.yaml): Liberator - resistance gold goes 25%
+  further; Scientist - +10% science; Merchant - 10% better Exchange prices; Warden - +3 city
+  strength; Mystic - +10% beacon. They stack with traits.
+- Batch (10 seeds, 100 turns): AI bands take their first town at median turn 3 (fund, then
+  attack at once); cities freed median 70.5; the barrage starts in 10 of 10.

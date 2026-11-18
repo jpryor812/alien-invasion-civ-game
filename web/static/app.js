@@ -2182,10 +2182,12 @@ function renderUnitPanel() {
   side.innerHTML = `
     <div class="uportrait" style="--c:${col}">${u.type === "band_leader" && u.owner === S.view.me && S.view.leader ? `<img alt="" class="leaderface" src="leaders/${S.view.leader.look}_${S.view.leader.outfit}_portrait.webp">` : model ? `<img alt="" src="units/${model}.png">` : ""}</div>
     <div class="title">${esc(unitName(u))}${u.count > 1 ? " ×2" : ""}</div>
-    ${u.type === "band_leader" ? '<div class="muted">Your leader, leading the survivors (20 strength)</div>' : ""}
+    ${u.type === "band_leader" ? '<div class="muted">Your leader, leading the survivors (30 strength; survivors 20)</div>' : ""}
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
-    ${spec.survivor && S.view.band_town != null ? `<div class="muted small">Your band: explore. Abandoned crates may hold weapons, armour or people; somewhere near, the aliens hold your old town.${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
+    ${spec.survivor && S.view.founded === false ? `<div class="muted small">${S.view.band_town != null
+      ? `Your band has found its first town, ${esc((Object.values(S.view.cities).find((c) => c.tile === S.view.band_town) || {}).name || "")}: fund its resistance (100 gold halves it), then attack.`
+      : "Your band is homeless: explore. Crates may hold weapons, armour or people. The first alien-held town you find becomes yours to take."}${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
     ${spec.air ? '<div class="muted">Circles its city on its own: it cannot be ordered or fight, sees 4 hexes, and warns you of alien strikes gathering against the city.</div>' : ""}
     ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
@@ -2317,6 +2319,8 @@ async function send(cmd) {
     const still = S.view.pending.some((p) => p.kind === "unit_needs_orders" && p.unit === cmd.unit);
     const next = S.view.pending.find((p) => p.kind === "unit_needs_orders" && p.unit !== cmd.unit);
     if (!still && next) await selectUnit(next.unit, true);
+    // a unit told to hold (fortify, skip) is done: close its panel (designer 2026-11-17)
+    else if (!still && ["fortify", "skip_unit"].includes(cmd.kind)) clearSelection();
   }
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
@@ -2397,7 +2401,15 @@ async function onClick(e) {
   if (S.options) {
     const u = S.options.unit;
     if (S.targetMode === "bridge" && S.options.bridges.includes(i)) { S.targetMode = null; return send({ kind: "build_improvement", unit: u.id, improvement: "sea_bridge", target: i }); }
-    if (S.options.attacks.some((a) => a.tile === i)) return send({ kind: "attack", unit: u.id, target: i });
+    if (S.options.attacks.some((a) => a.tile === i)) {
+      const target = S.citiesByTile.get(i);  // offer the resistance first, once (2026-11-17)
+      S.fundAsked = S.fundAsked || {};
+      if (target && target.fund && target.fund.length && !target.funded_pct && !S.fundAsked[target.id]) {
+        S.fundAsked[target.id] = true;
+        return showFundCard(target.id, true);
+      }
+      return send({ kind: "attack", unit: u.id, target: i });
+    }
     if (S.options.reachable.includes(i) || mergeTiles().includes(i)) return send({ kind: "move_unit", unit: u.id, target: i });
   }
   const mine = (S.unitsByTile.get(i) || []).filter((u) => u.owner === S.view.me);
@@ -2423,7 +2435,14 @@ function showTooltip(i, x, y) {
   if (i === null) { tip.classList.add("hidden"); return; }
   let html = "";
   const attack = S.options && S.options.attacks.find((a) => a.tile === i);
-  if (attack) { html = previewHtml(attack.preview); if (window.Advisors) Advisors.trigger("combat"); }
+  if (attack) {
+    html = previewHtml(attack.preview); if (window.Advisors) Advisors.trigger("combat");
+    const target = S.citiesByTile.get(i);  // fund the resistance first (designer 2026-11-17)
+    if (target && target.fund && target.fund.length && !target.funded_pct) {
+      const q = target.fund[0];
+      html = `<div class="fundwarn">⚠ <b>Fund the resistance first.</b> ${q.gold} gold cuts its defence by ${q.pct}%. Attacking opens the offer first.</div>` + html;
+    }
+  }
   else {
     const t = S.tilesByIndex.get(i), c = S.citiesByTile.get(i), us = S.unitsByTile.get(i) || [];
     if (t) {
@@ -3706,7 +3725,7 @@ function paintScene(g, key, W, H, bg, glow, rnd) {
 }
 // Fund the resistance (designer 2026-11-16): gold sent to the people of an alien-held city cuts
 // its defence. At the band's first town the whole starting treasury halves it.
-function showFundCard(cityId) {
+function showFundCard(cityId, attacking = false) {
   const c = S.view.cities[String(cityId)];
   if (!c) return;
   const first = S.view.pending.some((p) => p.kind === "fund_resistance" && p.city === cityId);
@@ -3714,11 +3733,11 @@ function showFundCard(cityId) {
   const offers = (c.fund || []).map((q, k) => `<button class="${k ? "" : "primary"}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defence falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
   const body = $("modal-body");
   const text = first
-    ? `Your old town is held by the aliens, but its people have not given up. They are hiding weapons and waiting for a signal. Send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury) and they will rise when you attack: the town's defence falls by half and its barricades open.`
+    ? `You have found ${esc(c.name)}: it will be your first city. The aliens hold it, but its people have not given up; they are hiding weapons and waiting for a signal. <b>Before you attack</b>, send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury) and they will rise with you: the town's defence falls by half and its barricades open.`
     : `The people of ${esc(c.name)} want to fight back. Gold buys them weapons: its defence falls while they hold out, until the city is free. Stronger cities need more gold for the same effect.`;
   body.innerHTML = `<div class="evcard">${pictureSvg("survivors", false)}<h2>Fund the resistance in ${esc(c.name)}</h2>
     <p class="evbody">${text}</p>${c.funded_pct ? `<div class="evresult"><span class="tag">Already funded: -${c.funded_pct}%</span></div>` : ""}
-    <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">Not now</button></div>
+    <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">${attacking ? "Attack without it" : "Not now"}</button></div>
     <div class="muted small">Treasury: ${gold} gold · defence strength now ${strength}</div></div>`;
   document.querySelector(".modal-box").classList.add("narrow");
   $("modal").classList.remove("hidden"); S.screen = "event";
@@ -3727,7 +3746,11 @@ function showFundCard(cityId) {
     const now = S.view.cities[String(cityId)];
     if (now && now.funded_pct) toast(`The resistance in ${now.name} is armed: its defence is down ${now.funded_pct}%. Attack!`);
   });
-  $("fund-no").onclick = () => { if (first) S.fundSkipped = cityId; closeModal(); renderChrome(); };
+  $("fund-no").onclick = () => {
+    if (first) S.fundSkipped = cityId;
+    closeModal(); renderChrome();
+    if (attacking && S.options) send({ kind: "attack", unit: S.options.unit.id, target: c.tile });
+  };
 }
 function showEventCard(ev) {
   const body = $("modal-body");

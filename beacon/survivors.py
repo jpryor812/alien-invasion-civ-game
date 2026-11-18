@@ -1,11 +1,13 @@
 """The survivor start (docs/SPEC_M14.md, designer 2026-11-15).
 
-Each player begins as a band - the leader (20 attack) and four survivors (10 each) - a few hexes
-from its first town: its old capital, lightly held by the aliens. Caches nearby hold weapons,
-armour, alien weapons, more survivors and scrap. Taking the town makes it the capital and starts
-the normal game: survivors become citizens (those carrying gear stay as units), the leader leaves
-the map to lead from the capital, scrap becomes production. If the leader falls first, it
-escapes to the band's starting hex with two new survivors.
+Each player begins as a band - the leader (30 attack) and four survivors (20 each), homeless.
+The first alien-held town of its continent the band finds becomes its first town (designer
+2026-11-17): lightly held, and 100 gold to its resistance halves it. The old capital, a few hexes
+away, is lightly held from the start; any other town is weakened the same way when found.
+Caches nearby hold weapons, armour, alien weapons, more survivors and scrap. Taking the town
+makes it the capital and starts the normal game: survivors become citizens (those carrying gear
+stay as units), the leader leaves the map to lead from the capital, scrap becomes production. If
+the leader falls first, it escapes to the band's starting hex with two new survivors.
 """
 
 from __future__ import annotations
@@ -147,6 +149,53 @@ def setup(state: GameState, cfg: Config) -> None:
             taken.add(i)
 
 
+def _weaken(state: GameState, cfg: Config, city: City) -> None:
+    """Make a found town as lightly held as the old capital: few people, worn walls, a small
+    garrison, no radio or barracks, no nests feeding it."""
+    from beacon.cities import max_hp
+    from beacon.units import place_unit, remove_unit
+
+    sv = settings(cfg)
+    city.is_capital = False
+    city.pop = min(city.pop, sv["town_pop"])
+    city.hp = min(city.hp, max_hp(cfg, city) * sv["town_hp_pct"] // 100)
+    for u in [u for u in state.units_at(city.tile) if u.owner == ALIENS]:
+        remove_unit(state, u)
+    for t in sv["town_garrison"]:
+        place_unit(state, cfg, t, ALIENS, city.tile, 0)
+    wrecked = {cfg.t("contact.radio_building"), cfg.materials("barracks.building")}
+    city.buildings = [b for b in city.buildings if b not in wrecked]
+    city.layout = []
+    for t in state.tiles:
+        if t.nest == city.id:
+            t.nest = None
+
+
+def claim_town(state: GameState, cfg: Config, pid: str) -> Events:
+    """The first alien-held town of its own continent that a homeless band finds becomes its
+    first town (designer 2026-11-17). The old capital if it is among those found, else the one
+    nearest the band."""
+    player = state.players.get(pid)
+    if player is None or player.founded or player.band_claimed:
+        return []
+    found = [
+        state.cities[int(k)]
+        for k in sorted(player.known_cities, key=int)
+        if state.cities[int(k)].status == OVERRUN and state.cities[int(k)].continent == pid
+    ]
+    if not found:
+        return []
+    band = [u for u in state.sorted_units() if u.owner == pid and is_band(cfg, u)]
+    if any(c.id == player.band_town for c in found):
+        town = state.cities[player.band_town]
+    else:
+        here = band[0].tile if band else found[0].tile
+        town = min(found, key=lambda c: (hexgrid.distance(here, c.tile, state.width), c.id))
+        _weaken(state, cfg, town)
+    player.band_town, player.band_claimed = town.id, True
+    return [{"turn": state.turn, "kind": "first_town_found", "player": pid, "city": town.id}]
+
+
 def _memory(state: GameState, city: City):
     from beacon.state import CityMemory
 
@@ -225,7 +274,7 @@ def found(state: GameState, cfg: Config, city: City, pid: str) -> Events:
 
     sv = settings(cfg)
     player = state.players[pid]
-    player.founded = True
+    player.founded, player.band_town, player.band_claimed = True, city.id, True
     band = [u for u in state.sorted_units() if u.owner == pid and is_band(cfg, u)]
     joined = 0
     for u in band:
@@ -285,7 +334,7 @@ def barricades_hold(state: GameState, cfg: Config, city: City, pid: str) -> bool
     """A band's first town holds (cannot fall below 1 HP) until the band has found a weapon,
     armour or another survivor (designer: not without an upgrade or an extra citizen)."""
     player = state.players.get(pid)
-    if player is None or player.founded or player.band_town != city.id:
+    if player is None or player.founded or player.band_town != city.id or not player.band_claimed:
         return False
     return player.band_finds == 0 and city.funded_pct == 0  # funded: the people open the gates
 

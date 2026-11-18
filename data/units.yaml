@@ -59,8 +59,8 @@ units:
   # M6: carries traded goods overland to a port; aliens capture it unless a military unit escorts.
   trade_convoy: {status: placeholder, note: Overland trade carrier (made by deals; not buildable)., faction: player, domain: land, role: civilian, cost: 0, moves: 3, strength: 0, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true, class: civilian}
   # SPEC_M14 (designer 2026-11-15): the survivor band. Not buildable; no gold upkeep.
-  band_leader: {status: calibrated, note: The leader on foot in the survivor era (designer - 20 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 20, ranged_strength: 0, range: 0, vision: 2, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
-  survivor: {status: calibrated, note: A civilian survivor with whatever they could find (designer - 10 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 10, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
+  band_leader: {status: calibrated, note: The leader on foot in the survivor era (designer 2026-11-17 - 30 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 30, ranged_strength: 0, range: 0, vision: 2, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
+  survivor: {status: calibrated, note: A civilian survivor with whatever they could find (designer 2026-11-17 - 20 attack)., faction: player, domain: land, role: melee, cost: 0, moves: 2, strength: 20, ranged_strength: 0, range: 0, vision: 1, tech: null, not_buildable: true, no_upkeep: true, survivor: true, class: infantry}
 
   # M7: alien-tree units (espionage).
   xeno_trooper: {status: placeholder, note: Infantry in alien alloy., faction: player, domain: land, role: melee, cost: 150, moves: 2, strength: 70, ranged_strength: 0, range: 0, vision: 1, tech: xeno_metallurgy, class: infantry, rough_defence_pct: 25}

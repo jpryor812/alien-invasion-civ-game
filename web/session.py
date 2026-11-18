@@ -505,7 +505,9 @@ class Session:
         return {
             # SPEC_M14: the survivor start - explored caches, the band's first town
             "founded": player.founded,
-            "band_town": None if player.founded or town is None else town.tile,
+            "band_town": None
+            if player.founded or town is None or not player.band_claimed
+            else town.tile,  # only once found (designer 2026-11-17)
             "scrap": player.scrap,
             "caches": sorted(int(k) for k in s.caches if (bits >> int(k)) & 1),
             "influence": council.influence(cfg, s.players[me]),
@@ -807,7 +809,7 @@ class Session:
                 "next_cost": works_mod.engineer_cost(cfg, c),
                 "upkeep": cfg.materials("engineers.upkeep"),
             },
-            "exchange": exchange.quotes(s, cfg),
+            "exchange": exchange.quotes(s, cfg, me),
             "gold": s.players[me].gold,
             "worked": cy.worked,
         }

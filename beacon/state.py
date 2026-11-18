@@ -178,6 +178,7 @@ class Player:
     scrap: int = 0  # salvage carried by the band; production in the first city
     band_home: int | None = None  # the band's starting hex (where a fallen leader escapes to)
     band_town: int | None = None  # the band's first town (city id)
+    band_claimed: bool = False  # the band has found its first town (designer 2026-11-17)
     band_finds: int = 0  # weapons, armour and survivors the band has found
 
 

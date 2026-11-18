@@ -119,6 +119,8 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
 
     exchange.drift(state, cfg)
     events.extend(survivors.pick_up(state, cfg))  # the survivor start (SPEC_M14)
+    for pid in state.player_ids():  # a band that sighted its first town (designer 2026-11-17)
+        events.extend(survivors.claim_town(state, cfg, pid))
     events.extend(survivors.escape(state, cfg))
     reset_units(state, cfg)
     heal_cities(state, cfg)

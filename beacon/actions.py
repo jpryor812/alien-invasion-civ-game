@@ -343,7 +343,9 @@ def _move(state: GameState, cfg: Config, cmd: MoveUnit) -> Events:
             events = movement.move_along(state, cfg, unit, detour[0])
     if not events:
         raise CommandError(f"unit {unit.id} cannot make progress toward {cmd.target} this turn")
-    return events
+    from beacon.survivors import claim_town  # a homeless band finds its first town (2026-11-17)
+
+    return [*events, *claim_town(state, cfg, cmd.player)]
 
 
 @handles(Attack)
@@ -862,7 +864,7 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
         if deal.receiver == pid and not deal.active:
             out.append({"kind": "deal_received", "deal": deal.id})
     player = state.players.get(pid)  # the first town's resistance: a tutorial step (2026-11-16)
-    if player is not None and not player.founded and player.band_town is not None:
+    if player is not None and not player.founded and player.band_claimed:
         town = state.cities[player.band_town]
         if (
             town.status == "overrun"
