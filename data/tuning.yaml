@@ -8,9 +8,14 @@ time:
     status: calibrated
     note: Designer decision 2026-11-13 (start in 2025, research into near-future tech).
   turns_per_year:
-    value: 4
+    value: 12
     status: placeholder
-    note: One turn per quarter, so 200 turns cover 2025-2074.
+    note: One turn per month (designer 2026-11-18, SPEC_M19; was a quarter), so 120 turns cover
+      2025-2034.
+  months:
+    value: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+    status: calibrated
+    note: Month names shown with the year (SPEC_M19).
 
 map:
   width:
@@ -604,3 +609,15 @@ food:
   freed_store: 30
   repair_labour: 8
   repair_farm: farm
+
+winter:
+  status: placeholder
+  note: The galactic winter (SPEC_M19, designer 2026-11-18). From min_turn, each turn with no winter
+    on or coming has chance_pct to start one (seeded), never within cooldown turns of the last one
+    ending. A warning comes warn turns ahead; it lasts turns. Each crop improvement keeps its
+    winter_keep_pct of its food (data/improvements.yaml; techs add winter_keep_pct).
+  min_turn: 24
+  chance_pct: 3
+  cooldown: 36
+  warn: 3
+  turns: 12

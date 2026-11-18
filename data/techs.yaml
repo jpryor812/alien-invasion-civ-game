@@ -13,7 +13,7 @@ techs:
   modern_warfare: {status: calibrated, note: Present day., tree: military, tier: 0, cost: 0, prereqs: [], known_at_start: true}
 
   digital_finance: {status: placeholder, note: Financial centres., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false}
-  vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false}
+  vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false, effects: {winter_keep_pct: 25}}
   global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 4, cost: 450, prereqs: [digital_finance], known_at_start: false}
   biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 4, cost: 450, prereqs: [vertical_farming], known_at_start: false}
   automated_markets: {status: placeholder, note: Merge with production; effects later., tree: economic, tier: 5, cost: 720, prereqs: [global_logistics], known_at_start: false, effects: {purchase_pct: -25}}
@@ -34,10 +34,10 @@ techs:
   hover_armour: {status: placeholder, note: Merge with production., tree: military, tier: 5, cost: 720, prereqs: [railguns], known_at_start: false}
 
   # Promoted in M5 from the proposed content (commit 0b79762).
-  climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 4, cost: 450, prereqs: [vertical_farming], known_at_start: false}
+  climate_engineering: {status: placeholder, note: Controlled climate for growing., tree: economic, tier: 4, cost: 450, prereqs: [vertical_farming], known_at_start: false, effects: {winter_keep_pct: 50}}
   quantum_computing: {status: placeholder, note: Quantum research., tree: production, tier: 4, cost: 450, prereqs: [quantum_theory], known_at_start: false}
   directed_energy: {status: placeholder, note: Plasma and laser weapons., tree: military, tier: 5, cost: 720, prereqs: [railguns], known_at_start: false}
-  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 80, prereqs: [], known_at_start: false, effects: {growth_pct: 25}}
+  urban_planning: {status: placeholder, note: Denser cities, growth focus., tree: economic, tier: 1, cost: 80, prereqs: [], known_at_start: false, effects: {improvement_food: {farm: 5}, growth_pct: 25}}
   sovereign_bonds: {status: placeholder, note: Public credit for gold., tree: economic, tier: 4, cost: 450, prereqs: [digital_finance], known_at_start: false, effects: {yield_pct: {gold: 10}, keep_research_on_deficit: 1}}
   carbon_markets: {status: placeholder, note: Trade in emissions credits., tree: economic, tier: 5, cost: 720, prereqs: [global_logistics], known_at_start: false, effects: {city_yields: {gold: 2}}}
   robotics: {status: placeholder, note: Automated assembly lines; robot crews build sea bridges (SPEC_M11)., tree: production, tier: 3, cost: 280, prereqs: [applied_ai], known_at_start: false, effects: {build_turns: -1, labour_pct: 25}}
@@ -63,7 +63,7 @@ techs:
   stellar_chorus: {status: placeholder, note: Rarity 5., tree: beacon, tier: 6, cost: 1150, prereqs: [deep_resonance], known_at_start: false}
 
   # M6: alliances need this tech on both sides (designer, 2026-11-13: not immediate, but early).
-  international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 2, cost: 150, prereqs: [urban_planning], known_at_start: false}
+  international_accords: {status: placeholder, note: Treaty framework; both sides need it to ally., tree: economic, tier: 2, cost: 150, prereqs: [urban_planning], known_at_start: false, effects: {improvement_food: {pasture: 4}}}
 
   # M7: the world barrage (DESIGN.md 11). Researching it stops alien reinforcements.
   orbital_barrage: {status: placeholder, note: The world barrage; unlocks the shared megaproject., tree: military, tier: 5, cost: 1150, prereqs: [deep_space_radar], known_at_start: false}

@@ -23,13 +23,13 @@ names:
 start:
   status: placeholder
   note: Age at creation is chosen between age_min and age_max (the AI's from the seed); the
-    leader gains one year every turns_per_year turns (a turn is a quarter) and never dies
+    leader gains one year every turns_per_year turns (a turn is a month since SPEC_M19) and never dies
     (designer). At creation the player spreads skill_points over the six skills, at most
     skill_max in any one (designer 2026-11-16; the AI's are spread by seed); `traits` are chosen
     at creation.
   age_min: 30
   age_max: 55
-  turns_per_year: 4
+  turns_per_year: 12
   skill_points: 15
   skill_max: 5
   traits: 2

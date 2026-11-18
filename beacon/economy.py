@@ -55,6 +55,9 @@ def city_yields(state: GameState, cfg: Config, city: City) -> CityYields:
         add("palace", {"food": cap["food"], "production": cap["production"]})
     worked, people, fraction = citizens.city_lines(state, cfg, city)
     lines.extend(people)
+    from beacon import winter  # farm techs and the galactic winter (SPEC_M19)
+
+    lines.extend(winter.food_lines(state, cfg, city, worked, state.players.get(city.owner or "")))
     add("population", {"science": city.pop * cfg.t("economy.science_per_pop_pct") // 100})
     for b in city.buildings:
         add(f"building:{b}", cfg.buildings[b]["yields"])

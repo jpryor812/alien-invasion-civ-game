@@ -19,6 +19,8 @@ Keys (all integers):
   purchase_pct               change to the gold price of buying
   fund_pct                   percent more effect from gold sent to a resistance
   exchange_pct               percent better prices at the Galactic Exchange
+  improvement_food {imp: n}  more food from each worked hex with that improvement (SPEC_M19)
+  winter_keep_pct            share of crop food kept in the galactic winter, added (SPEC_M19)
 """
 
 from __future__ import annotations

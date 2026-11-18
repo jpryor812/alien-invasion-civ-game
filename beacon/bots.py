@@ -306,7 +306,7 @@ class Bot:
             options.append(self.cfg.resources[tile.resource]["improvement"])
         if tile.feature in ("forest", "jungle"):
             options.append("lumber_camp")  # timber (SPEC_M16)
-        options += ["farm", "mine"] if farm_first else ["mine", "farm"]
+        options += ["farm", "pasture", "mine"] if farm_first else ["mine", "farm"]
         for imp in options:
             spec = self.cfg.improvements[imp]
             if (
@@ -816,6 +816,7 @@ class Bot:
         self.buildings()  # SPEC_M17
         self.enlist()  # citizens as soldiers (2026-11-17)
         self.land()
+        self.births()  # SPEC_M19
         self.market()
         self.walls()  # SPEC_M16
         self.council()
@@ -912,6 +913,20 @@ class Bot:
                 if imp and improvements.tile_problem(self.state, self.cfg, city, t, imp) is None:
                     self.submit(ImproveTile(player=self.pid, city=city.id, tile=t, improvement=imp))
                     break
+
+    def births(self) -> None:
+        """In a galactic winter a town short of food pauses births; otherwise births run
+        (SPEC_M19)."""
+        from beacon import winter
+        from beacon.commands import SetGrowth
+
+        cold = winter.active(self.state)
+        for city in self.view.my_cities():
+            if city.status != "active":
+                continue
+            grow = not (cold and self.food_room(city) < 0)
+            if city.grow != grow:
+                self.submit(SetGrowth(player=self.pid, city=city.id, grow=grow))
 
     def market(self) -> None:
         """Sell what is about to overflow its store."""

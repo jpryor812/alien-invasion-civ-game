@@ -4,7 +4,8 @@
 # improvement), requires_route, vision (sight radius kept by the improvement), defense_pct.
 
 improvements:
-  farm: {status: placeholder, note: Fields. SPEC_M18 (designer 2026-11-18) - a farm makes 20 food., kind: tile, turns: 3, tech: null, yields: {food: 20}, terrains: [grassland, plains, desert, tundra], elevations: [flat]}
+  farm: {status: placeholder, note: Fields. SPEC_M18 (designer 2026-11-18) - a farm makes 20 food., kind: tile, turns: 3, tech: null, yields: {food: 20}, terrains: [grassland, plains, desert, tundra], elevations: [flat], winter_keep_pct: 50}
+  pasture: {status: placeholder, note: "Livestock (SPEC_M19): less food than a farm, but on hills too and hardier in the galactic winter.", kind: tile, turns: 3, tech: null, yields: {food: 12, production: 1}, terrains: [grassland, plains], elevations: [flat, hills], winter_keep_pct: 75}
   mine: {status: placeholder, note: Hill mining., kind: tile, turns: 4, tech: null, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
   lumber_camp: {status: placeholder, note: "Cuts timber in a forest or jungle (SPEC_M16).", kind: tile, turns: 3, tech: null, yields: {production: 1}, terrains: [grassland, plains, tundra], elevations: [flat, hills], requires_feature: [forest, jungle]}
   extractor: {status: placeholder, note: Wells and lumber camps; only on a resource that needs it., kind: tile, turns: 4, tech: null, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], requires_resource: true}
@@ -18,7 +19,7 @@ improvements:
   wind_turbines: {status: placeholder, note: Turbines on high ground., kind: tile, turns: 3, tech: industrial_base, yields: {production: 1}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills]}
   minefield: {status: placeholder, note: Defensive mines on flat ground., kind: tile, turns: 2, tech: mechanized_warfare, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat], defense_pct: 15}
   sensor_mast: {status: placeholder, note: Tall mast for wide sight., kind: tile, turns: 3, tech: radio_beacon_network, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [hills], vision: 3}
-  hydroponic_plot: {status: placeholder, note: Desert and tundra growing beds; the better farm (SPEC_M18)., kind: tile, turns: 3, tech: vertical_farming, yields: {food: 30}, terrains: [desert, tundra], elevations: [flat]}
+  hydroponic_plot: {status: placeholder, note: Desert and tundra growing beds; the better farm (SPEC_M18)., kind: tile, turns: 3, tech: vertical_farming, yields: {food: 30}, terrains: [desert, tundra], elevations: [flat], winter_keep_pct: 50}
   geothermal_vent: {status: placeholder, note: Heat from the ground on hills., kind: tile, turns: 3, tech: fusion_power, yields: {production: 2}, terrains: [grassland, plains, desert, tundra], elevations: [hills]}
   hyperloop: {status: placeholder, note: Fast rail on top of a railway., kind: route, turns: 4, tech: nanofabrication, yields: {}, terrains: [grassland, plains, desert, tundra, snow], elevations: [flat, hills], move_cost: 1, requires_route: railway}
 

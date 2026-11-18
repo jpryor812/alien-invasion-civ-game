@@ -1975,7 +1975,7 @@ function centerOnTile(i) { centerOnWorld(...center(i)); }
 
 function renderChrome() {
   const v = S.view, e = v.economy;
-  $("turninfo").innerHTML = `${ICON.turn}Turn <b>${v.turn}</b> · ${v.year}`;
+  $("turninfo").innerHTML = `${ICON.turn}Turn <b>${v.turn}</b> · ${v.year}${v.winter ? ` <span class="winterbadge" data-tip="${esc(v.winter.left ? `<b>Galactic winter</b><div>Alien dust dims the sky: crops give half their food and pastures three quarters, for ${v.winter.left} more turn${v.winter.left === 1 ? "" : "s"}. Bank food, pause births, and research hardier crops (Vertical Farming, Climate Engineering).</div>` : `<b>A galactic winter is coming</b><div>In ${v.winter.coming_in} turn${v.winter.coming_in === 1 ? "" : "s"} crops lose half their food for a year. Fill your stores now.</div>`)}">❄ ${v.winter.left ? `Winter: ${v.winter.left}` : `Winter in ${v.winter.coming_in}`}</span>` : ""}`;
   const L = v.leader, lb = $("leaderbadge");  // the leader in the top-left corner (Civ style)
   if (L) {
     lb.classList.remove("hidden"); lb.classList.toggle("alert", L.alert);
@@ -2091,6 +2091,9 @@ function describeEvent(e) {
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
     loot_found: () => `Cache found: ${(e.result || []).join(", ")}.`,
+    winter_coming: () => `Scientists warn of a galactic winter in ${e.in} turns: for ${e.turns} turns crops will give half their food. Fill your stores.`,
+    winter_began: () => `The galactic winter has begun: crops give half their food for ${e.turns} turns.`,
+    winter_ended: () => `The galactic winter is over: the skies clear and the crops recover.`,
     unit_starved: () => `Your ${pretty(e.type)} starved to death.`,
     unit_hungry: () => `A unit is starving: no rations left (${e.hp} HP). Bring it home.`,
     rations_out: () => `A unit has eaten its last ration. Bring it into friendly land.`,
@@ -2272,7 +2275,7 @@ function foodHtml(d) {
   const when = !f.grow ? "births paused" : f.birth > f.cap ? `next birth needs ${f.birth}: more than the store holds` : f.birth_in == null ? `next birth at ${f.birth}: no spare food` : `next birth at ${f.birth}, in ${f.birth_in} turn${f.birth_in === 1 ? "" : "s"}`;
   const tip = `<b>Food</b><div>Made ${f.made}. Grown citizens eat 2, children 4, each unit in your land 2. Spare food fills the store: it pays for births and feeds the army when the town falls short. The store holds ${f.cap}${f.has_granary ? "" : ` (a ${pretty(f.granary)} holds more)`}.</div>`;
   return `<div class="food" data-tip="${esc(tip)}">
-    <div class="row"><b class="${f.spare < 0 ? "bad" : ""}">🌾 ${sign(f.spare)} food</b> <span class="muted small">made ${f.made} · citizens −${f.citizens}${f.children ? ` · children −${f.children}` : ""}${f.army ? ` · army −${f.army}` : ""}</span></div>
+    <div class="row"><b class="${f.spare < 0 ? "bad" : ""}">🌾 ${sign(f.spare)} food</b> <span class="muted small">made ${f.made}${f.winter ? ` <span class="bad">(winter −${f.winter})</span>` : ""} · citizens −${f.citizens}${f.children ? ` · children −${f.children}` : ""}${f.army ? ` · army −${f.army}` : ""}</span></div>
     <div class="foodbar"><i style="width:${pct}%"></i>${f.grow ? `<em style="left:${mark}%"></em>` : ""}</div>
     <div class="row muted small">Store ${f.store}/${f.cap} · ${when}${!f.has_granary && f.store * 100 >= f.cap * 80 ? ` · <span class="bad">nearly full: build a ${pretty(f.granary)}</span>` : ""}${f.spare < 0 && f.store === 0 ? ' · <span class="bad">starving</span>' : ""}</div>
     <label class="row small" title="Untick to pause births: spare food then banks in the store for your army"><input type="checkbox" id="allow-births" ${f.grow ? "checked" : ""}> Allow births</label>
@@ -3631,6 +3634,7 @@ $("open-log").onclick = () => openScreen("log");
 // -- story events, exploration finds and Starfall (docs/SPEC_M9.md) ---------------------------
 
 const PICTURE = {
+  winter: ["#16222e", "#bfe0ff", "❄"],
   survivors: ["#3b4a5c", "#c98b4a", "🔥"], outcast: ["#2a1d3d", "#8f5bd6", "◈"], wreckage: ["#1d2a33", "#6cbbec", "✦"],
   cache: ["#2b2a1d", "#f2d15c", "▣"], armoury: ["#2a2320", "#c0644a", "⚔"], ambush: ["#2a0d0d", "#e0362c", "!"],
   preserving_compound: ["#123020", "#93d46b", "✺"], starmetal: ["#1d2128", "#e6c45c", "✦"], new_elements: ["#0f2238", "#6cbbec", "⚛"],
@@ -3833,8 +3837,20 @@ function showNewStory() {
       alien_weapon: ["An alien weapon", "A weapon dropped by the aliens, still charged. Whoever carries it hits far harder."],
       survivor: ["A survivor", "Someone was hiding by the crate and joins your band. One more pair of hands for the town."],
       scrap: ["Salvage", "Scrap metal and parts: it will speed your first city's building."],
+      food: ["Food", "Tinned food and seed stock: every unit of yours nearby has full rations again."],
     }[e.loot] || ["Supplies", "Your band found supplies."];
     return showEventCard({ title: LOOT[0], body: LOOT[1], picture: "cache", result: e.result || [], tile: e.tile });
+  }
+  // the galactic winter (SPEC_M19): a card when it is announced and when it begins
+  for (const e of S.view.events || []) {
+    if (!["winter_coming", "winter_began"].includes(e.kind)) continue;
+    const key = `${e.kind}-${e.turn}`;
+    if (S.seenStory.has(key)) continue;
+    S.seenStory.add(key);
+    if (e.turn < S.view.turn) continue;
+    return showEventCard(e.kind === "winter_coming"
+      ? { title: "A galactic winter is coming", picture: "winter", result: [], body: `Our scientists see alien dust thickening between us and the sun. In ${e.in} turns a winter will set in for ${e.turns} turns (a year): crops will give half their food and pastures three quarters. Fill your food stores, pause births in towns that will run short, and bring your soldiers home where they can be fed.` }
+      : { title: "The galactic winter", picture: "winter", result: [], body: `The sky has dimmed. For ${e.turns} turns crops give half their food and pastures three quarters. Vertical Farming and Climate Engineering make crops hardier.` });
   }
   for (const c of S.view.story_cards || []) {
     if (S.seenStory.has(c.key)) continue;

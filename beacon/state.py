@@ -403,6 +403,8 @@ class GameState:
     aliens: AlienState = field(default_factory=AlienState)
     council: CouncilState = field(default_factory=CouncilState)  # SPEC_M13
     caches: dict[str, str] = field(default_factory=dict)  # tile -> loot (survivor start, M14)
+    winter: dict[str, int] = field(default_factory=dict)  # {"from", "to"} turns (SPEC_M19)
+    last_winter: int = -1  # turn the last galactic winter ended
     recruits: dict[str, Recruit] = field(default_factory=dict)
     citizens: dict[str, Citizen] = field(default_factory=dict)
     story_events: dict[str, StoryEvent] = field(default_factory=dict)

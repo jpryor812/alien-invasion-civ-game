@@ -223,8 +223,8 @@ def test_creation_screen_remakes_the_leader_before_the_first_turn(cfg):
         ["steady", "visionary"],
         True,
     )
-    s.turn = 8
-    assert leader.age(cfg, s, lead) == 44  # a year every four turns
+    s.turn = 24
+    assert leader.age(cfg, s, lead) == 44  # a year every twelve turns (a turn is a month)
     with pytest.raises(CommandError, match="first turn"):
         apply_command(s, cfg, make)
     apply_command(s, cfg, SetWardrobe(player=EU, outfit="field_uniform", accessories=("medal",)))

@@ -556,3 +556,4 @@ button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 
 .rations.bad { color: #ff8a7a; }
 /* the leader portrait steps aside while a city panel is open, so the panel's top (food) shows */
 body:has(#side:not(.hidden):not(.unitmode)) #leaderbadge { left: 312px; }
+.winterbadge { margin-left: 8px; padding: 1px 7px; border-radius: 9px; background: rgba(120,180,255,0.18); color: #bfe0ff; border: 1px solid rgba(150,200,255,0.45); }

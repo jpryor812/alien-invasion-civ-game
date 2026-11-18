@@ -1101,3 +1101,25 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   seeds); units starved 284 in all (about 5 per player per game, mostly stranded far from home);
   first town median turn 1-8; the barrage starts in 10 of 10. Towns now grow much bigger: tune
   the farm or the birth cost after play.
+
+## Months, the galactic winter and better farms (SPEC_M19, designer 2026-11-18)
+- A turn is a month (was a quarter): only the date shown and the leader's age change; turn-based
+  timers (lifespans, cooldowns, sessions) are unchanged in turns, so the game's pace is the same
+  and a 100-turn game now spans about 8 years.
+- The winter is drawn from the seeded "events" stream at the start of each turn (3% from turn 24,
+  36 turns between winters, 3 turns' warning, 12 turns long). In a 100-turn game that is usually
+  one winter, sometimes none or two.
+- The loss is on improvement food of worked hexes (farm bonuses included), per hex, rounded
+  down; terrain food, citizens' stats on the hex and buildings are untouched. Farms and
+  hydroponic plots keep 50%, pastures 75% (`winter_keep_pct` per improvement).
+- The tech tree's fixed 2-4-8-16 shape left no room for new techs, so the farm upgrades are
+  effects on existing food techs: Urban Planning farms +5, International Accords pastures +4,
+  Vertical Farming +25% winter keep, Climate Engineering +50%.
+- Pasture is on grassland and plains, flat or hills (farms are flat only), from the start.
+- The AI pauses births in a town while winter leaves its food short, builds pastures when it
+  wants food and a farm cannot go there, and does nothing else special for the warning.
+- The winter is announced with a card (and again when it begins); the top bar shows "Winter in N"
+  then "Winter: N" turns left; the city food line shows the winter's loss.
+- Batch (10 seeds, 100 turns, AI): 11 winters began (0-2 a game); towns freed median 71.5; people
+  per town about 20; no town famines; units starved 281. Towns' stores and big farms ride out a
+  winter easily: make it bite harder (or farms smaller) after play if it feels toothless.

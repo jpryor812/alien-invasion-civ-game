@@ -368,3 +368,12 @@ live in the main game, and the sandbox page is gone.*
 - A freed town keeps 30 food and has a damaged farm; the band's first town also has a broken
   radio tower. Each repair is one engineer-turn and goes first. The band's first town rescues 3
   people, so with 4 survivors it starts with up to 7 citizens.
+
+## M19: months, the galactic winter and better farms (designer 2026-11-18, docs/SPEC_M19.md)
+
+- A turn is a month (Jan 2025, Feb 2025 ...); the leader ages a year every 12 turns.
+- The galactic winter: a seeded random event from turn 24 (3% a turn, at least 36 turns apart),
+  warned 3 turns ahead, lasting 12 turns. Crops give half their food, pastures three quarters.
+- Pastures (livestock): 12 food and 1 production, on hills too. Urban Planning gives farms +5,
+  International Accords pastures +4, Vertical Farming hardier crops (75% in winter), Climate
+  Engineering no winter loss.

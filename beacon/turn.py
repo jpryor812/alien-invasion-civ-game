@@ -33,6 +33,13 @@ def year(cfg: Config, turn: int) -> int:
     return cfg.t("time.start_year") + turn // cfg.t("time.turns_per_year")
 
 
+def date(cfg: Config, turn: int) -> str:
+    """The turn's month and year, e.g. "Mar 2025" (a turn is a month, SPEC_M19)."""
+    months = cfg.t("time.months")
+    per = cfg.t("time.turns_per_year")
+    return f"{months[(turn % per) * len(months) // per]} {year(cfg, turn)}"
+
+
 def alien_phase(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     from beacon import aliens
 
@@ -130,7 +137,10 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     heal_cities(state, cfg)
     state.turn += 1
     fog.refresh_all(state, cfg)
-    events.append({"turn": state.turn, "kind": "turn_started", "year": year(cfg, state.turn)})
+    events.append({"turn": state.turn, "kind": "turn_started", "year": date(cfg, state.turn)})
+    from beacon import winter  # SPEC_M19
+
+    events.extend(winter.start_turn(state, cfg))
     events.extend(liberation.update_fallen(state))
     events.extend(contact.check(state, cfg))
     events.extend(starfall.end_of_turn(state, cfg))

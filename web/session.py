@@ -37,7 +37,7 @@ from beacon.commands import CommandError, command_from_dict
 from beacon.config import DOMAINS, Config
 from beacon.game import new_game
 from beacon.state import ACTIVE, ALIENS, GameState, state_from_json, state_to_json, to_dict
-from beacon.turn import advance_turn, year
+from beacon.turn import advance_turn, date
 from beacon.view import observe
 from web import profile
 
@@ -45,6 +45,9 @@ SAVE_DIR = Path(__file__).resolve().parent.parent / "runs" / "saves"
 PUBLIC_EVENTS = frozenset(
     {
         "shard_warning",
+        "winter_coming",  # the galactic winter (SPEC_M19)
+        "winter_began",
+        "winter_ended",
         "shard_landed",
         "shard_claimed",
         "shard_faded",
@@ -123,7 +126,7 @@ class Session:
         s = self.state
         return {
             "turn": s.turn,
-            "year": year(self.cfg, s.turn),
+            "year": date(self.cfg, s.turn),
             "player": self.human,
             "player_name": s.players[self.human].name,
             "seed": s.seed,
@@ -270,7 +273,8 @@ class Session:
                 "width": s.width,
                 "wrap": s.wrap,
                 "height": s.height,
-                "year": year(cfg, s.turn),
+                "year": date(cfg, s.turn),
+                "winter": _winter(s),  # SPEC_M19
                 "me": me,
                 "explored": fog_explored(s, me),
                 "economy": {
@@ -1629,6 +1633,15 @@ def _building_gives(cfg: Config, b: str) -> list[str]:
     return extra + lines
 
 
+def _winter(s: GameState) -> dict[str, int] | None:
+    from beacon import winter
+
+    if winter.active(s):
+        return {"left": winter.turns_left(s)}
+    soon = winter.coming_in(s)
+    return {"coming_in": soon} if soon is not None else None
+
+
 def _rations(s: GameState, cfg: Config, u: Any) -> dict[str, Any]:
     from beacon import food
 
@@ -1652,6 +1665,7 @@ def _food_row(s: GameState, cfg: Config, c: Any, cy: Any) -> dict[str, Any]:
     gap = need - c.food_store
     return {
         "made": cy.totals["food"],
+        "winter": -sum(v for src, y, v in cy.lines if src == "galactic winter"),  # SPEC_M19
         "citizens": cy.food_eaten - children,
         "children": children,
         "army": army,
