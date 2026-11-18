@@ -234,7 +234,7 @@ def pick_up(state: GameState, cfg: Config) -> Events:
         unit = here[0]
         kind = state.caches.pop(key)
         got = kind.replace("_", " ")
-        if kind != "scrap":
+        if kind not in ("scrap", "food"):
             state.players[unit.owner].band_finds += 1  # opens the town's barricades
         if kind in WEAPONS or kind in ARMOUR:
             band = [u for u in state.sorted_units() if u.owner == unit.owner and is_band(cfg, u)]
@@ -247,6 +247,11 @@ def pick_up(state: GameState, cfg: Config) -> Events:
         elif kind == "survivor":
             new = place_unit(state, cfg, "survivor", unit.owner, tile, 4)
             got = "a survivor joins" if new is not None else "a survivor (no room to stand)"
+        elif kind == "food":  # rations for everyone near (SPEC_M18)
+            from beacon.food import refill_near
+
+            n = refill_near(state, cfg, unit.owner, tile, loot["food"]["radius"])
+            got = f"food - rations refilled for {n} unit{'s' if n != 1 else ''}"
         elif kind == "scrap":
             state.players[unit.owner].scrap += loot["scrap"]["scrap"]
             got = f"{loot['scrap']['scrap']} scrap"
@@ -283,7 +288,7 @@ def found(state: GameState, cfg: Config, city: City, pid: str) -> Events:
         elif not u.gear:
             remove_unit(state, u)
             joined += 1
-    city.pop += joined
+    city.pop = max(city.pop, sv["town_rescued"]) + joined  # the rescued, then the band (M18)
     citizens.sync(state, cfg, city)
     city.production_store += player.scrap
     from beacon import layout, materials  # SPEC_M16

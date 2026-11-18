@@ -152,8 +152,21 @@ def turns_to_grow(cfg: Config, c: Citizen, surplus_food: int) -> int:
 
 
 def food_eaten(state: GameState, cfg: Config, city: City) -> int:
-    extra = sum(trait(cfg, c, "food_eaten", 0) for c in of_city(state, city.id))
-    return max(0, city.pop * cfg.t("economy.food_per_pop") + extra)
+    """A grown citizen eats food_per_pop, a child food.child_eats (SPEC_M18)."""
+    from beacon.food import eats
+
+    people = of_city(state, city.id)
+    extra = sum(trait(cfg, c, "food_eaten", 0) for c in people)
+    base = sum(eats(cfg, c.adult) for c in people)
+    base += max(0, city.pop - len(people)) * eats(cfg, True)
+    return max(0, base + extra)
+
+
+def children_eat(state: GameState, cfg: Config, city: City) -> int:
+    """The part of food_eaten that feeds children (for display)."""
+    from beacon.food import eats
+
+    return sum(eats(cfg, False) for c in of_city(state, city.id) if not c.adult)
 
 
 # -- what a citizen gives ----------------------------------------------------------------------

@@ -2091,6 +2091,10 @@ function describeEvent(e) {
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
     loot_found: () => `Cache found: ${(e.result || []).join(", ")}.`,
+    unit_starved: () => `Your ${pretty(e.type)} starved to death.`,
+    unit_hungry: () => `A unit is starving: no rations left (${e.hp} HP). Bring it home.`,
+    rations_out: () => `A unit has eaten its last ration. Bring it into friendly land.`,
+    growth_set: () => `${cityName(e.city)}: births ${e.grow ? "allowed" : "paused; spare food banks for the army"}.`,
     citizen_enlisted: () => `${e.citizen} of ${cityName(e.city)} finished training: a new ${pretty(e.type)}.`,
     first_town_found: () => `Your band has found ${cityName(e.city)}: fund its resistance, then take it.`,
     first_city: () => `${cityName(e.city)} is free! Your band settles: ${e.citizens} citizens${e.scrap ? `, ${e.scrap} scrap into production` : ""}. The real work begins.`,
@@ -2197,6 +2201,7 @@ function renderUnitPanel() {
     ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
     <div class="bar"><i style="width:${Math.round(100 * u.hp / (100 * u.count))}%"></i></div>
+    ${u.eats && u.rations != null && u.owner === S.view.me ? `<div class="row rations${!u.supplied && u.rations <= 3 ? " bad" : ""}" data-tip="${esc(`<b>Rations</b><div>${u.supplied ? "Inside friendly land: the nearest town feeds this unit and refills its rations." : "Outside friendly land it eats 1 ration a turn; with none left it loses 10 HP a turn. Food crates refill them."}</div>`)}">🍞 Rations ${u.rations}/${u.max_rations}${u.supplied ? ' <span class="muted">· fed by a town</span>' : u.rations === 0 ? " · starving!" : u.rations <= 3 ? " · head home soon" : ""}</div>` : ""}
     <div class="actions" id="uactions"></div>
     <div class="muted" style="font-size:12px">${spec.fixed ? (spec.no_attack ? "" : "Red hexes can be fired on (hover for the odds).") : "Click a highlighted hex to move; red hexes can be attacked (hover for the odds)."}</div>`;
   const a = $("uactions");
@@ -2258,14 +2263,29 @@ function yieldBox(k, total, lines) {
   const parts = lines.filter((l) => l[1] === k).map((l) => `${pretty(l[0].replace(/^\w+:/, ""))}: ${l[2] >= 0 ? "+" : ""}${l[2]}`);
   return `<div class="yield y-${k}" title="${esc(parts.join("\n") || "nothing")}">${ICON[k] || ""}<b>${total}</b>${pretty(k)}</div>`;
 }
+// Food (SPEC_M18): what the town makes, who eats it, and the bank that pays for births and soldiers.
+function foodHtml(d) {
+  const f = d.food; if (!f) return "";
+  const sign = (n) => (n >= 0 ? "+" : "") + n;
+  const pct = Math.min(100, Math.round(100 * f.store / Math.max(1, f.cap)));
+  const mark = Math.min(100, Math.round(100 * f.birth / Math.max(1, f.cap)));
+  const when = !f.grow ? "births paused" : f.birth > f.cap ? `next birth needs ${f.birth}: more than the store holds` : f.birth_in == null ? `next birth at ${f.birth}: no spare food` : `next birth at ${f.birth}, in ${f.birth_in} turn${f.birth_in === 1 ? "" : "s"}`;
+  const tip = `<b>Food</b><div>Made ${f.made}. Grown citizens eat 2, children 4, each unit in your land 2. Spare food fills the store: it pays for births and feeds the army when the town falls short. The store holds ${f.cap}${f.has_granary ? "" : ` (a ${pretty(f.granary)} holds more)`}.</div>`;
+  return `<div class="food" data-tip="${esc(tip)}">
+    <div class="row"><b class="${f.spare < 0 ? "bad" : ""}">🌾 ${sign(f.spare)} food</b> <span class="muted small">made ${f.made} · citizens −${f.citizens}${f.children ? ` · children −${f.children}` : ""}${f.army ? ` · army −${f.army}` : ""}</span></div>
+    <div class="foodbar"><i style="width:${pct}%"></i>${f.grow ? `<em style="left:${mark}%"></em>` : ""}</div>
+    <div class="row muted small">Store ${f.store}/${f.cap} · ${when}${!f.has_granary && f.store * 100 >= f.cap * 80 ? ` · <span class="bad">nearly full: build a ${pretty(f.granary)}</span>` : ""}${f.spare < 0 && f.store === 0 ? ' · <span class="bad">starving</span>' : ""}</div>
+    <label class="row small" title="Untick to pause births: spare food then banks in the store for your army"><input type="checkbox" id="allow-births" ${f.grow ? "checked" : ""}> Allow births</label>
+  </div>`;
+}
 function renderCityPanel() {
   const d = S.city, c = d.city, side = $("side");
   side.classList.remove("unitmode");
   if (window.Advisors) Advisors.trigger("production");
-  const surplus = d.totals.food - d.food_eaten;
   side.innerHTML = `
     <div class="title">${c.is_capital ? "★ " : ""}${esc(c.name)}</div>
-    <div class="row muted">Population ${c.pop} · food ${c.food_store}/${d.growth_threshold} (${surplus >= 0 ? "+" : ""}${surplus}) · ${c.is_capital ? "capital" : c.connected ? "road to the capital (+gold)" : '<span class="muted">no road to the capital yet</span>'}</div>
+    <div class="row muted">Population ${c.pop} · ${c.is_capital ? "capital" : c.connected ? "road to the capital (+gold)" : '<span class="muted">no road to the capital yet</span>'}</div>
+    ${foodHtml(d)}
     <div class="row muted">HP ${c.hp}/${d.max_hp} · strength ${Math.round(d.strength / 100)}</div>
     <div class="row stores">${Object.keys(d.stores || {}).map((g) => `<span class="store" data-tip="${esc(`<b>${pretty(g)}</b><div>${d.stores[g]} stored of ${d.caps[g]}; +${d.income[g]} a turn from the tiles the city works</div>`)}">${MAT_ICON[g] || ""} ${d.stores[g]}<span class="muted">/${d.caps[g]} +${d.income[g]}</span></span>`).join("")}</div>
     <div class="actions"><button class="primary develop" id="open-builder" title="Place buildings and walls, work the land with engineers and train units (B)">🏗 Develop city</button></div>
@@ -2291,6 +2311,7 @@ function renderCityPanel() {
   side.querySelectorAll("[data-upgrade-gun]").forEach((el) => el.onclick = () => send({ kind: "upgrade_defence", unit: Number(el.dataset.upgradeGun) }));
   if ($("citpage")) $("citpage").onclick = () => openScreen("population", c.id);
   $("focus").onchange = (e) => send({ kind: "set_focus", city: c.id, focus: e.target.value });
+  if ($("allow-births")) $("allow-births").onchange = (e) => send({ kind: "set_growth", city: c.id, grow: e.target.checked });
   $("open-builder").onclick = () => window.Builder && Builder.open(c.id);
   if ($("convoy-send")) $("convoy-send").onclick = () => send({ kind: "set_convoy", city: c.id, target: Number($("convoy-to").value), goods: $("convoy-goods").value, pct: Number($("convoy-pct").value) });
   if ($("convoy-stop")) $("convoy-stop").onclick = () => send({ kind: "set_convoy", city: c.id, target: -1 });

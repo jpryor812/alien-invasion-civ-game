@@ -314,7 +314,7 @@ def unit_bonus_lines(cfg: Config, city: City, production: int) -> list[Line]:
 
 
 def process_city(
-    state: GameState, cfg: Config, city: City, player: Player
+    state: GameState, cfg: Config, city: City, player: Player, army: list[Any] | None = None
 ) -> tuple[list[dict[str, Any]], int]:
     """One turn for an active city: growth and production. Adds its gold and beacon
     points to `player` and returns (events, science) for the caller to settle research."""
@@ -334,12 +334,17 @@ def process_city(
     production_in, surplus = convoys.send(
         state, city, cy.totals["production"], cy.surplus_food + arrived.get("food", 0)
     )
+    # the town feeds its army from what its citizens leave (SPEC_M18)
+    from beacon import food
+
+    surplus = food.feed(state, cfg, city, army or [], surplus)
     # growth: food brings births, and children grow up faster in a well-fed city
     events.extend(citizens.grow(state, cfg, city, surplus))
     growth = techfx.total(cfg, player, "growth_pct")  # Urban Planning
     city.food_store += surplus * (100 + growth) // 100 if surplus > 0 else surplus
+    city.food_store = min(city.food_store, food.store_cap(cfg, city))  # the granary
     threshold = growth_threshold(cfg, city.pop)
-    if city.food_store >= threshold:
+    if city.grow and city.food_store >= threshold:
         city.food_store -= threshold
         city.pop += 1
         events.append({"kind": "city_grew", "city": city.id, "pop": city.pop})
@@ -452,10 +457,13 @@ def player_turn(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]
     events: list[dict[str, Any]] = []
     science = 0
     citizens.assign(state, cfg, pid)
+    from beacon import food  # SPEC_M18
+
+    armies = food.armies(state, cfg, pid)
     for city in state.cities:
         if city.owner != pid or city.status != ACTIVE:  # SPEC_M10: no road needed to produce
             continue
-        city_events, city_science = process_city(state, cfg, city, player)
+        city_events, city_science = process_city(state, cfg, city, player, armies.get(city.id))
         events.extend(city_events)
         science += city_science
     events.extend(citizens.train(state, cfg, pid))  # citizens become soldiers (2026-11-17)

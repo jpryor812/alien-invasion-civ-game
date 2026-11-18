@@ -1061,3 +1061,43 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   tile and holds no seat while training, for max(2, strength / 10) turns (infantry 3, exo 6),
   then leaves the city as the unit (population -1); no production is spent. A city always keeps
   one citizen at home. The AI trains one at a time in cities of 6+ while its army is short.
+
+## Food, rations and the rescued town (SPEC_M18, designer 2026-11-18)
+- Integers only, so the designer's 0.5 and 1 food per person became 2 and 4, and the farm 20
+  (one farm feeds 10 grown citizens). The hydroponic plot (Vertical Farming) is the better farm
+  at 30; there is no other farm upgrade yet. Food buildings were scaled about x5 (water
+  treatment 10, vertical farm 20, climate dome 15, arcology 40, hospital 5, port 5); Synthetic
+  Biology gives +10 food in every city; the palace 10. Bare hexes keep their small yields.
+- Birth cost: 20 + 5 per citizen past the first (was 15 + 6k + k^2). Children grow up at
+  8 + 1 x spare food points a turn (per_food was 3), about 6 turns well fed.
+- The store cap (60, +120 with the food depot, which no longer adds food) stops banking; at pop
+  9 a birth costs 60, so towns past 9 need a granary.
+- The army eats from the store after the citizens; the town feeds units by id until its spare
+  food and store run out; the rest eat rations. Units of allies are fed by allied towns (a
+  co-op game; AI expeditions abroad would otherwise starve). Supply reaches 4 hexes from a town:
+  the work radius of 2 left armies starving beside their own towns. UAV patrols do not eat
+  (`eats: false`); city guns and home guards do.
+- Rations: -1 in state means full (old saves load full). The band has no town, so it lives on
+  rations: 10 turns, against a first town at median turn 3 and at most about 9.
+- Rations are spent at the end of the turn, after every player's towns have fed their armies.
+- Starvation: soldiers go hungry first (they are fed only from what the citizens leave), then the
+  youngest citizen dies when the store runs out (children first). A starving unit can die.
+- Freed towns: the best flat farmland in the work area (no feature or route) gets a damaged farm
+  (the pillaged mechanism); the repair job is 8 labour with no materials, at the top of the works.
+  The band's first town also gets a radio tower repair job (the radio is wrecked as before). The
+  liberating player's units within 4 hexes refill their rations. Every freed town keeps 30 food.
+- The band's first town keeps max(its people after the battle, 3) rescued people, then the
+  survivors without gear move in.
+- AI: trains no units in a city whose spare food after its army is under 2 (it trains engineers
+  or runs Wealth instead); builds farms before mines while spare food is under 6; builds the food
+  depot first once a store reaches 80% of its cap; a unit outside supply heads for the nearest
+  friendly town once its rations fall to its turns from supply plus 2. Units with no land path
+  home (blocked, or stranded across water) still starve: a real cost, left for now.
+- The client shows a food line (made, citizens, children, army), a store bar with the next birth
+  marked, an Allow births switch, and rations on your units. The leader portrait moves beside an
+  open city panel so the panel's top shows.
+- Batch (10 seeds, 100 turns, AI, survivor start): towns freed median 68.5 (was 73 on 3 seeds
+  before M18); people per freed town about 20 (was about 8); town famines 0 (was 188 on 3
+  seeds); units starved 284 in all (about 5 per player per game, mostly stranded far from home);
+  first town median turn 1-8; the barrage starts in 10 of 10. Towns now grow much bigger: tune
+  the farm or the birth cost after play.

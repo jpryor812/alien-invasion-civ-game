@@ -355,3 +355,16 @@ live in the main game, and the sandbox page is gone.*
   Exchange. The map's engineers unit is now the road crew (roads, railways, turrets, bridges).
 - The settlement sandbox is retired.
 
+
+## M18: food, rations and the rescued town (designer 2026-11-18, docs/SPEC_M18.md)
+
+- A grown citizen eats 2 food, a child 4. A farm makes 20 food, so most food comes from farms.
+- Spare food fills each town's store, the bank that pays for births (20 food, plus 5 per
+  citizen) and feeds the army. The store holds 60, or 180 with a granary (the food depot). Births
+  can be paused to bank food.
+- Every unit carries 10 rations. Within 4 hexes of a friendly town it is fed by that town (2 food
+  a turn) and its rations refill; elsewhere it eats a ration a turn, and with none left loses 10
+  HP a turn. Food crates refill rations; so does freeing a town.
+- A freed town keeps 30 food and has a damaged farm; the band's first town also has a broken
+  radio tower. Each repair is one engineer-turn and goes first. The band's first town rescues 3
+  people, so with 4 survivors it starts with up to 7 citizens.

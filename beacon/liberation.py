@@ -139,6 +139,13 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
 
     events.extend(give_contents(state, cfg, city, by))
     city.resistance, city.armed_by = 0, {}
+    if city.owner in state.players:  # what the aliens kept, and a damaged farm (SPEC_M18)
+        from beacon import food
+
+        city.food_store = max(city.food_store, food.F(cfg, "freed_store"))
+        food.refill_near(state, cfg, by, city.tile, food.F(cfg, "supply_radius"))
+        band_town = owner is not None and owner.band_town == city.id
+        food.order_repairs(state, cfg, city, radio=band_town)
     return [
         {
             "kind": "city_liberated",

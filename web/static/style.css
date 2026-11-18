@@ -547,3 +547,12 @@ button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 
 @keyframes fundpulse { 0% { box-shadow: 0 0 0 0 rgba(255,211,106,0.7); } 100% { box-shadow: 0 0 0 12px rgba(255,211,106,0); } }
 #bpanel .bopt .gives { font-size: 12px; color: #9fdc8a; }
 #bpanel .bopt .gives .muted { color: var(--muted); }
+
+/* food (SPEC_M18) */
+.food { margin: 4px 0 6px; }
+.foodbar { position: relative; height: 6px; background: #22301c; border-radius: 3px; margin: 3px 0; }
+.foodbar i { display: block; height: 100%; background: #7cc35a; border-radius: 3px; }
+.foodbar em { position: absolute; top: -2px; width: 2px; height: 10px; background: #fff3c4; }
+.rations.bad { color: #ff8a7a; }
+/* the leader portrait steps aside while a city panel is open, so the panel's top (food) shows */
+body:has(#side:not(.hidden):not(.unitmode)) #leaderbadge { left: 312px; }

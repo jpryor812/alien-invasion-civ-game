@@ -168,7 +168,7 @@ cities:
       starting city (designer 2026-11-14) an undefended capital fell to the first alien sieges.
     strength: 15
     hp: 100
-    food: 3
+    food: 10
     production: 1
   base_hp:
     value: 200
@@ -196,17 +196,18 @@ economy:
   food_per_pop:
     value: 2
     status: placeholder
-    note: Food eaten per population per turn.
+    note: Food a grown citizen eats per turn (a child eats food.child_eats).
   growth_base:
-    value: 15
+    value: 20
     status: placeholder
     note: Food to grow from population 1; threshold = base + per_pop*(p-1) + quad*(p-1)^2.
+      SPEC_M18 (designer 2026-11-18) - a birth costs 20 food plus 5 per citizen past the first.
   growth_per_pop:
-    value: 6
+    value: 5
     status: placeholder
     note: Linear growth threshold term.
   growth_quad:
-    value: 1
+    value: 0
     status: placeholder
     note: Quadratic growth threshold term.
   science_per_pop_pct:
@@ -425,9 +426,10 @@ citizens:
       food surplus (if positive), so a well-fed city grows up its children in about 5 turns and a
       city with no surplus in about 13 (designer asked for an initial equation). Births still come
       from the city's food store reaching its growth threshold.
+      SPEC_M18 - per_food 1 now that farms make 20 food (about 6 turns well fed, 13 unfed).
     needed: 100
     base: 8
-    per_food: 3
+    per_food: 1
   trait_pct:
     value: 60
     status: placeholder
@@ -564,6 +566,7 @@ survivor:
   band_distance: 4
   town_garrison: [alien_hatchling]
   town_pop: 2
+  town_rescued: 3
   town_hp_pct: 70
   caches: 8
   near_caches: 2
@@ -574,9 +577,30 @@ survivor:
     alien_weapon: {weight: 1, attack: 12}
     survivor: {weight: 3}
     scrap: {weight: 3, scrap: 20}
+    food: {weight: 3, radius: 3}
   hunt_radius: 2
   escape_survivors: 2
   founding_units: [recon_team]
   ai_attack_turn: 9
   ai_min_hp: 20
 
+food:
+  status: placeholder
+  note: SPEC_M18 (designer 2026-11-18). A child eats child_eats; each unit eats unit_eats from the
+    nearest town's spare food and store while inside friendly land (within supply_radius hexes of a
+    town of its owner or an ally; the work radius of 2 left armies starving beside their own towns)
+    and its rations refill to rations; outside, or when the town cannot feed it, it
+    eats 1 ration a turn, and with none left loses starve_hp HP a turn. The store holds store_cap
+    food, or store_cap + granary_cap with the granary building. A freed town starts with
+    freed_store food and a damaged farm; each repair (repair_labour) is one engineer-turn.
+  child_eats: 4
+  unit_eats: 2
+  supply_radius: 4
+  rations: 10
+  starve_hp: 10
+  store_cap: 60
+  granary: food_depot
+  granary_cap: 120
+  freed_store: 30
+  repair_labour: 8
+  repair_farm: farm

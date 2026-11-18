@@ -345,6 +345,8 @@ class Session:
                 unit["promotion"] = self._promotion_info(s.units[str(unit["id"])])
             spec = cfg.units[unit["type"]]
             unit["max_hp"] = cfg.t("combat.unit_max_hp") * unit["count"]
+            if unit["owner"] == me and str(unit["id"]) in s.units:  # rations (SPEC_M18)
+                unit.update(_rations(s, cfg, s.units[str(unit["id"])]))
             unit["full_moves"] = spec["moves"] * cfg.t("movement.scale")
         for key, c in v["cities"].items():
             city = s.cities[int(key)]
@@ -418,7 +420,7 @@ class Session:
         ]
         city = s.city_at(unit.tile)
         return {
-            "unit": to_dict(unit),
+            "unit": {**to_dict(unit), **_rations(s, cfg, unit)},  # SPEC_M18
             "reachable": movement.reachable_this_turn(s, cfg, unit),
             "attacks": attacks,
             "builds": [
@@ -918,6 +920,7 @@ class Session:
             "totals": cy.totals,
             "food_eaten": cy.food_eaten,
             "growth_threshold": economy.growth_threshold(cfg, c.pop),
+            "food": _food_row(s, cfg, c, cy),  # SPEC_M18
             "worked": cy.worked,
             "options": options,
             "works": _work_rows(s, cfg, c),  # SPEC_M17
@@ -1624,6 +1627,43 @@ def _building_gives(cfg: Config, b: str) -> list[str]:
     if b == cfg.t("contact.radio_building"):
         extra.append("Puts you on the air: contact with the other continents and the council")
     return extra + lines
+
+
+def _rations(s: GameState, cfg: Config, u: Any) -> dict[str, Any]:
+    from beacon import food
+
+    return {
+        "rations": food.rations(cfg, u),
+        "max_rations": food.F(cfg, "rations"),
+        "eats": food.eats_food(cfg, u),
+        "supplied": food.feeder(s, cfg, u) is not None,
+    }
+
+
+def _food_row(s: GameState, cfg: Config, c: Any, cy: Any) -> dict[str, Any]:
+    """Where a town's food goes (SPEC_M18): citizens, children and its army, the store against
+    the next birth and the granary cap."""
+    from beacon import food
+
+    children = citizens.children_eat(s, cfg, c)
+    army = food.army_food(s, cfg, c)
+    spare = cy.surplus_food - army
+    need = economy.growth_threshold(cfg, c.pop)
+    gap = need - c.food_store
+    return {
+        "made": cy.totals["food"],
+        "citizens": cy.food_eaten - children,
+        "children": children,
+        "army": army,
+        "spare": spare,
+        "store": c.food_store,
+        "cap": food.store_cap(cfg, c),
+        "birth": need,
+        "grow": c.grow,
+        "birth_in": (0 if gap <= 0 else -(-gap // spare)) if spare > 0 and c.grow else None,
+        "granary": food.F(cfg, "granary"),
+        "has_granary": food.F(cfg, "granary") in c.buildings,
+    }
 
 
 def _work_rows(s: GameState, cfg: Config, c: Any) -> list[dict[str, Any]]:

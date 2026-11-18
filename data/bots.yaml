@@ -109,3 +109,14 @@ enlist:
   note: Designer 2026-11-17 - a city of at least min_pop with a barracks trains one citizen at a
     time as a soldier while the army is below the production target.
   min_pop: 6
+
+food:
+  status: placeholder
+  note: SPEC_M18 (designer 2026-11-18). A city trains soldiers only while its spare food after its
+    army is at least unit_room; below want_surplus its crew builds farms before mines; it builds the
+    granary first once its store reaches granary_at_pct of the cap. A unit outside friendly land
+    heads home when its rations fall to its distance home plus home_margin.
+  unit_room: 2
+  want_surplus: 6
+  granary_at_pct: 80
+  home_margin: 2

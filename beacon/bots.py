@@ -107,6 +107,13 @@ class Bot:
 
     # -- research and production -----------------------------------------------------------
 
+    def food_room(self, city: Any) -> int:
+        """Spare food this city has after its citizens and its army (SPEC_M18)."""
+        from beacon import food
+
+        cy = economy.city_yields(self.state, self.cfg, city)
+        return cy.surplus_food - food.army_food(self.state, self.cfg, city)
+
     def research(self) -> None:
         player = self.view.player
         if player.research is None:
@@ -210,7 +217,12 @@ class Bot:
                 if not materials.short(city, materials.item_cost(self.cfg, city, o))
             ]
             item = None
-            if "unit:uav_patrol" in options and counts["military"] >= 2:
+            if self.food_room(city) < self.param("food.unit_room"):  # cannot feed more (M18)
+                options = [o for o in options if not o.startswith("unit:")]
+                choice = "engineer" if works.crew(city) < bot["crew"] else "project:wealth"
+                item = choice if choice in options or choice.startswith("project:") else None
+                item = item or "project:wealth"
+            elif "unit:uav_patrol" in options and counts["military"] >= 2:
                 item = "unit:uav_patrol"  # sees strikes coming (designer 2026-11-16)
             if item is not None:
                 pass
@@ -285,7 +297,7 @@ class Bot:
             return None
         return next((t for t in path[1:] if self.state.tiles[t].route is None), None)
 
-    def _improvement_for(self, tile_i: int) -> str | None:
+    def _improvement_for(self, tile_i: int, farm_first: bool = False) -> str | None:
         tile = self.state.tiles[tile_i]
         if tile.improvement is not None or not is_passable_land(self.cfg, tile):
             return None
@@ -294,7 +306,7 @@ class Bot:
             options.append(self.cfg.resources[tile.resource]["improvement"])
         if tile.feature in ("forest", "jungle"):
             options.append("lumber_camp")  # timber (SPEC_M16)
-        options += ["mine", "farm"]
+        options += ["farm", "mine"] if farm_first else ["mine", "farm"]
         for imp in options:
             spec = self.cfg.improvements[imp]
             if (
@@ -820,6 +832,14 @@ class Bot:
         radio = self.cfg.t("contact.radio_building")
         if self.pid not in on_air(self.state, self.cfg):
             order.append(radio)  # reach the other continents first (designer 2026-11-16)
+        from beacon import food
+
+        granary = food.F(self.cfg, "granary")
+        full = city.food_store * 100 >= food.store_cap(self.cfg, city) * self.param(
+            "food.granary_at_pct"
+        )
+        if full and granary not in city.buildings:
+            order.append(granary)  # the store is nearly full (SPEC_M18)
         if city.is_capital:
             order.append(self.cfg.materials("barracks.building"))  # soldiers need a barracks
             cities_n = len([c for c in self.view.my_cities() if c.status == "active"])
@@ -881,8 +901,14 @@ class Bot:
         for city in self.view.my_cities():
             if city.status != "active" or any(w["what"].startswith("tile:") for w in city.works):
                 continue
-            for t in cities.work_tiles(self.state, self.cfg, city):
-                imp = self._improvement_for(t)
+            hungry = self.food_room(city) < self.param("food.want_surplus")  # SPEC_M18
+            tiles = cities.work_tiles(self.state, self.cfg, city)
+            if hungry:  # the best farmland first
+                tiles = sorted(
+                    tiles, key=lambda t: (-self.state.tiles[t].terrain.startswith("grass"), t)
+                )
+            for t in tiles:
+                imp = self._improvement_for(t, farm_first=hungry)
                 if imp and improvements.tile_problem(self.state, self.cfg, city, t, imp) is None:
                     self.submit(ImproveTile(player=self.pid, city=city.id, tile=t, improvement=imp))
                     break
@@ -1051,6 +1077,8 @@ class Bot:
                 continue  # city defences fire on their own at the end of the turn
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
+            if self.go_home(unit):  # rations first, even on an expedition (SPEC_M18)
+                continue
             if unit.id in self.reserved:
                 continue
             spec = self.cfg.units[unit.type]
@@ -1073,6 +1101,25 @@ class Bot:
             else:
                 self.view = PlayerView(self.state, self.cfg, self.pid)
                 self.soldier(unit)
+
+    def go_home(self, unit: Unit) -> bool:
+        """A unit outside friendly land heads for the nearest friendly town before its rations
+        run out (SPEC_M18). True if it moved."""
+        from beacon import food
+
+        if not food.eats_food(self.cfg, unit) or not self.state.players[self.pid].founded:
+            return False
+        if food.feeder(self.state, self.cfg, unit) is not None:
+            return False
+        towns = [c.tile for c in food._towns(self.state, self.pid)]
+        home = self.nearest(unit.tile, towns)
+        if home is None:
+            return False
+        far = self.dist(unit.tile, home) - food.F(self.cfg, "supply_radius")
+        speed = max(1, self.cfg.units[unit.type]["moves"])
+        if food.rations(self.cfg, unit) > -(-far // speed) + self.param("food.home_margin"):
+            return False
+        return self.submit(MoveUnit(player=self.pid, unit=unit.id, target=home))
 
 
 def take_turn(state: GameState, cfg: Config, pid: str, submit: Submit) -> None:

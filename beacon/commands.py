@@ -73,6 +73,16 @@ class SetConvoy(Command):
 
 @register
 @dataclass(frozen=True)
+class SetGrowth(Command):
+    """Allow or pause births in a city; paused, its spare food banks for the army (SPEC_M18)."""
+
+    kind: ClassVar[str] = "set_growth"
+    city: int
+    grow: bool = True
+
+
+@register
+@dataclass(frozen=True)
 class SetFocus(Command):
     kind: ClassVar[str] = "set_focus"
     city: int

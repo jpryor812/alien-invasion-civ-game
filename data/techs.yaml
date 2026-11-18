@@ -50,7 +50,7 @@ techs:
   quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 3, cost: 280, prereqs: [applied_ai], known_at_start: false, effects: {yield_pct: {science: 10}}}
   reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 4, cost: 450, prereqs: [robotics], known_at_start: false, effects: {class_defence_pct: {armour: 15}}}
   deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 4, cost: 450, prereqs: [radio_beacon_network], known_at_start: false}
-  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 720, prereqs: [biotech_medicine], known_at_start: false, effects: {city_yields: {food: 2}}}
+  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 720, prereqs: [biotech_medicine], known_at_start: false, effects: {city_yields: {food: 10}}}
   orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 5, cost: 720, prereqs: [orbital_launch], known_at_start: false, effects: {city_strength: 5}}
   antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 5, cost: 720, prereqs: [fusion_power], known_at_start: false, effects: {yield_pct: {production: 20}}}
 

@@ -108,6 +108,10 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
         events.extend(economy.player_turn(state, cfg, pid))
         events.extend(improvements.progress_jobs(state, cfg, pid))
         network.update_connections(state, cfg, pid)
+    from beacon import food  # units no town fed eat rations (SPEC_M18), after every town ate
+
+    for pid in state.player_ids():
+        events.extend(food.field(state, cfg, pid))
     events.extend(diplomacy.end_of_turn(state, cfg))
     events.extend(endgame.end_of_turn(state, cfg))
     for pid in state.player_ids():

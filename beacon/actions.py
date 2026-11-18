@@ -70,6 +70,7 @@ from beacon.commands import (
     SetCitizenJob,
     SetConvoy,
     SetFocus,
+    SetGrowth,
     SetProduction,
     SetResearch,
     SetWardrobe,
@@ -253,6 +254,13 @@ def _set_focus(state: GameState, cfg: Config, cmd: SetFocus) -> Events:
         raise CommandError(f"unknown focus {cmd.focus!r}")
     city.focus = cmd.focus
     return [{"kind": "focus_set", "city": city.id, "focus": cmd.focus}]
+
+
+@handles(SetGrowth)
+def _set_growth(state: GameState, cfg: Config, cmd: SetGrowth) -> Events:
+    city = own_city(state, cmd.player, cmd.city)
+    city.grow = bool(cmd.grow)
+    return [{"kind": "growth_set", "city": city.id, "grow": city.grow}]
 
 
 @handles(BuildImprovement)
