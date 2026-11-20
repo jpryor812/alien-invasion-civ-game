@@ -118,6 +118,13 @@ def new_game(
         if city.status == ACTIVE and city.owner in state.players:
             role = "capital" if city.is_capital else "known"
             improvements.auto_improve(state, cfg, city, improved[role], city.owner)
+    from beacon import borders  # a town's land: one ring plus a hex per citizen (SPEC_M20)
+
+    for city in state.cities:
+        if city.status == ACTIVE and city.owner in state.players:
+            borders.start(state, cfg, city)
+            for _ in range(city.pop - 1):
+                borders.grow(state, cfg, city)
     for city in state.cities:  # stores and a layout for every city a player holds (SPEC_M16)
         if city.status == ACTIVE and city.owner in state.players:
             materials.start_stores(cfg, city)

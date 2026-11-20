@@ -10,6 +10,9 @@ sessions:
     (oldest first, up to max_proposals) and one measure drawn by seed (the chair's pick if a chair
     sits). Votes weigh 1 + influence / influence_per_vote; each extra vote costs extra_vote_cost
     influence. A measure passes when weighted yes beats weighted no; on a tie the chair decides.
+  enabled: false
+  enabled_note: Designer 2026-11-19 (SPEC_M20) - sessions, proposals, votes and influence are off
+    until they are redesigned; the seats stay.
   session_turns: 5
   max_proposals: 2
   influence_per_vote: 50

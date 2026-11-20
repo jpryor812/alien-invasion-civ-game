@@ -106,6 +106,40 @@ def turns(state: GameState, cfg: Config, city: City) -> list[int | None]:
 # -- ordering -------------------------------------------------------------------------------------
 
 
+def first_barracks(state: GameState, cfg: Config, city: City, b: str) -> bool:
+    """The player's first barracks: none built or ordered in any of its towns (SPEC_M20)."""
+    if b != materials.M(cfg, "barracks.building"):
+        return False
+    return not any(
+        b in c.buildings or ordered(c, f"building:{b}")
+        for c in state.cities
+        if c.owner == city.owner
+    )
+
+
+def building_cost(state: GameState, cfg: Config, city: City, b: str) -> dict[str, int]:
+    """What the town pays for `b`: nothing to repair a wrecked building, a quarter for the
+    first barracks, else its materials."""
+    if b in city.wrecked:
+        return {}
+    cost = materials.building_cost(cfg, b)
+    if first_barracks(state, cfg, city, b):
+        pct = materials.M(cfg, "barracks.first_pct")
+        return {g: n * pct // 100 for g, n in cost.items() if n * pct // 100}
+    return cost
+
+
+def labour_for(state: GameState, cfg: Config, city: City, b: str) -> int:
+    if b in city.wrecked:
+        return cfg.t("food.repair_labour")
+    labour = building_labour(cfg, b)
+    if first_barracks(state, cfg, city, b):
+        labour = max(
+            cfg.t("food.repair_labour"), labour * materials.M(cfg, "barracks.first_pct") // 100
+        )
+    return labour
+
+
 def building_problem(state: GameState, cfg: Config, city: City, b: str) -> str | None:
     if b not in cfg.buildings:
         return f"unknown building {b!r}"
@@ -114,7 +148,7 @@ def building_problem(state: GameState, cfg: Config, city: City, b: str) -> str |
         return why
     if ordered(city, f"building:{b}"):
         return "already being built"
-    lack = materials.short(city, materials.building_cost(cfg, b))
+    lack = materials.short(city, building_cost(state, cfg, city, b))
     return short_text(lack) if lack else None
 
 
@@ -127,9 +161,10 @@ def order_building(
         spot = layout.auto_spot(state, cfg, city, b)
     if spot is not None:
         layout.order(cfg, city, b, spot[0], spot[1])
-    cost = materials.building_cost(cfg, b)
+    cost = building_cost(state, cfg, city, b)
+    labour = labour_for(state, cfg, city, b)
     materials.pay(city, cost)
-    return add(city, f"building:{b}", building_labour(cfg, b), cost)
+    return add(city, f"building:{b}", labour, cost)
 
 
 def order_walls(
@@ -155,10 +190,13 @@ def walls_cost(cfg: Config, n: int, material: str) -> dict[str, int]:
 def order_tile(
     state: GameState, cfg: Config, city: City, tile: int, improvement: str
 ) -> dict[str, Any]:
+    labour = tile_labour(state, cfg, city, improvement)
+    if state.tiles[tile].pillaged == improvement:  # a repair: one engineer-turn (SPEC_M18)
+        labour = cfg.t("food.repair_labour")
     return add(
         city,
         f"tile:{improvement}",
-        tile_labour(state, cfg, city, improvement),
+        labour,
         {},
         tile=tile,
         improvement=improvement,
@@ -190,6 +228,7 @@ def _finish(state: GameState, cfg: Config, city: City, job: dict[str, Any]) -> d
         b = what.split(":", 1)[1]
         if b not in city.buildings:
             city.buildings = sorted([*city.buildings, b])
+        city.wrecked = [w for w in city.wrecked if w != b]
         layout.complete(state, cfg, city, b)
         hp = cfg.buildings[b].get("city_hp", 0)
         city.hp = min(economy.max_hp(cfg, city), city.hp + hp)

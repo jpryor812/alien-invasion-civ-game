@@ -377,3 +377,16 @@ live in the main game, and the sandbox page is gone.*
 - Pastures (livestock): 12 food and 1 production, on hills too. Urban Planning gives farms +5,
   International Accords pastures +4, Vertical Farming hardier crops (75% in winter), Climate
   Engineering no winter loss.
+
+## M20: fixes from play (designer 2026-11-19, docs/SPEC_M20.md)
+
+- Platform: PC first (Steam, desktop app from the web client); no separate mobile game. Keep
+  every screen usable by touch so a tablet port, and asynchronous co-op on phones, stay cheap.
+- The first town: nothing is built for you. Repairing the damaged farm is a required first step
+  (free, one turn); the radio tower (free to repair) and a cheap first barracks are suggested.
+  The citizens page opens after the town is taken.
+- Borders start at one ring and grow a hex per birth, up to 3 hexes out.
+- Council seats stay; sessions, votes and influence are off until redesigned.
+- Meeting a leader opens a meeting screen with a greeting and options.
+- The band can mine meteor remnants; more crates across each continent.
+- Units carry gear they cannot use to a town's armoury; units in their land can join a town.

@@ -984,6 +984,7 @@ function tileOwner(i) {
   const t = S.tilesByIndex.get(i);
   if (!t || t.city == null) return null;
   const c = S.view.cities[String(t.city)];
+  if (c && c.border && c.border.length && !c.border.includes(i)) return null;  // grown land (SPEC_M20)
   return c && c.owner && c.status !== "empty" ? c.owner : null;
 }
 function drawBorders(visible, R) {
@@ -1991,7 +1992,7 @@ function renderChrome() {
   for (const [id, y] of [["gold", "gold"], ["science", "science"], ["beacon", "beacon"]]) { $(id).dataset.tip = breakdownHtml(y, e); $(id).removeAttribute("title"); }
   const knownAlien = Object.values(v.cities).filter((c) => c.status === "overrun").length;
   $("threat").innerHTML = `${ICON.ship}${v.mothership_alive ? "Mothership <b class='bad'>active</b>" : "Mothership <b class='good'>destroyed</b>"} · alien cities <b>${knownAlien}</b>`;
-  $("influence").innerHTML = `<span class="infico">⚖</span>Influence <b>${v.influence}</b> · MVP <b>#${v.mvp_rank}</b>${v.council_open ? ' · <b class="good">council voting</b>' : ""}`;
+  $("influence").innerHTML = v.council_votes ? `<span class="infico">⚖</span>Influence <b>${v.influence}</b> · MVP <b>#${v.mvp_rank}</b>${v.council_open ? ' · <b class="good">council voting</b>' : ""}` : `MVP <b>#${v.mvp_rank}</b>`;
   $("influence").onclick = () => openScreen(v.council_open ? "council" : "scores");
   $("heat").innerHTML = `<span class="heatico">♨</span>Heat <b>${v.heat}</b>${(v.strikes || []).length ? ` · <b class="bad">${v.strikes.length} strike${v.strikes.length > 1 ? "s" : ""} coming</b>` : ""}`;
   $("heat").dataset.tip = `<b>Heat ${v.heat}</b><div>The attention you draw from the aliens. Hotter players are struck more often and by bigger forces.</div>${(v.heat_lines || []).map(([k, n]) => `<div>${pretty(k)}: ${n}</div>`).join("")}`;
@@ -2039,7 +2040,7 @@ function unitName(u) {
 function describePending(p) {
   return {
     choose_research: "Choose research",
-    choose_production: `${cityName(p.city)}: develop the city`,
+    choose_production: `${cityName(p.city)}: engineers have nothing to build`,
     fund_resistance: `Fund the resistance in ${cityName(p.city)}`,
     unit_needs_orders: `${unitLabel(p.unit)} needs orders`,
     recruit_unseated: "A recruit has no council seat",
@@ -2049,10 +2050,12 @@ function describePending(p) {
     city_can_attack: `${cityName(p.city)} can attack an enemy`,
     story_choice: `Event: ${pretty(p.event)}`,
     council_vote: "The council is voting",
+    repair_farm: `${cityName(p.city)}: repair the damaged farm`,
     unit_promotion: `${unitLabel(p.unit)} can be promoted`,
   }[p.kind] || pretty(p.kind);
 }
 async function resolvePending(p) {
+  if (p.kind === "repair_farm") { centerOnTile(S.view.cities[p.city].tile); if (window.Builder) return Builder.open(p.city, "land", p.tile); return selectCity(p.city); }
   if (p.kind === "choose_research") return openScreen("techs");
   if (p.kind === "council_vote") return openScreen("council");
   if (p.kind === "fund_resistance") { centerOnTile(S.view.cities[p.city].tile); return showFundCard(p.city); }
@@ -2086,7 +2089,7 @@ function describeEvent(e) {
     turret_destroyed: () => "Aliens destroyed one of your turrets.",
     civilians_captured: () => "Aliens captured civilians.",
     shard_warning: () => `A shard is falling! It lands in ${e.impact_turn - S.view.turn > 0 ? e.impact_turn - S.view.turn : "a few"} turns inside the marked circle.`,
-    shard_landed: () => `The ${e.name} shard has landed. Send an engineer or scout to mine it.`,
+    shard_landed: () => `The ${e.name} shard has landed. Send a scout, a road crew or your band to stand on it and mine it.`,
     shard_claimed: () => e.by === S.view.me ? `You claimed the ${e.name} shard!` : e.by === "aliens" ? `The aliens claimed the ${e.name} shard.` : `${pretty(e.by)} claimed the ${e.name} shard.`,
     shard_faded: () => "An unclaimed shard burnt out.",
     site_found: () => `Your unit found something: ${pretty(e.find)}.`,
@@ -2094,6 +2097,9 @@ function describeEvent(e) {
     winter_coming: () => `Scientists warn of a galactic winter in ${e.in} turns: for ${e.turns} turns crops will give half their food. Fill your stores.`,
     winter_began: () => `The galactic winter has begun: crops give half their food for ${e.turns} turns.`,
     winter_ended: () => `The galactic winter is over: the skies clear and the crops recover.`,
+    gear_stored: () => `${(e.items || []).map((g) => GEAR_NAME[g] || pretty(g)).join(", ")} left in ${cityName(e.city)}'s armoury.`,
+    gear_equipped: () => `A unit took ${GEAR_NAME[e.item] || pretty(e.item)} from ${cityName(e.city)}'s armoury.`,
+    unit_joined_city: () => `Your ${pretty(e.type)} settled in ${cityName(e.city)} as a citizen (population ${e.pop}).`,
     unit_starved: () => `Your ${pretty(e.type)} starved to death.`,
     unit_hungry: () => `A unit is starving: no rations left (${e.hp} HP). Bring it home.`,
     rations_out: () => `A unit has eaten its last ration. Bring it into friendly land.`,
@@ -2197,6 +2203,9 @@ function renderUnitPanel() {
     ${u.type === "band_leader" ? '<div class="muted">Your leader, leading the survivors (30 strength; survivors 20)</div>' : ""}
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
+    ${(() => { const sh = (S.view.shards || []).find((x) => x.tile === u.tile && !x.claimed_by); return sh && u.owner === S.view.me ? `<div class="row small good">✦ Mining the ${esc(sh.name)} shard: ${(sh.progress || {})[S.view.me] || 0}/${sh.needed}. Stay here at the end of each turn; ${spec.survivor || spec.can_build || spec.role === "recon" ? "this unit can mine it" : '<span class="bad">only a scout, a road crew or your band can mine</span>'}.</div>` : ""; })()}
+    ${o.gear && o.gear.pack.length ? `<div class="row small">Carrying: ${o.gear.pack.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")} <span class="muted">· left in your nearest town's armoury when it is inside your land</span></div>` : ""}
+    ${o.gear && Object.keys(o.gear.armoury).length ? `<div class="row small">Armoury here: ${Object.entries(o.gear.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")}</div>` : ""}
     ${spec.survivor && S.view.founded === false ? `<div class="muted small">${S.view.band_town != null
       ? `Your band has found its first town, ${esc((Object.values(S.view.cities).find((c) => c.tile === S.view.band_town) || {}).name || "")}: fund its resistance (100 gold halves it), then attack.`
       : "Your band is homeless: explore. Crates may hold weapons, armour or people. The first alien-held town you find becomes yours to take."}${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
@@ -2243,6 +2252,10 @@ function renderUnitPanel() {
   for (const cid of o.sabotage || []) add(`Sabotage ${cityName(cid)}`, () => send({ kind: "sabotage", unit: u.id, city: cid }), "Cut its hit points; the saboteur may be hurt");
   for (const cid of o.arm || []) add(`Arm the resistance in ${cityName(cid)}`, () => send({ kind: "arm_resistance", unit: u.id, city: cid }), `${o.arm_gold} gold: each level gives a ${S.view.uprising_pct}% chance a turn of an uprising inside`);
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
+  if (o.gear && u.owner === S.view.me) {  // the armoury and joining a town (SPEC_M20)
+    for (const e of o.gear.equip) if (!e.why) add(`Equip ${GEAR_NAME[e.item] || pretty(e.item)}`, () => send({ kind: "equip_gear", unit: u.id, item: e.item }), "Take it from the town's armoury");
+    if (o.gear.join && !o.gear.join_why) add(`Join ${o.gear.join}`, () => send({ kind: "join_city", unit: u.id }), "Settle in the town as a grown citizen (its gear goes to the armoury)");
+  }
   if (o.merges.length) a.insertAdjacentHTML("afterend", '<div class="muted small">Move onto the highlighted unit of the same type to merge into a stack of two.</div>');
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));
   if (o.ships.length) {
@@ -2307,7 +2320,8 @@ function renderCityPanel() {
     <h3>Defences</h3>
     <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, level ${u.promotion.level + 1}` : ""})${u.promotion && u.promotion.upgrade_cost != null ? ` <button class="small" data-upgrade-gun="${u.id}" ${S.view.economy.gold < u.promotion.upgrade_cost ? "disabled" : ""} title="+${u.promotion.strength_pct}% attack and defence">Upgrade (${u.promotion.upgrade_cost}g)</button>` : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
-    <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}</div>
+    <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}${(c.wrecked || []).length ? ` · <span class="bad">wrecked: ${c.wrecked.map(pretty).join(", ")} (free to repair)</span>` : ""}</div>
+    ${Object.keys(d.armoury || {}).length ? `<h3>Armoury</h3><div class="muted">${Object.entries(d.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")} · a unit standing in the town can equip it</div>` : ""}
     ${d.bombard.length ? `<div class="actions"><span class="bad">Enemies in range are marked red: click one to fire.</span>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
   side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
@@ -2354,10 +2368,10 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["story_choice", "fund_resistance", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["repair_farm", "story_choice", "fund_resistance", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
-  fund_resistance: "Fund the resistance", choose_research: "Choose research", choose_production: "Develop city", unit_needs_orders: "Unit needs orders",
+  repair_farm: "Repair the farm", fund_resistance: "Fund the resistance", choose_research: "Choose research", choose_production: "Engineers are idle", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
   recruit_unseated: "Seat a recruit", council_vote: "Council vote", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
@@ -2372,7 +2386,7 @@ function nextAction() {
 async function mainButton(force = false) {
   if (S.busy || !S.view || S.view.outcome) return;
   const next = nextAction();
-  if (next && !force) return resolvePending(next);
+  if (next && (!force || next.kind === "repair_farm")) return resolvePending(next);  // the farm is required (SPEC_M20)
   S.busy = true;
   $("endturn").textContent = "Aliens moving…";
   try { await api("/api/end_turn", {}); } catch (err) { toast(err.message); }
@@ -2453,7 +2467,10 @@ async function onClick(e) {
     }
     return selectUnit(next.id);
   }
-  if (city && city.owner === S.view.me) return selectCity(city.id);
+  if (city && city.owner === S.view.me) {  // a second click on your town opens Develop city (SPEC_M20)
+    if (S.selected && S.selected.kind === "city" && S.selected.id === city.id && window.Builder) return Builder.open(city.id);
+    return selectCity(city.id);
+  }
   if (city && city.fund && city.fund.length) return showFundCard(city.id);  // an alien-held city
   const tt = S.tilesByIndex.get(i);
   if (tt && tt.turret && tt.built_by === S.view.me) return showTurretPanel(i);
@@ -3081,7 +3098,7 @@ function councilScreen(d) {
     ${sess.active.length ? `<div class="row">In force: ${sess.active.map((a) => `<span class="tag">${esc(a.name)} until turn ${a.until}</span>`).join(" ")}</div>` : ""}
     <div class="row"><select id="propose"><option value="">Propose a measure…</option>${proposable}</select><button id="propose-btn">Propose for the next session (${sess.propose_cost} influence)</button>${sess.proposals.length ? `<span class="muted small">Waiting: ${sess.proposals.map((m) => esc(m.name)).join(", ")}</span>` : ""}</div>
     <table class="sessplayers"><tr><th>Continent</th><th>Leader</th><th>Agenda</th><th>Influence</th><th>Weight</th></tr>${players}</table></div>`;
-  return `${sessionHtml}<h2>The Council</h2>
+  return `${d.votes_on ? sessionHtml : ""}<h2>The Council</h2>
     <p class="muted">General seats add all of a member's stats; a domain seat adds only that domain. Alien recruits give percentages to every city; a citizen adds its stats to every city. Your leader heads the council: click the leader for skills, traits and family. ${pick ? "<b>Now click a seat.</b>" : "Click a member, then a seat."}</p>
     ${head}<div class="seatrow general">${general}</div>
     <div class="seatrow domains">${domains}</div>
@@ -3112,7 +3129,7 @@ async function seatMember0(key, seat, d) {
 }
 async function freeSeat0(key, d) {
   const [kind, id, seat] = key.split(":"); const n = Number(id);
-  if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: "auto" }, "council");
+  if (kind === "citizen") return act({ kind: "set_citizen_job", citizen: n, job: "idle" }, "council");  // stays off the seat (SPEC_M20)
   const m = d.members.find((x) => x.kind === "recruit" && x.id === n);
   const rest = m.seats.filter((s) => s !== seat);
   return act(rest.length ? { kind: "seat_recruit", recruit: n, seats: rest } : { kind: "unseat_recruit", recruit: n }, "council");
@@ -3123,6 +3140,12 @@ function populationScreen(d, only) {
   return `<h2>Population</h2>
     <p class="muted">Children grow up faster with more spare food. Grown citizens work one improved tile (half their stats there) or sit on the council (full stats to their city). Pick a job for each, or leave it on Auto.</p>
     ${only != null ? '<p><button class="small" id="pop-all">Show all cities</button></p>' : ""}
+    <div class="popguide">
+      <div><b>🌾 Work a tile</b>: a citizen on a farm, mine or camp adds half their stats there.</div>
+      <div><b>⚖ Join the council</b>: a seat adds their stats to every town (domain seats add one stat).</div>
+      <div><b>🎖 Train as a soldier</b>: at a barracks, a citizen trains for a few turns and leaves as a unit. ${cities.some((c) => (c.train_options || []).length) ? "" : '<span class="bad">Build a barracks to unlock this.</span>'}</div>
+      <div><b>👪 Start a family</b>: your leader can start a family with a grown citizen; a child is born in the town. <button class="small" id="pop-family">Leader & family</button></div>
+    </div>
     ${cities.map((c) => `<div class="popcity"><h3>${esc(c.name)} · population ${c.pop}</h3>
       <div class="muted small">${c.on_tiles} on tiles · ${c.on_council} on the council · ${c.children} growing up · ${c.idle ? `<span class="bad">${c.idle} idle</span>` : "0 idle"} · food ${c.surplus_food >= 0 ? "+" : ""}${c.surplus_food}/turn, next citizen at ${c.growth[0]}/${c.growth[1]}</div>
       <div class="citizens wide">${c.citizens.map((p) => citizenRow(p, c)).join("")}</div></div>`).join("")}`;
@@ -3244,6 +3267,7 @@ function wireScreen(name) {
   if (name === "population") {
     body.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => act({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }, null).then(() => openScreen("population", S.screenArg)));
     if ($("pop-all")) $("pop-all").onclick = () => openScreen("population");
+    if ($("pop-family")) $("pop-family").onclick = () => openScreen("leader");
   }
   if (name === "leader") wireLeader(body, S.screenArg === "create");
   if (name === "council") {
@@ -3424,9 +3448,10 @@ function citizenRow(p, d) {
   else if (p.job.startsWith("train:")) where = `<span class="good">training as ${esc(pretty(p.job.slice(6)))}: turn ${p.training} of ${p.train_turns}</span> (then leaves the city as a unit)`;
   else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}: ${hundredthsText(p.bonus) || "no extra"} (half its stats)`;
   else if (p.seats.length) where = `on the council (${pretty(p.seats[0])} seat): ${hundredthsText(p.bonus)}${p.military ? `, +${p.military} city strength` : ""}`;
+  else if (p.job === "idle") where = '<span class="muted">unassigned: pick a job, a seat or training</span>';
   else where = '<span class="bad">idle: no improved tile or council seat free</span>';
   const tiles = d.workable.map((w) => `<option value="tile:${w.tile}" ${p.job === `tile:${w.tile}` ? "selected" : ""}>Tile: ${esc(pretty(w.improvement))} (${statText(Object.fromEntries(Object.entries(w.yields).filter(([, v]) => v)))})</option>`).join("");
-  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}${(d.train_options || []).map((o) => `<option value="train:${o.unit}" ${p.job === `train:${o.unit}` ? "selected" : ""} ${o.why ? "disabled" : ""}>Train as ${esc(o.name)} (${o.turns} turns)</option>`).join("")}</select>` : "";
+  const pick = p.adult ? `<select data-citizen="${p.id}"><option value="auto" ${p.job === "auto" ? "selected" : ""}>Auto</option><option value="idle" ${p.job === "idle" ? "selected" : ""}>Unassigned</option><option value="${p.job.startsWith("council") ? esc(p.job) : "council"}" ${p.job.startsWith("council") ? "selected" : ""}>Council${p.job.startsWith("council:") ? ` (${pretty(p.job.slice(8))} seat)` : ""}</option>${tiles}${(d.train_options || []).map((o) => `<option value="train:${o.unit}" ${p.job === `train:${o.unit}` ? "selected" : ""} ${o.why ? "disabled" : ""}>Train as ${esc(o.name)} (${o.turns} turns)</option>`).join("")}</select>` : "";
   return `<div class="citizen">${portraitImg("citizen", p.id, "face", { child: !p.adult })}<div class="cbody"><div class="row"><b>${esc(p.name)}</b> ${traits} ${pick}</div><div>${stats}</div><div class="muted small">${where}</div></div></div>`;
 }
 
@@ -3801,6 +3826,43 @@ function showEventCard(ev) {
   });
   if ($("ev-ok")) $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
 }
+// Meeting another leader (designer 2026-11-19, SPEC_M20): both leaders face each other in the
+// hall, a greeting by their agenda, and what we can talk about.
+const AGENDA_GREETING = {
+  liberator: "Every town we take back is a family coming home. Fight beside us and we will not forget it.",
+  scientist: "Whatever the aliens are, they can be understood. Share what you learn and we will share what we find.",
+  merchant: "Trade kept the world together before the sky broke. It can again: gold, goods, a fair deal.",
+  warden: "We hold what is ours, and our walls hold. A strong neighbour is a welcome one.",
+  mystic: "The beacons are calling. Not everyone hears them yet. Perhaps you will.",
+};
+function showMeeting(other) {
+  const body = $("modal-body"), me = S.view.leader, them = other.leader || {};
+  const fig = (L, flip) => L && L.look ? `<img class="meetfig${flip ? " flip" : ""}" alt="" src="leaders/${L.look}_${L.outfit || "civilian"}.webp" onerror="this.src='leaders/${L.look}_civilian.webp'">` : "";
+  const greet = AGENDA_GREETING[other.agenda] || "We have heard your radio. It is good to know we are not alone.";
+  body.innerHTML = `<div class="meeting" style="background-image:url(leaders/backdrop_hall.webp)">
+    ${fig(me, false)}${fig(them, true)}
+    <div class="meetbox">
+      <div class="meethead"><b>${esc(them.name || pretty(other.id))}</b> <span class="muted">· leader of ${esc(other.name)}${other.agenda ? ` · ${esc(pretty(other.agenda))}` : ""}</span></div>
+      <p class="meetsay">"${esc(greet)}"</p>
+      <div class="meetopts">
+        <button class="primary" data-meet="ally" title="Needs International Accords on both sides">🤝 Propose an alliance</button>
+        <button data-meet="trade">⚖ Propose a trade</button>
+        <button data-meet="aid">💰 Send 50 gold as a greeting</button>
+        <button data-meet="bye">Farewell</button>
+      </div>
+      <div class="muted small">You can talk again any time from Diplomacy.</div>
+    </div></div>`;
+  document.querySelector(".modal-box").classList.remove("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "meeting";
+  const deal = (give, take) => ({ kind: "propose_deal", to_player: other.id, give, take, duration: 10 });
+  body.querySelectorAll("[data-meet]").forEach((el) => el.onclick = async () => {
+    const k = el.dataset.meet;
+    if (k === "ally") { closeModal(); await send(deal({ alliance: true }, { alliance: true })); }
+    else if (k === "trade") openScreen("diplomacy");
+    else if (k === "aid") { closeModal(); await send(deal({ gold: 50 }, {})); }
+    else { closeModal(); showNewStory(); }
+  });
+}
 // The wonder-style screen for a claimed shard (Civ's wonder splash).
 function showShardScreen(c) {
   const body = $("modal-body");
@@ -3840,6 +3902,16 @@ function showNewStory() {
       food: ["Food", "Tinned food and seed stock: every unit of yours nearby has full rations again."],
     }[e.loot] || ["Supplies", "Your band found supplies."];
     return showEventCard({ title: LOOT[0], body: LOOT[1], picture: "cache", result: e.result || [], tile: e.tile });
+  }
+  // first contact: meet the other leader (SPEC_M20)
+  for (const e of S.view.events || []) {
+    if (e.kind !== "contact_made" || (e.player !== S.view.me && e.other !== S.view.me)) continue;
+    const otherId = e.player === S.view.me ? e.other : e.player;
+    const key = `meet-${otherId}`;
+    if (S.seenStory.has(key)) continue;
+    S.seenStory.add(key);
+    const other = S.view.players.find((p) => p.id === otherId);
+    if (other && other.met) return showMeeting(other);
   }
   // the galactic winter (SPEC_M19): a card when it is announced and when it begins
   for (const e of S.view.events || []) {
@@ -3915,7 +3987,7 @@ function drawStarfall(R, t) {
     ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(sx, sy, gr, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(14, R * 0.6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✦", sx, sy);
     const best = Object.entries(sh.progress).sort((a, b) => b[1] - a[1]);
-    const label = `✦ ${sh.name}${best.length ? ` · ${best.map(([k, v]) => `${k === S.view.me ? "you" : pretty(k)} ${v}/${sh.needed}`).join(", ")}` : " · unclaimed"}`;
+    const label = `✦ ${sh.name}${best.length ? ` · ${best.map(([k, v]) => `${k === S.view.me ? "you" : pretty(k)} ${v}/${sh.needed}`).join(", ")}` : ` · stand on it ${sh.needed} turns to claim`}`;
     ctx.font = `600 ${Math.max(11, R * 0.3)}px Roboto, sans-serif`;
     const tw = ctx.measureText(label).width + 14, ly = sy + gr + 4;
     ctx.fillStyle = "rgba(22,12,36,0.88)"; roundRect(sx - tw / 2, ly, tw, 20, 10); ctx.fill();

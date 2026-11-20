@@ -43,6 +43,9 @@ barracks:
   trainable: [militia, infantry, marines, recon_team, anti_tank_team, exo_infantry, xeno_trooper]
   train_per_strength: 10
   train_min_turns: 2
+  first_pct: 25
+  first_note: Designer 2026-11-19 (SPEC_M20) - a player's first barracks costs first_pct of its
+    materials and labour, so the first town can train soldiers early.
   train_note: Designer 2026-11-17 - in a city with a barracks a grown citizen may train as a
     soldier (people only - no tanks, guns or ships). It works no tile and holds no seat while it
     trains, for max(train_min_turns, strength / train_per_strength) turns, then leaves the city

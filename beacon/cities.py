@@ -34,5 +34,7 @@ def is_coastal(state: GameState, cfg: Config, city: City) -> bool:
 
 def work_tiles(state: GameState, cfg: Config, city: City) -> list[int]:
     """Tiles in this city's work area, excluding the city's own tile, in index order."""
+    if city.border:  # a player's town: its land (SPEC_M20)
+        return [t for t in city.border if t != city.tile]
     area = hexgrid.within(city.tile, cfg.t("cities.work_radius"), state.width, state.height)
     return [t for t in area if state.tiles[t].city == city.id and t != city.tile]

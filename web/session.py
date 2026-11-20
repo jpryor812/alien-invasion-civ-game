@@ -31,6 +31,7 @@ from beacon import (
     tech,
     turrets,
 )
+from beacon import council as council_mod
 from beacon import threat as threat_mod
 from beacon.actions import apply_command, pending_decisions
 from beacon.commands import CommandError, command_from_dict
@@ -175,6 +176,8 @@ class Session:
         if self.state.outcome is not None:
             return {"ok": False, "error": "the game is over"}
         s, cfg = self.state, self.cfg
+        if any(p["kind"] == "repair_farm" for p in pending_decisions(s, cfg, self.human)):
+            return {"ok": False, "error": "repair the damaged farm first: it feeds your people"}
 
         def submit(cmd):  # AI commands go through the same validation
             return apply_command(s, cfg, cmd)
@@ -396,6 +399,15 @@ class Session:
             "fallen": p.fallen,
             "allied": pid in s.players[self.human].allies,
             "gold": p.gold if pid == self.human else None,
+            "leader": {  # for the meeting screen (SPEC_M20)
+                "name": p.leader.name,
+                "look": p.leader.look,
+                "outfit": p.leader.outfit,
+                "sex": p.leader.sex,
+            }
+            if p.leader
+            else None,
+            "agenda": p.agenda,
         }
 
     # -- details -------------------------------------------------------------------------------
@@ -425,6 +437,7 @@ class Session:
         city = s.city_at(unit.tile)
         return {
             "unit": {**to_dict(unit), **_rations(s, cfg, unit)},  # SPEC_M18
+            "gear": _gear_options(s, cfg, unit),  # carried gear, the armoury, joining (SPEC_M20)
             "reachable": movement.reachable_this_turn(s, cfg, unit),
             "attacks": attacks,
             "builds": [
@@ -519,6 +532,7 @@ class Session:
             "influence": council.influence(cfg, s.players[me]),
             "mvp_rank": rank.index(me) + 1,
             "council_open": bool(s.council.measures),
+            "council_votes": council.sessions_on(cfg),  # off until redesigned (SPEC_M20)
             "chair": s.council.chair,
             "strikes": strikes,
             "heat": threat.heat(s, cfg, me),
@@ -745,13 +759,20 @@ class Session:
                 why = improvements.tile_problem(s, cfg, c, t, i)
                 if why:
                     continue  # does not fit this hex, not yet known, or already under way
+                repair = s.tiles[t].pillaged == i  # one engineer-turn (SPEC_M18/M20)
+                labour = (
+                    cfg.t("food.repair_labour") if repair else works_mod.tile_labour(s, cfg, c, i)
+                )
                 out.append(
                     {
                         "id": i,
-                        "name": i.replace("_", " ").capitalize(),
+                        "name": f"Repair the {i.replace('_', ' ')}"
+                        if repair
+                        else i.replace("_", " ").capitalize(),
+                        "repair": repair,
                         "note": note(cfg, "improvements", i),
-                        "labour": works_mod.tile_labour(s, cfg, c, i),
-                        "turns": eta(works_mod.tile_labour(s, cfg, c, i)),
+                        "labour": labour,
+                        "turns": eta(labour),
                         "yields": dict(spec.get("yields") or {}),
                         "goods": dict(cfg.materials("sources.improvements").get(i) or {}),
                         "why": why,
@@ -772,6 +793,7 @@ class Session:
                     "elevation": tile.elevation,
                     "feature": tile.feature,
                     "improvement": tile.improvement,
+                    "pillaged": tile.pillaged,  # damaged: repair first (SPEC_M20)
                     "resource": tile.resource,
                     "works": works(t),
                 }
@@ -785,10 +807,10 @@ class Session:
                 "name": b.replace("_", " ").capitalize(),
                 "note": note(cfg, "buildings", b),
                 "size": layout.size_of(cfg, b),
-                "labour": works_mod.building_labour(cfg, b),
-                "turns": eta(works_mod.building_labour(cfg, b)),
-                "materials": materials.building_cost(cfg, b),
-                "short": materials.short(c, materials.building_cost(cfg, b)),
+                "labour": works_mod.labour_for(s, cfg, c, b),
+                "turns": eta(works_mod.labour_for(s, cfg, c, b)),
+                "materials": works_mod.building_cost(s, cfg, c, b),
+                "short": materials.short(c, works_mod.building_cost(s, cfg, c, b)),
                 "gives": _building_gives(cfg, b),  # what it does (designer 2026-11-17)
                 "why": why,
                 "ordered": works_mod.ordered(c, f"building:{b}") is not None,
@@ -925,6 +947,7 @@ class Session:
             "food_eaten": cy.food_eaten,
             "growth_threshold": economy.growth_threshold(cfg, c.pop),
             "food": _food_row(s, cfg, c, cy),  # SPEC_M18
+            "armoury": dict(c.armoury),  # SPEC_M20
             "worked": cy.worked,
             "options": options,
             "works": _work_rows(s, cfg, c),  # SPEC_M17
@@ -1038,6 +1061,7 @@ class Session:
             },
             "members": self._members(),
             "session": self._session(),
+            "votes_on": council_mod.sessions_on(cfg),  # SPEC_M20
             "leader": {  # the leader heads the council (SPEC_M11)
                 "name": player.leader.name,
                 "look": player.leader.look,
@@ -1436,6 +1460,7 @@ class Session:
                     "children": sum(1 for x in people if not x.adult),
                     "idle": sum(1 for x in people if x.adult and x.tile is None and not x.seats),
                     "citizens": [self._citizen_row(x, cy.surplus_food) for x in people],
+                    "train_options": self._train_options(c),  # SPEC_M20
                     "workable": [
                         {
                             "tile": t,
@@ -1640,6 +1665,25 @@ def _winter(s: GameState) -> dict[str, int] | None:
         return {"left": winter.turns_left(s)}
     soon = winter.coming_in(s)
     return {"coming_in": soon} if soon is not None else None
+
+
+def _gear_options(s: GameState, cfg: Config, unit: Any) -> dict[str, Any]:
+    from beacon import armoury
+
+    city = s.city_at(unit.tile)
+    here = city if city is not None and city.owner == unit.owner else None
+    home = armoury.home_of(s, unit)
+    return {
+        "pack": list(unit.pack),
+        "armoury": dict(here.armoury) if here else {},
+        "equip": [
+            {"item": g, "why": armoury.equip_problem(s, cfg, unit, g)} for g in sorted(here.armoury)
+        ]
+        if here
+        else [],
+        "join": home.name if home is not None else None,
+        "join_why": armoury.join_problem(s, cfg, unit),
+    }
 
 
 def _rations(s: GameState, cfg: Config, u: Any) -> dict[str, Any]:

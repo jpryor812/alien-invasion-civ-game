@@ -50,6 +50,8 @@ def _in_hex(px: float, py: float) -> bool:
 
 
 def territory_tiles(state: GameState, cfg: Config, city: City) -> list[int]:
+    if city.border:  # a player's town: its land (SPEC_M20)
+        return [t for t in city.border if is_passable_land(cfg, state.tiles[t])]
     radius = cfg.t("cities.work_radius")
     return [
         t

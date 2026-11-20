@@ -180,22 +180,3 @@ def damaged_farm(state: GameState, cfg: Config, city: City) -> int | None:
     state.tiles[best].improvement = None
     state.tiles[best].pillaged = farm
     return best
-
-
-def order_repairs(state: GameState, cfg: Config, city: City, radio: bool) -> None:
-    """Put the town's repairs at the top of its works: the damaged farm, and the radio tower
-    for the band's first town. Each is one engineer-turn, free of materials."""
-    from beacon import works
-
-    labour = F(cfg, "repair_labour")
-    jobs = []
-    tile = damaged_farm(state, cfg, city)
-    if tile is not None:
-        imp = F(cfg, "repair_farm")
-        jobs.append(works.add(city, f"tile:{imp}", labour, {}, tile=tile, improvement=imp))
-    radio_b = cfg.t("contact.radio_building")
-    if radio and radio_b not in city.buildings:
-        jobs.append(works.add(city, f"building:{radio_b}", labour, {}, repair=True))
-    for job in jobs:
-        city.works.remove(job)
-    city.works[:0] = jobs

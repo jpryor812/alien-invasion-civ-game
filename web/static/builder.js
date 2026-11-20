@@ -175,6 +175,12 @@
       } });
     }
     items.sort((a, b) => a.y - b.y).forEach((it) => it.draw());
+    for (const t of d.tiles) {  // damaged improvements to repair (SPEC_M20): a pulsing red outline
+      if (!t.pillaged || d.works.some((w) => w.tile === t.tile)) continue;
+      const a = 0.55 + 0.45 * Math.sin(performance.now() / 260);
+      hexPath(t.x / 1000, t.y / 1000, 0.95); g.strokeStyle = `rgba(255,107,90,${a})`; g.lineWidth = 4; g.stroke();
+      g.fillStyle = "rgba(255,90,70,0.12)"; g.fill();
+    }
     if (B.tile != null) {  // the hex chosen in the Land tab
       const t = d.tiles.find((x) => x.tile === B.tile);
       if (t) { hexPath(t.x / 1000, t.y / 1000, 0.97); g.strokeStyle = "#7fc4ff"; g.lineWidth = 3; g.setLineDash([8, 5]); g.stroke(); g.setLineDash([]); g.fillStyle = "rgba(80,170,255,0.12)"; g.fill(); }
@@ -276,12 +282,15 @@
   }
   function landList() {
     const d = B.d, t = d.tiles.find((x) => x.tile === B.tile);
-    if (!t) return `<div class="row muted">Click a hex of the city's land to choose what your engineers build on it.</div>`;
+    const damaged = d.tiles.find((x) => x.pillaged && !d.works.some((w) => w.tile === x.tile));
+    if (!t) return `<div class="row muted">Click a hex of the city's land to choose what your engineers build on it.</div>`
+      + (damaged ? `<div class="row bad">⚠ The ${ec(pr(damaged.pillaged))} marked in red is damaged: click it and repair it first (one turn).</div>` : "")
+      + `<div class="row small landhint">🌲 <b>Forests</b>: a lumber camp gives timber. ⛰ <b>Hills</b>: a mine gives stone and iron. 🌾 <b>Flat land</b>: a farm feeds 10 people; a pasture works on hills too.</div>`;
     const busy = d.works.find((w) => w.tile === t.tile);
     const here = [t.elevation === "hills" ? "Hills" : "", pr(t.terrain), t.feature ? pr(t.feature) : "", t.resource ? pr(t.resource) : ""].filter(Boolean).join(", ");
     const opts = t.works.map((w) => `<button class="bopt" data-work="${w.id}" title="${ec(w.note || "")}"><b>${ec(w.name)}</b>
       <span class="cost">${w.labour} labour · ${turnsTxt(w.turns)}${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span></button>`).join("");
-    return `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
+    return `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${t.pillaged ? ` · <span class="bad">damaged ${ec(pr(t.pillaged))}</span>` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
       + (busy ? `<div class="row good">🛠 Your engineers are building a ${ec(busy.name.toLowerCase())}: ${turnsTxt(busy.turns)}.</div>`
         : opts || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
   }
@@ -384,12 +393,12 @@
     if (e.key === "Escape") { e.stopPropagation(); if (B.tool) { B.tool = null; B.drag = null; hint(); panel(); } else close(); }
   }, true);
 
-  async function open(cityId, tab) {
+  async function open(cityId, tab, tile) {
     if (typeof S !== "undefined" && S.view) {  // the Develop city prompt is answered by visiting (2026-11-17)
       if (!S.developed || S.developed.turn !== S.view.turn) S.developed = { turn: S.view.turn, ids: [] };
       if (!S.developed.ids.includes(cityId)) S.developed.ids.push(cityId);
     }
-    B.city = cityId; B.tool = null; B.sel = null; B.tile = null; B.tab = tab || "build";
+    B.city = cityId; B.tool = null; B.sel = null; B.tile = tile != null ? tile : null; B.tab = tab || "build";
     document.getElementById("builder").classList.remove("hidden");
     B.open = true;
     await reload();

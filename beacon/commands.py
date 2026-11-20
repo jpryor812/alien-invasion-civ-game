@@ -73,6 +73,25 @@ class SetConvoy(Command):
 
 @register
 @dataclass(frozen=True)
+class EquipGear(Command):
+    """Take gear from the armoury of the town the unit stands in (SPEC_M20)."""
+
+    kind: ClassVar[str] = "equip_gear"
+    unit: int
+    item: str
+
+
+@register
+@dataclass(frozen=True)
+class JoinCity(Command):
+    """The unit settles in the town whose land it stands in, as a grown citizen (SPEC_M20)."""
+
+    kind: ClassVar[str] = "join_city"
+    unit: int
+
+
+@register
+@dataclass(frozen=True)
 class SetGrowth(Command):
     """Allow or pause births in a city; paused, its spare food banks for the army (SPEC_M18)."""
 

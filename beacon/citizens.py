@@ -111,7 +111,11 @@ def sync(state: GameState, cfg: Config, city: City) -> None:
 
 def born(state: GameState, cfg: Config, city: City) -> dict[str, Any]:
     c = make(state, cfg, city, adult=False)
+    from beacon import borders  # each birth claims a hex (SPEC_M20)
+
+    claimed = borders.grow(state, cfg, city)
     return {
+        "claimed": claimed,
         "kind": "citizen_born",
         "city": city.id,
         "citizen": c.id,
@@ -311,7 +315,7 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
         eaten = food_eaten(state, cfg, city) * 100
         for c in workers:
             if c.job != "auto" or c.tile is not None:
-                continue
+                continue  # pinned, or unassigned ("idle")
             if not free:
                 spare.append(c)
                 continue
@@ -330,8 +334,8 @@ def assign(state: GameState, cfg: Config, pid: str) -> None:
             free.discard(best)
             food += tile_yields(cfg, state.tiles[best])["food"] * 100 + tile_bonus(cfg, c)["food"]
     for c in sorted(spare, key=lambda x: x.id):
-        if c.banned_until > state.turn:
-            continue  # voted off the council (SPEC_M11)
+        if c.banned_until > state.turn or c.job == "idle":
+            continue  # voted off the council (SPEC_M11), or left unassigned (SPEC_M20)
         seat = _free_seat(cfg, used, c)
         if seat is not None:
             c.seats = [seat]
@@ -350,7 +354,7 @@ def job_problem(state: GameState, cfg: Config, pid: str, c: Citizen, job: str) -
     city = state.cities[c.city]
     if city.owner != pid:
         return "not your citizen"
-    if job == "auto":
+    if job in ("auto", "idle"):  # idle: unassigned, after leaving a seat (SPEC_M20)
         return None
     if job == "council" or job.startswith("council:"):
         if not c.adult:

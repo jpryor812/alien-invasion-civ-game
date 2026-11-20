@@ -103,7 +103,7 @@ def test_the_band_lives_on_rations(cfg):
     assert all(food.rations(cfg, u) == 9 for u in band if str(u.id) in s.units)
 
 
-def test_the_first_town_rescues_three_with_repairs_queued(cfg):
+def test_the_first_town_rescues_three_and_asks_for_the_farm(cfg):
     s = new_game(cfg, seed=2, start="survivor")
     s.caches = {}
     p = s.players[EU]
@@ -124,13 +124,25 @@ def test_the_first_town_rescues_three_with_repairs_queued(cfg):
     assert town.pop == 3 + survivors_in  # three rescued, then the band
     assert town.food_store >= food.F(cfg, "freed_store")
     radio = cfg.t("contact.radio_building")
-    first = [w["what"] for w in town.works[:2]]
-    assert first == ["tile:farm", f"building:{radio}"]
-    farm_tile = town.works[0]["tile"]
+    assert town.works == []  # nothing is built for you (designer 2026-11-19)
+    assert radio in town.wrecked and radio not in town.buildings
+    from beacon.actions import pending_decisions
+    from beacon.commands import ImproveTile, SetProduction
+
+    first = pending_decisions(s, cfg, EU)[0]
+    assert first["kind"] == "repair_farm" and first["city"] == town.id
+    farm_tile = first["tile"]
     assert s.tiles[farm_tile].pillaged == "farm"
+    apply_command(s, cfg, ImproveTile(player=EU, city=town.id, tile=farm_tile, improvement="farm"))
+    assert not any(p["kind"] == "repair_farm" for p in pending_decisions(s, cfg, EU))
+    stores = dict(town.stores)
+    assert works.building_cost(s, cfg, town, radio) == {}  # a repair is free
+    apply_command(s, cfg, SetProduction(player=EU, city=town.id, items=(f"building:{radio}",)))
+    assert town.stores == stores
     assert all(w["left"] == food.F(cfg, "repair_labour") for w in town.works[:2])
     events = works.progress(s, cfg, town)  # two engineers: both repairs in one turn
     assert radio in town.buildings and s.tiles[farm_tile].improvement == "farm"
+    assert radio not in town.wrecked
     assert sum(1 for e in events if e["kind"] in ("building_completed", "improvement_built")) == 2
 
 
@@ -140,9 +152,9 @@ def test_every_freed_town_has_a_damaged_farm(cfg):
     s = new_game(cfg, seed=2, start="classic")
     city = next(c for c in s.cities if c.status == OVERRUN and c.continent == EU)
     liberation.liberate(s, cfg, city, EU)
-    assert city.owner == EU
-    assert city.works[0]["what"] == "tile:farm"
-    assert s.tiles[city.works[0]["tile"]].pillaged == "farm"
+    assert city.owner == EU and city.works == []
+    assert any(s.tiles[t].pillaged == "farm" for t in city.border)
+    assert len(city.border) <= 7  # its land starts at one ring (SPEC_M20)
     assert city.food_store >= food.F(cfg, "freed_store")
 
 

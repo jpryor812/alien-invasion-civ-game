@@ -13,6 +13,18 @@ from beacon.state import ACTIVE, ALIENS, OVERRUN, Measure, state_from_json, stat
 from beacon.units import create_unit
 
 
+@pytest.fixture(scope="module")
+def cfg():
+    """Sessions and votes are off in the data until redesigned (SPEC_M20); these tests keep the
+    dormant feature working."""
+    from beacon import config
+
+    def on(raw):
+        raw["council"]["sessions"]["enabled"] = True
+
+    return config.load(overrides=on)
+
+
 def on_air(s, cfg):
     """The arena's two players each hold a city with a radio tower (they sit on the council)."""
     for pid, tile in ((EU, at(1, 1)), (NA, at(12, 8))):

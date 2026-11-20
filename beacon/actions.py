@@ -46,11 +46,13 @@ from beacon.commands import (
     CreateLeader,
     DeclineDeal,
     DeclineOffer,
+    EquipGear,
     Fortify,
     FundProject,
     FundResistance,
     HoldFire,
     ImproveTile,
+    JoinCity,
     MergeUnits,
     MoveBuilding,
     MoveUnit,
@@ -254,6 +256,28 @@ def _set_focus(state: GameState, cfg: Config, cmd: SetFocus) -> Events:
         raise CommandError(f"unknown focus {cmd.focus!r}")
     city.focus = cmd.focus
     return [{"kind": "focus_set", "city": city.id, "focus": cmd.focus}]
+
+
+@handles(EquipGear)
+def _equip_gear(state: GameState, cfg: Config, cmd: EquipGear) -> Events:
+    from beacon import armoury
+
+    unit = own_unit(state, cmd.player, cmd.unit)
+    problem = armoury.equip_problem(state, cfg, unit, cmd.item)
+    if problem:
+        raise CommandError(problem)
+    return armoury.equip(state, cfg, unit, cmd.item)
+
+
+@handles(JoinCity)
+def _join_city(state: GameState, cfg: Config, cmd: JoinCity) -> Events:
+    from beacon import armoury
+
+    unit = own_unit(state, cmd.player, cmd.unit)
+    problem = armoury.join_problem(state, cfg, unit)
+    if problem:
+        raise CommandError(problem)
+    return armoury.join(state, cfg, unit)
 
 
 @handles(SetGrowth)
@@ -826,6 +850,25 @@ def legal_commands(state: GameState, cfg: Config, pid: str) -> list[Command]:
 # -- decisions ----------------------------------------------------------------------------------
 
 
+def _farm_to_repair(state: GameState, cfg: Config, pid: str) -> tuple[int, int] | None:
+    """(town, hex) of the band's first town's damaged farm while its repair is not ordered."""
+    player = state.players.get(pid)
+    if player is None or not player.founded or player.band_town is None:
+        return None
+    town = state.cities[player.band_town]
+    if town.owner != pid or town.status != ACTIVE:
+        return None
+    farm = cfg.t("food.repair_farm")
+    from beacon.cities import work_tiles
+
+    for t in work_tiles(state, cfg, town):
+        if state.tiles[t].pillaged == farm:
+            if any(w.get("tile") == t for w in town.works):
+                return None
+            return town.id, t
+    return None
+
+
 def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str, Any]]:
     """What still needs this player this turn (the UI's 'unit needs orders' prompts)."""
     out: list[dict[str, Any]] = []
@@ -835,9 +878,12 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
             out.append({"kind": "story_choice", "story": ev.id, "event": ev.event})
     if player.research is None and tech.available(cfg, player) and player.founded:
         out.append({"kind": "choose_research"})
-    for city in state.cities:
-        if city.owner == pid and city.status == ACTIVE and not city.queue:
+    for city in state.cities:  # engineers with nothing to build (designer 2026-11-19)
+        if city.owner == pid and city.status == ACTIVE and works.crew(city) > 0 and not city.works:
             out.append({"kind": "choose_production", "city": city.id})
+    farm = _farm_to_repair(state, cfg, pid)
+    if farm is not None:  # the first town's first step (SPEC_M20)
+        out.insert(0, {"kind": "repair_farm", "city": farm[0], "tile": farm[1]})
     seen: set[int] | None = None
     for city in state.cities:
         if city.owner != pid or city.status != ACTIVE or city.bombarded:

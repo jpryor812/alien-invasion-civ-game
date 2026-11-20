@@ -70,6 +70,9 @@ def _restore(state: GameState, cfg: Config, city: City, pop: int) -> Events:
     city.queue = []
     if city.owner is None:
         return []
+    from beacon import borders  # its land starts at one ring (SPEC_M20)
+
+    borders.start(state, cfg, city)
     from beacon.layout import ensure  # a freed city's buildings get their places (SPEC_M16)
 
     ensure(state, cfg, city)
@@ -144,8 +147,7 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
 
         city.food_store = max(city.food_store, food.F(cfg, "freed_store"))
         food.refill_near(state, cfg, by, city.tile, food.F(cfg, "supply_radius"))
-        band_town = owner is not None and owner.band_town == city.id
-        food.order_repairs(state, cfg, city, radio=band_town)
+        food.damaged_farm(state, cfg, city)  # the player orders the repair (SPEC_M20)
     return [
         {
             "kind": "city_liberated",
@@ -176,6 +178,7 @@ def overrun(state: GameState, cfg: Config, city: City, defenders_radius: int = 2
     city.is_capital = False
     city.connected = False
     city.queue = []
+    city.border = []  # back to the old area (SPEC_M20)
     city.production_store = 0
     city.progress = {}
     city.food_store = 0

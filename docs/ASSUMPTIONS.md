@@ -1123,3 +1123,41 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - Batch (10 seeds, 100 turns, AI): 11 winters began (0-2 a game); towns freed median 71.5; people
   per town about 20; no town famines; units starved 281. Towns' stores and big farms ride out a
   winter easily: make it bite harder (or farms smaller) after play if it feels toothless.
+
+## Fixes from play (SPEC_M20, designer 2026-11-19)
+- Repairs: a damaged improvement's repair and a wrecked building's rebuild (radio tower and
+  barracks the aliens wrecked, `City.wrecked`) cost no materials and 8 labour (one engineer-turn).
+  The farm repair is required only in the band's first town (the client and the server's end
+  turn refuse to go on); other freed towns just have the damaged farm.
+- First barracks: 25% of materials and labour (at least one engineer-turn) when the player has
+  none built or ordered anywhere.
+- "Develop city" is pending only while a town has engineers and no works. A second click on a
+  selected town opens the builder.
+- Borders: `City.border` holds a player town's land; empty means the old map-generation area
+  (alien towns, old saves). Start: the town's hex and its ring on its continent, minus other
+  towns' land. Each birth (citizens.born, so family births too) claims the neighbouring hex with
+  the best score: the town's natural area first, land before water, then 2 x food + 2 x
+  production + gold + science, then a resource, then nearer. Hexes of an alien town's area may be
+  claimed except right next to it. Lost towns drop their border. The classic start's capital
+  begins with one ring plus a hex per extra citizen.
+- Supply (rations) still reaches 4 hexes from any friendly town, inside or outside its border.
+- Council: `sessions.enabled: false`; seats, recruits and citizens on seats work as before;
+  influence is still computed (MVP uses it) but not shown. Freeing a citizen's seat sets its job
+  to "idle" (Unassigned): it takes no tile or seat until given a job.
+- Gear: scouts and civilians carry gear and never use it; other units use it if it is better,
+  else carry it (2 items). Carried gear goes to the nearest own town's armoury at the end of a
+  turn spent inside that town's land. Equipping needs the unit on the town's hex; the replaced
+  item goes back to the armoury. The AI equips what it can whenever a unit stands in a town.
+- Joining a town: any unit but the leader and fixed defences, standing in its own town's land,
+  becomes a grown citizen (new stats from the seed); its gear goes to the armoury.
+- Remnants: the band (survivor units, leader included) can mine; AI bands do not, to stay on
+  their first town. Crates: up to 12 more per continent beyond the band's radius, at least 3
+  hexes apart and 2 from any city.
+- The meeting screen opens once per newly met player, from the contact event; both leaders use
+  the full-length leader art (only two looks exist, so leaders often look alike - more art
+  needed). Options: alliance (needs International Accords on both sides), a trade (opens
+  Diplomacy), 50 gold as a greeting, or farewell.
+- Batch (10 seeds, 100 turns, AI): towns freed median 79.5 (71.5 in M19); people per town about
+  21; units starved 278; town famines 354 (0 in M19; about 6 per player per game, a lost citizen
+  each) - freed towns now start with one ring of land and must repair their farm before it
+  feeds them. Watch in play; a starting store bigger than 30 would soften it.

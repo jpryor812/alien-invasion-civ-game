@@ -73,6 +73,9 @@ class City:
     )  # works the crew builds, in order: {id, what, left, total, paid} (SPEC_M17)
     resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
     grow: bool = True  # births allowed; off banks food for the army (SPEC_M18)
+    wrecked: list[str] = field(default_factory=list)  # buildings to repair (SPEC_M20)
+    border: list[int] = field(default_factory=list)  # its land; [] is the old 2-hex area (M20)
+    armoury: dict[str, int] = field(default_factory=dict)  # gear left by units (SPEC_M20)
     funded_pct: int = 0  # its defence strength cut by gold sent to the resistance (2026-11-16)
     armed_by: dict[str, int] = field(default_factory=dict)  # resistance levels, by player
     queue: list[str] = field(default_factory=list)  # "building:x", "unit:x", "project:x"
@@ -113,6 +116,7 @@ class Unit:
     gear: list[str] = field(default_factory=list)  # weapon and armour found (SPEC_M14)
     rations: int = -1  # food carried; -1 is full (SPEC_M18)
     fed: int = -1  # last turn a town fed it (SPEC_M18)
+    pack: list[str] = field(default_factory=list)  # gear carried, not used (SPEC_M20)
 
 
 @dataclass

@@ -576,6 +576,10 @@ survivor:
   caches: 8
   near_caches: 2
   radius: 7
+  scatter: 12
+  pack_size: 2
+  scatter_note: Designer 2026-11-19 (SPEC_M20) - up to scatter more crates across the rest of the
+    continent, at least 3 hexes apart and off city hexes.
   loot:
     weapon: {weight: 4, attack: 5}
     armour: {weight: 3, defence: 5}
@@ -621,3 +625,10 @@ winter:
   cooldown: 36
   warn: 3
   turns: 12
+
+borders:
+  status: placeholder
+  note: SPEC_M20 (designer 2026-11-19). A player's town starts with its hex and the hexes within
+    start_radius; each citizen born claims one more next to its land, up to max_radius out.
+  start_radius: 1
+  max_radius: 3

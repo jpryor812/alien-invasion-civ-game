@@ -23,7 +23,7 @@
       body: "Click a unit, then a highlighted hex to move it. Your scouts see furthest: send them into the fog to find the cities the aliens hold. The big button at the bottom right always names the next thing that needs you (choose research, unit needs orders...) and takes you there; once nothing is left it says <b>Next turn</b>.",
       more: "Enter does the same as the button; Shift+Enter or Shift-click ends the turn anyway. Space jumps to the next unit that needs orders. F fortifies, S skips. Right-click clears the selection; drag or use the arrow keys to pan, and the mouse wheel to zoom." },
     production: { who: "economic", title: "Building your cities",
-      body: "Develop city opens the city view. Buildings, walls and farms cost materials up front; then the city's engineers build them, and more engineers build faster. Production trains units and new engineers.",
+      body: "Your engineers have nothing to build. Develop city (or click the town) opens the town view: buildings, walls and land works cost materials up front; then the engineers build them, and more engineers build faster. Production trains units and new engineers.",
       more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favour food, production, science or gold." },
     survivors: { who: "military", title: "Survivors",
       body: "You have no city yet: just your leader and four survivors with makeshift weapons. Scout the land around you: abandoned crates may hold rifles, armour, alien weapons, or more people. You have no home: the first alien-held town you find becomes your first city.",
@@ -32,9 +32,18 @@
       body: "You have found a town the aliens hold, and it will be your first city. Its people are ready to rise if someone pays for their weapons. You <b>must</b> send them your 100 gold before you can take it: the town's defence falls by half and its gates open.",
       ok: "Fund the resistance", then: () => { const p = S.view.pending.find((x) => x.kind === "fund_resistance"); if (p && window.showFundCard) showFundCard(p.city); },
       more: "Later you can fund the resistance in any alien city you have found (click it on the map). Stronger cities need more gold: perhaps 500 gold for a quarter of their defence." },
-    first_city: { who: "economic", title: "Your first city",
-      body: "The town is yours, and it is your capital. Your survivors live there now; those carrying gear stay in the field. Rebuild the radio tower first: it is cheap, and until it stands you cannot reach the other continents or the council.",
-      more: "Scrap you salvaged went into the city's production. A scout has joined you, and the town has a crew of two engineers: open Develop city to put them to work." },
+    first_city: { who: "economic", title: "Your first town",
+      body: "The town is yours, and it is your capital. The three people you rescued and your survivors without gear now live here as citizens. Let's meet them: each citizen can work a tile, sit on the council, or (once you have a barracks) train as a soldier.",
+      ok: "Meet your people", then: () => { if (typeof openScreen === "function") openScreen("population"); },
+      more: "Survivors carrying gear stay in the field as soldiers. Scrap you salvaged went into the town's production, and a scout has joined you." },
+    farm: { who: "economic", title: "Repair the farm",
+      body: "The aliens wrecked the town's farm. <b>This is how your citizens will earn food</b>: a farm feeds ten people, and spare food brings new citizens. Your engineers can repair it in one turn, free of materials. It is marked in red.",
+      ok: "Repair the farm", then: () => { const p = S.view.pending.find((x) => x.kind === "repair_farm"); if (p) resolvePending(p); },
+      more: "You cannot end the turn until the repair is ordered. Later, build more farms on flat land, mines on hills (stone and iron) and lumber camps in forests (timber) from the Land tab." },
+    next_builds: { who: "economic", title: "What to build next",
+      body: "With the farm under way, two buildings are worth it soon. The <b>radio tower</b> is free to repair and lets you talk to the other continents. A <b>barracks</b> lets your citizens train as soldiers; your first one is cheap and quick.",
+      ok: "Open Develop city", then: () => { const t = S.view && Object.values(S.view.cities).find((c) => c.owner === S.view.me && c.is_capital); if (t && window.Builder) Builder.open(t.id, "build"); },
+      more: "Neither is required. Click your town any time to open Develop city." },
     research: { who: "science", title: "Research",
       body: "Choose what your scientists work on. The tree starts with two branches, Urban Planning and Advanced Manufacturing, and every tech opens two more. Each card shows how many turns it takes and what it unlocks.",
       more: "Urban Planning leads to International Accords (alliances) and Beacon Theory (recruits); Radio Beacons, Deep Space Radar and Orbital Barrage end the war. Advanced Manufacturing leads to science, industry and the army." },
@@ -63,7 +72,7 @@
       body: "You do not know where the other continents are: the world is laid out differently every game. Build a <b>scout boat</b> in a coastal city and sail into the fog to find them.",
       more: "Once one of your units sights another continent's land or units you have met: you can trade, form alliances, send aid and ship troops. A continent that falls becomes known to everyone." },
     contact: { who: "economic", title: "First contact",
-      body: "You have met another continent. Open Diplomacy to propose trades, send aid or, once you both know International Accords, an alliance.",
+      body: "You have met another continent. Open Diplomacy any time to propose trades, send aid or, once you both know International Accords, an alliance.",
       more: "You also learn where its cities are, so you can ship troops to help it." },
     beacon: { who: "beacon", title: "Beacons",
       body: "Beacons call aliens from other worlds to your side. Build a Beacon in a city to earn beacon points; when you have enough, a recruit arrives.",
@@ -157,8 +166,10 @@
     if (v.founded === false) trigger("survivors");
     if ((v.pending || []).some((p) => p.kind === "fund_resistance")) trigger("resistance");
     if (v.events.some((e) => e.kind === "first_city" && e.player === v.me)) trigger("first_city");
+    if ((v.pending || []).some((p) => p.kind === "repair_farm")) trigger("farm");
+    else if (v.founded && seen().has("farm")) trigger("next_builds");
     if (v.pending.some((p) => p.kind === "choose_research")) trigger("research");
-    if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1) trigger("production");
+    if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1 && !v.pending.some((p) => p.kind === "repair_farm")) trigger("production");
     const known = Object.values(v.cities);
     if (known.some((c) => c.continent === v.me && c.status === "overrun")) trigger("lost_cities");
     if (known.some((c) => c.owner === v.me && c.connected === false)) trigger("roads");

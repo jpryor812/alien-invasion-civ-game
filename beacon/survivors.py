@@ -70,7 +70,7 @@ def setup(state: GameState, cfg: Config) -> None:
         capital = next(c for c in mine if c.is_capital)
         for city in mine:  # every city the player held is now alien-held
             city.status, city.owner = OVERRUN, ALIENS
-            city.queue, city.progress = [], {}
+            city.queue, city.progress, city.border = [], {}, []
         from beacon.cities import max_hp
 
         capital.is_capital = False  # a small, lightly held town; it becomes the capital when freed
@@ -87,6 +87,7 @@ def setup(state: GameState, cfg: Config) -> None:
             # the aliens wrecked the radio and the barracks: rebuilding them comes first
             # (SPEC_M14 revision; the barracks since SPEC_M16)
             wrecked = {cfg.t("contact.radio_building"), cfg.materials("barracks.building")}
+            city.wrecked = sorted(set(city.buildings) & wrecked)  # free to repair (SPEC_M20)
             city.buildings = [b for b in city.buildings if b not in wrecked]
             city.layout = []
         r = rng.stream(state.seed, "map", "band", pid)
@@ -147,6 +148,25 @@ def setup(state: GameState, cfg: Config) -> None:
                 kind = rng.weighted_choice(r, kinds, [loot[x]["weight"] for x in kinds])
             state.caches[str(i)] = kind
             taken.add(i)
+        # more crates across the rest of the continent (designer 2026-11-19, SPEC_M20)
+        wide = sorted(
+            i
+            for i, t in enumerate(state.tiles)
+            if t.continent == pid
+            and i not in taken
+            and hexgrid.distance(i, home, state.width) > sv["radius"]
+            and all(hexgrid.distance(i, c.tile, state.width) >= 2 for c in state.cities)
+            and _free(state, cfg, i, taken)
+        )
+        r.shuffle(wide)
+        for i in wide[: sv["scatter"]]:
+            if all(
+                hexgrid.distance(i, j, state.width) >= 3 for j in taken if str(j) in state.caches
+            ):
+                state.caches[str(i)] = rng.weighted_choice(
+                    r, kinds, [loot[x]["weight"] for x in kinds]
+                )
+                taken.add(i)
 
 
 def _weaken(state: GameState, cfg: Config, city: City) -> None:
@@ -164,6 +184,7 @@ def _weaken(state: GameState, cfg: Config, city: City) -> None:
     for t in sv["town_garrison"]:
         place_unit(state, cfg, t, ALIENS, city.tile, 0)
     wrecked = {cfg.t("contact.radio_building"), cfg.materials("barracks.building")}
+    city.wrecked = sorted(set(city.wrecked) | {cfg.t("contact.radio_building")})  # SPEC_M20
     city.buildings = [b for b in city.buildings if b not in wrecked]
     city.layout = []
     for t in state.tiles:
@@ -237,13 +258,19 @@ def pick_up(state: GameState, cfg: Config) -> Events:
         if kind not in ("scrap", "food"):
             state.players[unit.owner].band_finds += 1  # opens the town's barricades
         if kind in WEAPONS or kind in ARMOUR:
+            from beacon.armoury import carries_only, pack_size
+
             band = [u for u in state.sorted_units() if u.owner == unit.owner and is_band(cfg, u)]
-            takers = [
-                unit,
-                *sorted(band, key=lambda u: (hexgrid.distance(u.tile, tile, state.width), u.id)),
-            ]
+            band = sorted(band, key=lambda u: (hexgrid.distance(u.tile, tile, state.width), u.id))
+            takers = band if carries_only(cfg, unit) and not is_band(cfg, unit) else [unit, *band]
+            if state.players[unit.owner].founded:  # the band is gone: the finder decides
+                takers = [] if carries_only(cfg, unit) else [unit]
             if not any(_give(cfg, u, kind) for u in takers if u.owner == unit.owner):
-                got += " (nobody could use it)"
+                if len(unit.pack) < pack_size(cfg):  # carried to a town's armoury (SPEC_M20)
+                    unit.pack = [*unit.pack, kind]
+                    got += " (carried home for the armoury)"
+                else:
+                    got += " (nobody could use or carry it)"
         elif kind == "survivor":
             new = place_unit(state, cfg, "survivor", unit.owner, tile, 4)
             got = "a survivor joins" if new is not None else "a survivor (no room to stand)"

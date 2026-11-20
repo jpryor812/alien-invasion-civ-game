@@ -557,3 +557,13 @@ button.big { font: 700 20px var(--display); padding: 10px 40px; letter-spacing: 
 /* the leader portrait steps aside while a city panel is open, so the panel's top (food) shows */
 body:has(#side:not(.hidden):not(.unitmode)) #leaderbadge { left: 312px; }
 .winterbadge { margin-left: 8px; padding: 1px 7px; border-radius: 9px; background: rgba(120,180,255,0.18); color: #bfe0ff; border: 1px solid rgba(150,200,255,0.45); }
+
+/* meeting another leader (SPEC_M20) */
+.meeting { position: relative; height: 520px; background-size: cover; background-position: center; border-radius: 8px; overflow: hidden; }
+.meetfig { position: absolute; bottom: 0; height: 92%; left: 2%; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.7)); }
+.meetfig.flip { left: auto; right: 2%; transform: scaleX(-1); }
+.meetbox { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(460px, 60%); background: rgba(12,18,24,0.92); border: 1px solid var(--brass); border-radius: 8px; padding: 12px 14px; }
+.meetsay { font-style: italic; margin: 6px 0 10px; }
+.meetopts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.popguide { display: grid; gap: 4px; margin: 6px 0 12px; padding: 8px 10px; border: 1px solid rgba(217,174,85,0.35); border-radius: 6px; background: rgba(217,174,85,0.06); }
+.landhint { margin-top: 8px; color: #d8cfb8; }

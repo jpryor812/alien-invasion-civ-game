@@ -83,6 +83,8 @@ def can_mine(cfg: Config, owner: str, unit_type: str) -> bool:
     spec = cfg.units[unit_type]
     if owner == ALIENS:
         return spec["domain"] == "land"
+    if spec.get("survivor"):  # the band mines remnants too (designer 2026-11-19, SPEC_M20)
+        return True
     return bool(spec.get("can_build")) or (spec["role"] == "recon" and spec["domain"] == "land")
 
 

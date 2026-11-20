@@ -779,7 +779,13 @@ class Bot:
                 for u in self.view.my_units()
                 if self.state.tiles[u.tile].continent == cont and u.id not in self.reserved
             ]
-            miners = [u for u in mine if can_mine(self.cfg, self.pid, u.type) and u.job is None]
+            miners = [  # the band has a town to take first (SPEC_M20)
+                u
+                for u in mine
+                if can_mine(self.cfg, self.pid, u.type)
+                and u.job is None
+                and not self.cfg.units[u.type].get("survivor")
+            ]
             reach = self.param("starfall.reach")
             miners = [u for u in miners if self.dist(u.tile, shard.tile) <= reach]
             if not miners:
@@ -871,12 +877,14 @@ class Bot:
                 (
                     b
                     for b in wanted
-                    if not materials.short(city, materials.building_cost(self.cfg, b))
+                    if not materials.short(city, works.building_cost(self.state, self.cfg, city, b))
                 ),
                 None,
             )
             if pick is None and wanted:
-                lack = materials.short(city, materials.building_cost(self.cfg, wanted[0]))
+                lack = materials.short(
+                    city, works.building_cost(self.state, self.cfg, city, wanted[0])
+                )
                 q = exchange.quotes(self.state, self.cfg, self.pid)
                 gold = sum(q[g]["buy"] * n for g, n in lack.items())
                 if sum(lack.values()) <= self.param("market.buy_up_to") and (
@@ -886,7 +894,9 @@ class Bot:
                         self.submit(
                             Trade(player=self.pid, city=city.id, good=g, amount=n, side="buy")
                         )
-                    if not materials.short(city, materials.building_cost(self.cfg, wanted[0])):
+                    if not materials.short(
+                        city, works.building_cost(self.state, self.cfg, city, wanted[0])
+                    ):
                         pick = wanted[0]
             if pick is not None:
                 self.submit(
@@ -902,8 +912,20 @@ class Bot:
         for city in self.view.my_cities():
             if city.status != "active" or any(w["what"].startswith("tile:") for w in city.works):
                 continue
-            hungry = self.food_room(city) < self.param("food.want_surplus")  # SPEC_M18
             tiles = cities.work_tiles(self.state, self.cfg, city)
+            damaged = [t for t in tiles if self.state.tiles[t].pillaged]  # repairs first (M20)
+            if damaged:
+                t = damaged[0]
+                self.submit(
+                    ImproveTile(
+                        player=self.pid,
+                        city=city.id,
+                        tile=t,
+                        improvement=self.state.tiles[t].pillaged,
+                    )
+                )
+                continue
+            hungry = self.food_room(city) < self.param("food.want_surplus")  # SPEC_M18
             if hungry:  # the best farmland first
                 tiles = sorted(
                     tiles, key=lambda t: (-self.state.tiles[t].terrain.startswith("grass"), t)
@@ -1092,6 +1114,7 @@ class Bot:
                 continue  # city defences fire on their own at the end of the turn
             if not self.alive(unit) or unit.moves_left <= 0 or unit.job is not None:
                 continue
+            self.equip(unit)  # gear waiting in the town's armoury (SPEC_M20)
             if self.go_home(unit):  # rations first, even on an expedition (SPEC_M18)
                 continue
             if unit.id in self.reserved:
@@ -1116,6 +1139,17 @@ class Bot:
             else:
                 self.view = PlayerView(self.state, self.cfg, self.pid)
                 self.soldier(unit)
+
+    def equip(self, unit: Unit) -> None:
+        from beacon import armoury
+        from beacon.commands import EquipGear
+
+        city = self.state.city_at(unit.tile)
+        if city is None or city.owner != self.pid or not city.armoury:
+            return
+        for item in sorted(city.armoury):
+            if armoury.equip_problem(self.state, self.cfg, unit, item) is None:
+                self.submit(EquipGear(player=self.pid, unit=unit.id, item=item))
 
     def go_home(self, unit: Unit) -> bool:
         """A unit outside friendly land heads for the nearest friendly town before its rations

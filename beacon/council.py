@@ -158,8 +158,13 @@ def vote(
     return [_ev(state, "vote_cast", player=pid, measure=m.kind, choice=choice)]
 
 
+def sessions_on(cfg: Config) -> bool:
+    """Sessions and votes are off until redesigned (designer 2026-11-19, SPEC_M20)."""
+    return bool(cfg.council("sessions.enabled"))
+
+
 def unvoted(state: GameState, pid: str, cfg: Config | None = None) -> list[Measure]:
-    if cfg is not None and pid not in members(state, cfg):
+    if cfg is not None and (not sessions_on(cfg) or pid not in members(state, cfg)):
         return []
     return [m for m in state.council.measures if pid not in m.votes]
 
@@ -315,6 +320,8 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
     """Resolve an open session, expire measures, open the next session on schedule."""
     events: Events = []
     c = state.council
+    if not sessions_on(cfg):
+        return events
     if c.measures:
         events.extend(resolve(state, cfg))
     c.active = [a for a in c.active if a["until"] > state.turn]
