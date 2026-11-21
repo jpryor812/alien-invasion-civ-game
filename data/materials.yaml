@@ -14,7 +14,7 @@ goods:
 sources:
   status: placeholder
   note: Goods a worked tile (or the city's own tile) yields each turn, by feature, elevation,
-    improvement and resource; centre - what every city tile adds. Added together.
+    improvement and resource; center - what every city tile adds. Added together.
   centre: {timber: 1, stone: 1}
   features: {forest: {timber: 2}, jungle: {timber: 2}}
   elevations: {hills: {stone: 1}}
@@ -38,14 +38,14 @@ costs:
 barracks:
   status: placeholder
   note: Designer 2026-11-16 - military units are trained only in a city with a barracks (the
-    military base). Recon units, civilians and city defence units do not need one.
+    military base). Recon units, civilians and city defense units do not need one.
   building: military_base
   trainable: [militia, infantry, marines, recon_team, anti_tank_team, exo_infantry, xeno_trooper]
   train_per_strength: 10
   train_min_turns: 2
   first_pct: 25
   first_note: Designer 2026-11-19 (SPEC_M20) - a player's first barracks costs first_pct of its
-    materials and labour, so the first town can train soldiers early.
+    materials and labor, so the first town can train soldiers early.
   train_note: Designer 2026-11-17 - in a city with a barracks a grown citizen may train as a
     soldier (people only - no tanks, guns or ships). It works no tile and holds no seat while it
     trains, for max(train_min_turns, strength / train_per_strength) turns, then leaves the city
@@ -55,7 +55,7 @@ layout:
   status: placeholder
   note: The builder's fine grid - cells_per_hex cells across a hex. Buildings keep `gap` empty
     cells from each other (walls may stand there). Footprints are squares of `size` cells; the
-    city hall stands at the centre. AI walls make a square ring ai_ring cells from the centre.
+    city hall stands at the center. AI walls make a square ring ai_ring cells from the center.
   cells_per_hex: 8
   gap: 1
   hall_size: 4
@@ -70,7 +70,7 @@ walls:
   status: placeholder
   note: Wall pieces, one per cell. strength is in tenths of a city strength point per piece; hp
     adds to the city's HP. Each piece costs materials and `production` (a "walls" queue item).
-    Replaces the defence perimeter (stone/steel), plasma shield and chitin bulwark buildings.
+    Replaces the defense perimeter (stone/steel), plasma shield and chitin bulwark buildings.
   wood: {name: Wooden palisade, tech: null, cost: {timber: 1}, production: 1, strength: 1, hp: 2}
   stone: {name: Stone wall, tech: null, cost: {stone: 1}, production: 1, strength: 2, hp: 3}
   steel: {name: Steel wall, tech: mechanized_warfare, cost: {iron: 1, stone: 1}, production: 2, strength: 3, hp: 4}
@@ -80,7 +80,7 @@ walls:
 labour:
   status: placeholder
   note: SPEC_M17 (designer 2026-11-16) - buildings, walls and tile works are works built by the
-    city's engineers. Each engineer adds per_engineer labour a turn. A building needs building_pct
+    city's engineers. Each engineer adds per_engineer labor a turn. A building needs building_pct
     of its production cost; a wall piece its production x per_wall; a tile work its turns x
     per_engineer. Cities start with `start` engineers (capitals capital_start, a band's first
     town town_start).

@@ -1,8 +1,8 @@
 """City layouts on a fine grid (docs/SPEC_M16.md, designer 2026-11-16).
 
 A city's builder area is the land of its work area that it holds. A fine grid covers it:
-`cells_per_hex` cells across a hex. Cell (x, y) is in city-local coordinates: its centre lies at
-(x, y) x cell size from the city tile's centre, where a hex has circumradius 1 (pointy-top, odd
+`cells_per_hex` cells across a hex. Cell (x, y) is in city-local coordinates: its center lies at
+(x, y) x cell size from the city tile's center, where a hex has circumradius 1 (pointy-top, odd
 rows offset), so a cell is sqrt(3) / cells_per_hex wide. Buildings are squares of cells with a gap
 between them; walls are single cells. Positions are integers; the geometry that decides which
 cells lie inside the territory is computed, never stored.
@@ -62,7 +62,7 @@ def territory_tiles(state: GameState, cfg: Config, city: City) -> list[int]:
 
 
 def territory(state: GameState, cfg: Config, city: City) -> set[Cell]:
-    """Every cell whose centre lies on land the city holds."""
+    """Every cell whose center lies on land the city holds."""
     c = cell_size(cfg)
     out: set[Cell] = set()
     for t in territory_tiles(state, cfg, city):
@@ -124,7 +124,7 @@ def _spiral(cfg: Config, city: City, state: GameState) -> list[Cell]:
 
 
 def auto_spot(state: GameState, cfg: Config, city: City, what: str) -> Cell | None:
-    """The free spot nearest the centre (top-left cell of the footprint)."""
+    """The free spot nearest the center (top-left cell of the footprint)."""
     n = size_of(cfg, what)
     for cx, cy in _spiral(cfg, city, state):
         x, y = cx - n // 2, cy - n // 2
@@ -254,7 +254,7 @@ def wall_totals(cfg: Config, city: City) -> dict[str, dict[str, int]]:
 
 
 def ai_ring(state: GameState, cfg: Config, city: City) -> list[Cell]:
-    """A square ring around the centre, inside the land and clear of buildings."""
+    """A square ring around the center, inside the land and clear of buildings."""
     r = L(cfg, "ai_ring")
     land, blocked = territory(state, cfg, city), occupied(cfg, city)
     ring = [(x, y) for x in range(-r, r + 1) for y in range(-r, r + 1) if max(abs(x), abs(y)) == r]

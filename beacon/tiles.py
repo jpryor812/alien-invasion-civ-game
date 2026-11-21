@@ -1,4 +1,4 @@
-"""Tile rules: what a hex yields, costs to enter and gives in defence.
+"""Tile rules: what a hex yields, costs to enter and gives in defense.
 
 Yield breakdowns are lists of `(source, yield, amount)` lines so every number can be explained.
 """

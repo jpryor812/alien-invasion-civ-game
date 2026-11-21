@@ -10,7 +10,7 @@
   const MAT = { timber: "🪵", stone: "🪨", iron: "⚙️" };
   const WALL_COL = { wood: ["#8a5a2b", "#5a3a1a"], stone: ["#aaa59c", "#6a655e"], steel: ["#5d6b78", "#2f373f"], chitin: ["#6f8a3a", "#3c4d1c"], plasma: ["#5ad0ff", "#1f6a8a"] };
   const TINT = { grassland: "rgba(110,200,70,0.28)", plains: "rgba(220,200,90,0.28)", desert: "rgba(230,200,130,0.35)", tundra: "rgba(170,180,160,0.25)", snow: "rgba(240,245,255,0.5)" };
-  const pr = (s) => String(s).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const pr = (s) => (typeof usText === "function" ? usText : (x) => x)(String(s).replace(/_/g, " ")).replace(/^./, (c) => c.toUpperCase());
   const ec = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const costTxt = (m) => Object.entries(m || {}).map(([k, n]) => `${MAT[k] || k}${n}`).join(" ");
 
@@ -77,12 +77,12 @@
       g.restore();
     }
     // the border: outer edges of the land, a warm glowing line (no inner hex lines)
-    const centres = d.tiles.map((t) => [t.x / 1000, t.y / 1000]);
-    const has = (x, y) => centres.some(([a, b]) => Math.abs(a - x) < 0.2 && Math.abs(b - y) < 0.2);
+    const centers = d.tiles.map((t) => [t.x / 1000, t.y / 1000]);
+    const has = (x, y) => centers.some(([a, b]) => Math.abs(a - x) < 0.2 && Math.abs(b - y) < 0.2);
     g.lineCap = "round"; g.lineJoin = "round";
     for (const pass of [[10, "rgba(255,220,120,0.18)"], [4, "#f2d38a"]]) {
       g.lineWidth = pass[0]; g.strokeStyle = pass[1];
-      for (const [cx, cy] of centres) {
+      for (const [cx, cy] of centers) {
         for (let k = 0; k < 6; k++) {
           const a = (60 * k) * Math.PI / 180, nx = cx + Math.sqrt(3) * Math.cos(a), ny = cy + Math.sqrt(3) * Math.sin(a);
           if (has(nx, ny)) continue;
@@ -205,7 +205,7 @@
   }
 
   // -- the panel ------------------------------------------------------------------------------
-  // SPEC_M17: the one city screen. Materials are paid when a work is ordered; the crew's labour
+  // SPEC_M17: the one city screen. Materials are paid when a work is ordered; the crew's labor
   // decides the turns. Production trains engineers and units.
   const turnsTxt = (n) => n == null ? "no engineers" : `${n} turn${n === 1 ? "" : "s"}`;
   const shortTxt = (m) => Object.entries(m || {}).map(([k, n]) => `${n} more ${k}`).join(", ");
@@ -245,8 +245,8 @@
   const yTxt = (y) => Object.entries(y || {}).map(([k, n]) => `+${n} ${k}`).join(", ");
   function crewHtml() {
     const c = B.d.crew;
-    return `<div class="bcrew"><span>🛠 <b>${c.engineers}</b> engineer${c.engineers === 1 ? "" : "s"} · <b>${c.labour}</b> labour a turn</span>
-      <button data-train="engineer" title="Train one more engineer: ${c.next_cost} production, then ${c.upkeep} gold a turn. Each adds ${c.per_engineer} labour a turn.">+ Engineer</button></div>`;
+    return `<div class="bcrew"><span>🛠 <b>${c.engineers}</b> engineer${c.engineers === 1 ? "" : "s"} · <b>${c.labour}</b> labor a turn</span>
+      <button data-train="engineer" title="Train one more engineer: ${c.next_cost} production, then ${c.upkeep} gold a turn. Each adds ${c.per_engineer} labor a turn.">+ Engineer</button></div>`;
   }
   function worksHtml() {
     const d = B.d;
@@ -273,12 +273,12 @@
     return Object.entries(d.catalog).filter(([, b]) => !b.why || !/needs tech/.test(b.why)).map(([id, b]) => {
       const why = b.ordered ? "being built" : b.why || (Object.keys(b.short).length ? `needs ${shortTxt(b.short)}` : null);
       return `<button class="bopt" data-place="${id}" ${why ? "disabled" : ""} title="${ec(b.note || "")}"><b>${ec(b.name)}</b><span class="muted"> ${b.size}x${b.size}</span>
-        <span class="cost">${costTxt(b.materials) || "free"} · ${b.labour} labour · ${turnsTxt(b.turns)}</span>
+        <span class="cost">${costTxt(b.materials) || "free"} · ${b.labour} labor · ${turnsTxt(b.turns)}</span>
         ${(b.gives || []).length ? `<span class="gives">${b.gives.map((g) => `<span class="${/^Upkeep/.test(g) ? "muted" : ""}">${ec(g)}</span>`).join(" · ")}</span>` : ""}${why ? `<span class="why">${ec(why)}</span>` : ""}</button>`;
     }).join("") + `<div class="row muted small">Materials are paid when you place it; your engineers then build it.</div>`;
   }
   function wallList() {
-    return Object.entries(B.d.wall_types).map(([id, w]) => `<button class="bopt${B.tool && B.tool.material === id ? " on" : ""}" data-wall="${id}" ${w.why ? "disabled" : ""}><b>${ec(w.name)}</b><span class="cost">each piece ${costTxt(w.cost)} · ${w.labour} labour · +${w.strength / 10} strength, +${w.hp} HP</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
+    return Object.entries(B.d.wall_types).map(([id, w]) => `<button class="bopt${B.tool && B.tool.material === id ? " on" : ""}" data-wall="${id}" ${w.why ? "disabled" : ""}><b>${ec(w.name)}</b><span class="cost">each piece ${costTxt(w.cost)} · ${w.labour} labor · +${w.strength / 10} strength, +${w.hp} HP</span>${w.why ? `<span class="why">${ec(w.why)}</span>` : ""}</button>`).join("");
   }
   function landList() {
     const d = B.d, t = d.tiles.find((x) => x.tile === B.tile);
@@ -289,7 +289,7 @@
     const busy = d.works.find((w) => w.tile === t.tile);
     const here = [t.elevation === "hills" ? "Hills" : "", pr(t.terrain), t.feature ? pr(t.feature) : "", t.resource ? pr(t.resource) : ""].filter(Boolean).join(", ");
     const opts = t.works.map((w) => `<button class="bopt" data-work="${w.id}" title="${ec(w.note || "")}"><b>${ec(w.name)}</b>
-      <span class="cost">${w.labour} labour · ${turnsTxt(w.turns)}${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span></button>`).join("");
+      <span class="cost">${w.labour} labor · ${turnsTxt(w.turns)}${yTxt(w.yields) ? ` · ${yTxt(w.yields)}` : ""}${Object.keys(w.goods).length ? ` · ${costTxt(w.goods)} a turn` : ""}</span></button>`).join("");
     return `<div class="row"><b>${ec(here)}</b>${t.improvement ? ` · now: ${ec(pr(t.improvement))}` : ""}${t.pillaged ? ` · <span class="bad">damaged ${ec(pr(t.pillaged))}</span>` : ""}${d.worked.includes(t.tile) ? ' <span class="good">worked</span>' : ""}</div>`
       + (busy ? `<div class="row good">🛠 Your engineers are building a ${ec(busy.name.toLowerCase())}: ${turnsTxt(busy.turns)}.</div>`
         : opts || `<div class="row muted">Nothing can be built on this hex yet.</div>`);
@@ -405,7 +405,7 @@
     const xs = B.d.tiles.map((t) => t.x / 1000), ys = B.d.tiles.map((t) => t.y / 1000);
     B.camx = (Math.min(...xs) + Math.max(...xs)) / 2; B.camy = (Math.min(...ys) + Math.max(...ys)) / 2;
     const w = cvs.clientWidth - 380, h = cvs.clientHeight - 80;
-    B.camx = 0; B.camy = 0.15;  // start on the city centre, about three hexes across
+    B.camx = 0; B.camy = 0.15;  // start on the city center, about three hexes across
     B.K = Math.max(40, Math.min(w / 5.6, h / (4.2 * TILT)));
     B.camx += 160 / B.K;  // leave room for the panel on the right
     hint(); requestAnimationFrame(frame);

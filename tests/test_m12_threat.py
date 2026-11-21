@@ -99,7 +99,8 @@ def test_alien_cities_hold_contents_seen_as_rumours_and_given_on_liberation(cfg)
     gold = s.players[pid].gold
     out = liberation.liberate(s, cfg, city, pid)
     found = next(e for e in out if e["kind"] == "contents_found")
-    assert s.players[pid].gold == gold + cfg.alien("contents.depot.gold") and found["result"]
+    paid = gold + cfg.alien("contents.depot.gold")  # plus 25 gold a citizen (SPEC_M21)
+    assert s.players[pid].gold >= paid and found["result"]
     assert city.contents is None
 
 

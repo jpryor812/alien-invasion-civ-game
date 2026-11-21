@@ -36,7 +36,17 @@ from beacon.state import (  # noqa: F401  (Deal re-exported for actions)
 from beacon.units import place_unit, remove_unit
 
 Events = list[dict[str, Any]]
-TERM_KEYS = ("gold", "gold_per_turn", "resources", "techs", "recruits", "units", "alliance")
+TERM_KEYS = (
+    "gold",
+    "gold_per_turn",
+    "resources",
+    "techs",
+    "recruits",
+    "units",
+    "alliance",
+    "materials",
+    "materials_per_turn",
+)
 
 
 def terms_from(data: dict[str, Any]) -> DealTerms:
@@ -51,13 +61,57 @@ def terms_from(data: dict[str, Any]) -> DealTerms:
         recruits=[int(r) for r in data.get("recruits", [])],
         units=[int(u) for u in data.get("units", [])],
         alliance=bool(data.get("alliance", False)),
+        materials={k: int(v) for k, v in data.get("materials", {}).items()},
+        materials_per_turn={k: int(v) for k, v in data.get("materials_per_turn", {}).items()},
     )
 
 
 def is_empty(t: DealTerms) -> bool:
     return not (
-        t.gold or t.gold_per_turn or t.resources or t.techs or t.recruits or t.units or t.alliance
+        t.gold
+        or t.gold_per_turn
+        or t.resources
+        or t.techs
+        or t.recruits
+        or t.units
+        or t.alliance
+        or t.materials
+        or t.materials_per_turn
     )
+
+
+# -- materials in deals (SPEC_M21): drawn from the giver's towns, richest first, into the
+# receiver's capital ----------------------------------------------------------------------------
+
+
+def stock(state: GameState, pid: str) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for c in state.cities:
+        if c.owner == pid and c.status == "active":
+            for g, n in c.stores.items():
+                out[g] = out.get(g, 0) + n
+    return out
+
+
+def move_materials(state: GameState, giver: str, receiver: str, goods: dict[str, int]) -> bool:
+    """Move goods between treasuries; False (and nothing moved) if the giver is short."""
+    have = stock(state, giver)
+    if any(have.get(g, 0) < n for g, n in goods.items()):
+        return False
+    to = capital(state, receiver)
+    if to is None:
+        return False
+    for g, n in sorted(goods.items()):
+        left = n
+        towns = [c for c in state.cities if c.owner == giver and c.status == "active"]
+        for c in sorted(towns, key=lambda c: (-c.stores.get(g, 0), c.id)):
+            take = min(left, c.stores.get(g, 0))
+            c.stores[g] = c.stores.get(g, 0) - take
+            left -= take
+            if not left:
+                break
+        to.stores[g] = to.stores.get(g, 0) + n
+    return True
 
 
 def ports(state: GameState, cfg: Config, pid: str) -> list[City]:
@@ -95,6 +149,20 @@ def terms_problem(
     g, r = state.players[giver], state.players[receiver]
     if t.gold < 0 or t.gold_per_turn < 0 or any(v <= 0 for v in t.resources.values()):
         return "amounts must be positive"
+    goods = {**t.materials, **t.materials_per_turn}
+    if any(v <= 0 for v in goods.values()):
+        return "amounts must be positive"
+    from beacon import materials as mats
+
+    for good in goods:
+        if good not in mats.goods(cfg):
+            return f"{good} is not a material"
+    have = stock(state, giver)
+    for good, n in t.materials.items():
+        if have.get(good, 0) < n:
+            return f"{giver} has only {have.get(good, 0)} {good}"
+    if t.materials_per_turn and duration not in cfg.t("trade.deals.durations"):
+        return f"duration must be one of {cfg.t('trade.deals.durations')}"
     if t.gold > g.gold:
         return f"{giver} has only {g.gold} gold"
     if (t.gold_per_turn or t.resources) and duration not in cfg.t("trade.deals.durations"):
@@ -234,6 +302,8 @@ def _apply_now(state: GameState, cfg: Config, giver: str, receiver: str, t: Deal
     g, r = state.players[giver], state.players[receiver]
     g.gold -= t.gold
     r.gold += t.gold
+    if t.materials:
+        move_materials(state, giver, receiver, t.materials)
     for uid in t.units:
         unit = state.units[str(uid)]
         unit.owner = receiver
@@ -265,7 +335,9 @@ def accept(state: GameState, cfg: Config, deal: Deal) -> Events:
             credit(state, giver, "aid_units", len(t.units))
             credit(state, giver, "aid_techs", len(t.techs))
             credit(state, giver, "recruits_given", len(t.recruits))
-    lasting = any(x.gold_per_turn or x.resources for x in (deal.give, deal.take))
+    lasting = any(
+        x.gold_per_turn or x.resources or x.materials_per_turn for x in (deal.give, deal.take)
+    )
     if lasting:
         deal.active = True
         deal.ends_turn = state.turn + deal.duration
@@ -293,6 +365,10 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
                     continue
                 state.players[giver].gold -= t.gold_per_turn
                 state.players[receiver].gold += t.gold_per_turn
+            if t.materials_per_turn and not move_materials(
+                state, giver, receiver, t.materials_per_turn
+            ):
+                broken = True
         if broken or (deal.ends_turn is not None and state.turn + 1 >= deal.ends_turn):
             del state.deals[key]
             events.append(

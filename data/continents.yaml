@@ -27,7 +27,7 @@ continents:
     order: 0
     resources: {wheat: 15, cattle: 15, fish: 10, timber: 10, gold_ore: 5, coffee: 3, oil: 12, aluminum: 8, uranium: 5, rare_earths: 4}
     geo:
-      size: [66, 54]
+      size: [57, 47]
       x_scale_pct: 66
       size_pct: 100
       outline: [[-166, 66], [-162, 70], [-156, 71], [-148, 70], [-141, 70], [-130, 70],
@@ -85,7 +85,7 @@ continents:
     order: 1
     resources: {wheat: 8, cattle: 14, fish: 10, timber: 12, gold_ore: 8, coffee: 12, oil: 10, aluminum: 6, uranium: 3, rare_earths: 5}
     geo:
-      size: [60, 62]
+      size: [52, 54]
       x_scale_pct: 94
       size_pct: 100
       outline: [[-77, 8], [-76, 10], [-75, 11], [-72, 12], [-71, 11], [-68, 11], [-64, 11],
@@ -133,7 +133,7 @@ continents:
     order: 2
     resources: {wheat: 16, cattle: 14, fish: 12, timber: 10, gold_ore: 4, coffee: 0, oil: 6, aluminum: 8, uranium: 6, rare_earths: 3}
     geo:
-      size: [60, 58]
+      size: [52, 50]
       x_scale_pct: 60
       size_pct: 100
       outline: [[-6, 36], [-2, 37], [0, 39], [0, 40], [1, 41], [3, 42], [3, 43], [5, 43], [8, 44],
@@ -198,7 +198,7 @@ continents:
     order: 3
     resources: {wheat: 14, cattle: 8, fish: 12, timber: 8, gold_ore: 5, coffee: 4, oil: 14, aluminum: 6, uranium: 5, rare_earths: 10}
     geo:
-      size: [76, 58]
+      size: [66, 50]
       x_scale_pct: 70
       size_pct: 79
       outline: [[26, 40], [27, 38], [28, 37], [31, 36], [33, 36], [36, 37], [36, 35], [35, 33],
@@ -273,12 +273,12 @@ continents:
 
   africa:
     status: placeholder
-    note: Desert north, savanna centre, rainforest belt, highlands in the east.
+    note: Desert north, savanna center, rainforest belt, highlands in the east.
     name: Africa
     order: 4
     resources: {wheat: 6, cattle: 12, fish: 10, timber: 8, gold_ore: 12, coffee: 10, oil: 12, aluminum: 6, uranium: 8, rare_earths: 8}
     geo:
-      size: [56, 68]
+      size: [49, 59]
       x_scale_pct: 98
       size_pct: 75
       outline: [[-6, 36], [-2, 35], [0, 36], [3, 37], [8, 37], [10, 37], [11, 37], [10, 36],
@@ -336,7 +336,7 @@ continents:
     order: 5
     resources: {wheat: 10, cattle: 14, fish: 16, timber: 6, gold_ore: 10, coffee: 4, oil: 6, aluminum: 10, uranium: 8, rare_earths: 6}
     geo:
-      size: [70, 58]
+      size: [61, 50]
       x_scale_pct: 90
       size_pct: 100
       outline: [[114, -22], [116, -21], [119, -20], [121, -19], [122, -18], [124, -16],

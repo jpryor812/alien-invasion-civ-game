@@ -136,6 +136,10 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
     for pid in state.player_ids():  # a band that sighted its first town (designer 2026-11-17)
         events.extend(survivors.claim_town(state, cfg, pid))
     events.extend(survivors.escape(state, cfg))
+    from beacon import alien_leaders  # leaders of towns seen this turn (SPEC_M21)
+
+    alien_leaders.appoint_all(state, cfg)  # old saves
+    events.extend(alien_leaders.meet(state, cfg))
     reset_units(state, cfg)
     heal_cities(state, cfg)
     state.turn += 1

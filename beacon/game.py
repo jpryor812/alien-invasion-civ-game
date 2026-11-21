@@ -139,6 +139,9 @@ def new_game(
         story.place_sites(state, cfg)  # exploration finds (docs/SPEC_M9.md)
     starfall.place_remnants(state, cfg)  # meteor remnants (docs/SPEC_M10.md)
     threat.seed_contents(state, cfg)  # what alien cities hold, and their nests (SPEC_M12)
+    from beacon import alien_leaders  # each alien town's leader (SPEC_M21)
+
+    alien_leaders.appoint_all(state, cfg)
     threat.place_nests(state, cfg)
     for pid in state.player_ids():
         network.update_connections(state, cfg, pid)

@@ -292,7 +292,7 @@ def test_a_family_child_is_born_in_the_capital_and_grows_up_for_xp(cfg):
     born = next(e for e in events if e["kind"] == "leader_child_born")
     child = s.citizens[str(born["citizen"])]
     assert home.pop == pop + 1 and child.kin and not child.hybrid and not child.adult
-    assert sum(child.stats.values()) == 6
+    assert child.stats == {}  # rolled when the child grows up (SPEC_M21)
     with pytest.raises(CommandError, match="grow again"):
         apply_command(s, cfg, StartFamily(player=EU, partner=f"citizen:{partner.id}"))
     s.turn += cfg.leader("family.cooldown_turns")

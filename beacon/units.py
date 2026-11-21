@@ -23,12 +23,12 @@ def is_civilian(cfg: Config, unit_type: str) -> bool:
 
 
 def is_fixed(cfg: Config, unit_type: str) -> bool:
-    """City defence units never move and stand only on a city tile (designer, 2026-11-14)."""
+    """City defense units never move and stand only on a city tile (designer, 2026-11-14)."""
     return bool(cfg.units[unit_type].get("fixed"))
 
 
 def slot_kind(cfg: Config, unit_type: str) -> str:
-    """Each hex holds one unit of each kind: a field military unit, a city defence unit and a
+    """Each hex holds one unit of each kind: a field military unit, a city defense unit and a
     civilian."""
     if cfg.units[unit_type].get("air"):
         return "air"  # a city's UAV patrol (SPEC_M12 revision): beside its guns

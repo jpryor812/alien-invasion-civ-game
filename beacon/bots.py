@@ -3,7 +3,7 @@
 It decides from the fog-safe `PlayerView` and the shared planning helpers (paths, attack
 previews), and acts only through commands. It uses no randomness. It is a test driver, not the
 M6 AI: it explores, connects cities by road, improves tiles, reclaims and refounds lost cities,
-and attacks overrun cities when the preview favours it.
+and attacks overrun cities when the preview favors it.
 """
 
 from __future__ import annotations
@@ -733,7 +733,7 @@ class Bot:
             self.submit(MoveUnit(player=self.pid, unit=unit.id, target=target))
 
     def promote(self) -> None:
-        """Ranged units and units sent to attack take attack; the rest alternate, defence first
+        """Ranged units and units sent to attack take attack; the rest alternate, defense first
         for city guns."""
         for unit in self.view.my_units():
             while promotions.due(self.cfg, unit) > 0:
@@ -823,6 +823,7 @@ class Bot:
         self.enlist()  # citizens as soldiers (2026-11-17)
         self.land()
         self.births()  # SPEC_M19
+        self.meet_leaders()  # SPEC_M21
         self.market()
         self.walls()  # SPEC_M16
         self.council()
@@ -935,6 +936,22 @@ class Bot:
                 if imp and improvements.tile_problem(self.state, self.cfg, city, t, imp) is None:
                     self.submit(ImproveTile(player=self.pid, city=city.id, tile=t, improvement=imp))
                     break
+
+    def meet_leaders(self) -> None:
+        """Answer alien town leaders: bribe one that seems fond of gold when the treasury holds
+        twice the price, else leave (SPEC_M21)."""
+        from beacon import alien_leaders
+        from beacon.commands import AnswerAlienLeader
+
+        for cid in alien_leaders.pending(self.state, self.pid):
+            city = self.state.cities[cid]
+            cost = alien_leaders.bribe_cost(self.state, self.cfg, city)
+            bribe = (
+                alien_leaders.can_bribe(self.cfg, city)
+                and not city.alien_leader["dealt"]
+                and self.state.players[self.pid].gold >= 2 * cost
+            )
+            self.submit(AnswerAlienLeader(player=self.pid, city=cid, bribe=bribe))
 
     def births(self) -> None:
         """In a galactic winter a town short of food pauses births; otherwise births run

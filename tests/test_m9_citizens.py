@@ -115,13 +115,13 @@ def test_children_grow_up_faster_with_more_food(cfg):
         apply_command(s, cfg, SetCitizenJob(player=EU, citizen=slow.id, job="council"))
 
 
-def test_birth_brings_a_child_with_stats(cfg):
+def test_birth_brings_a_child_with_odds(cfg):
     state = new_game(cfg, seed=2)
     city = next(c for c in state.cities if c.owner == "europe" and c.is_capital)
     city.food_store = economy.growth_threshold(cfg, city.pop) + 50
     events, _ = economy.process_city(state, cfg, city, state.players["europe"])
     born = [e for e in events if e["kind"] == "citizen_born"]
-    assert born and sum(born[0]["stats"].values()) == 6
+    assert born and born[0]["stats"] == {} and born[0]["odds"]  # stats come at growing up (M21)
     child = state.citizens[str(born[0]["citizen"])]
     assert not child.adult and len(citizens.of_city(state, city.id)) == city.pop
 

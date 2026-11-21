@@ -114,6 +114,9 @@ def liberation_shares(state: GameState, damage_by: dict[str, int], by: str) -> d
 def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
     """A land melee unit takes an overrun city to 0 HP and walks in."""
     loss = city.pop * cfg.t("cities.liberation_pop_loss_pct") // 100
+    reward = city.pop * cfg.t("cities.liberation_gold_per_pop")  # SPEC_M21
+    if by in state.players:
+        state.players[by].gold += reward
     events = _restore(state, cfg, city, city.pop - loss)
     city.hp = cities.max_hp(cfg, city) * cfg.t("cities.liberated_hp_pct") // 100
     city.liberated_turn = state.turn
@@ -142,6 +145,7 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
 
     events.extend(give_contents(state, cfg, city, by))
     city.resistance, city.armed_by = 0, {}
+    city.alien_leader = {}  # gone with the aliens (SPEC_M21)
     if city.owner in state.players:  # what the aliens kept, and a damaged farm (SPEC_M18)
         from beacon import food
 
@@ -155,6 +159,7 @@ def liberate(state: GameState, cfg: Config, city: City, by: str) -> Events:
             "by": by,
             "owner": city.owner,
             "pop": city.pop,
+            "gold": reward,
             "damage_by": dict(city.damage_by),
         },
         *events,
@@ -175,6 +180,9 @@ def overrun(state: GameState, cfg: Config, city: City, defenders_radius: int = 2
     was_capital = city.is_capital
     city.status = OVERRUN
     city.owner = ALIENS
+    from beacon.alien_leaders import appoint  # a new alien leader (SPEC_M21)
+
+    appoint(state, cfg, city)
     city.is_capital = False
     city.connected = False
     city.queue = []

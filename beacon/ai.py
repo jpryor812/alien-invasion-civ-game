@@ -66,6 +66,14 @@ class AIPlayer(Bot):
                 total += self.cfg.units[unit.type]["cost"] * v["unit_pct"] // 100
         if t.alliance:
             total += v["alliance"]
+        if t.materials or t.materials_per_turn:  # at the Exchange's buying price (SPEC_M21)
+            from beacon.exchange import quotes
+
+            q = quotes(self.state, self.cfg, self.pid)
+            total += sum(q[g]["sell"] * n for g, n in t.materials.items() if g in q)
+            total += sum(
+                q[g]["sell"] * n * duration for g, n in t.materials_per_turn.items() if g in q
+            )
         return total
 
     def respond(self) -> None:
@@ -470,6 +478,7 @@ class AIPlayer(Bot):
         self.enlist()  # citizens as soldiers (2026-11-17)
         self.land()
         self.births()  # SPEC_M19
+        self.meet_leaders()  # SPEC_M21
         self.market()
         self.walls()  # SPEC_M16
         self.council()

@@ -49,6 +49,8 @@ class App:
             return s.builder(int(parts[2]))
         if parts[:2] == ["api", "city"] and len(parts) == 3:
             return s.city_detail(int(parts[2]))
+        if parts[:2] == ["api", "trade"] and len(parts) == 3:
+            return s.trade(parts[2])  # one civ's trade screen (SPEC_M21)
         simple = {
             "techs": s.techs,
             "council": s.council,

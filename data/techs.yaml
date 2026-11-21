@@ -12,7 +12,7 @@ techs:
   industrial_base: {status: calibrated, note: Present day., tree: production, tier: 0, cost: 0, prereqs: [], known_at_start: true}
   modern_warfare: {status: calibrated, note: Present day., tree: military, tier: 0, cost: 0, prereqs: [], known_at_start: true}
 
-  digital_finance: {status: placeholder, note: Financial centres., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false}
+  digital_finance: {status: placeholder, note: Financial centers., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false}
   vertical_farming: {status: placeholder, note: Vertical farms., tree: economic, tier: 3, cost: 280, prereqs: [international_accords], known_at_start: false, effects: {winter_keep_pct: 25}}
   global_logistics: {status: placeholder, note: Trade routes (M6)., tree: economic, tier: 4, cost: 450, prereqs: [digital_finance], known_at_start: false}
   biotech_medicine: {status: placeholder, note: Hospitals., tree: economic, tier: 4, cost: 450, prereqs: [vertical_farming], known_at_start: false}
@@ -44,13 +44,13 @@ techs:
   mass_production: {status: placeholder, note: Standard parts at scale., tree: production, tier: 4, cost: 450, prereqs: [robotics], known_at_start: false, effects: {unit_cost_pct: -15}}
   orbital_launch: {status: placeholder, note: Launch capacity from orbit., tree: production, tier: 4, cost: 450, prereqs: [signal_amplification], known_at_start: false, effects: {ship_time_pct: -50}}
   militia_reserves: {status: placeholder, note: Local reserve forces., tree: military, tier: 4, cost: 450, prereqs: [powered_exoskeletons], known_at_start: false, effects: {free_upkeep_per_city: 1}}
-  combined_arms: {status: placeholder, note: Infantry, armour and drones as one force., tree: military, tier: 4, cost: 450, prereqs: [drone_warfare], known_at_start: false, effects: {flanking_pct: 10}}
+  combined_arms: {status: placeholder, note: Infantry, armor and drones as one force., tree: military, tier: 4, cost: 450, prereqs: [drone_warfare], known_at_start: false, effects: {flanking_pct: 10}}
   stealth_tech: {status: placeholder, note: Low-signature units., tree: military, tier: 4, cost: 450, prereqs: [drone_warfare], known_at_start: false, effects: {hunt_immune: [recon]}}
   ai_targeting: {status: placeholder, note: Automated fire control., tree: military, tier: 5, cost: 720, prereqs: [quantum_computing], known_at_start: false, effects: {ranged_attack_pct: 15}}
   quantum_theory: {status: placeholder, note: Foundations for quantum computing and sensing., tree: production, tier: 3, cost: 280, prereqs: [applied_ai], known_at_start: false, effects: {yield_pct: {science: 10}}}
-  reactive_armour: {status: placeholder, note: Simple armour plates on every vehicle., tree: military, tier: 4, cost: 450, prereqs: [robotics], known_at_start: false, effects: {class_defence_pct: {armour: 15}}}
+  reactive_armour: {status: placeholder, note: Simple armor plates on every vehicle., tree: military, tier: 4, cost: 450, prereqs: [robotics], known_at_start: false, effects: {class_defence_pct: {armour: 15}}}
   deep_space_radar: {status: placeholder, note: Long-range radar that sees far beyond the continent., tree: production, tier: 4, cost: 450, prereqs: [radio_beacon_network], known_at_start: false}
-  synthetic_biology: {status: placeholder, note: Designed organisms for food and medicine., tree: economic, tier: 5, cost: 720, prereqs: [biotech_medicine], known_at_start: false, effects: {city_yields: {food: 10}}}
+  synthetic_biology: {status: placeholder, note: Designed organizms for food and medicine., tree: economic, tier: 5, cost: 720, prereqs: [biotech_medicine], known_at_start: false, effects: {city_yields: {food: 10}}}
   orbital_defence_grid: {status: placeholder, note: Guns in orbit and on the ground covering a whole continent., tree: military, tier: 5, cost: 720, prereqs: [orbital_launch], known_at_start: false, effects: {city_strength: 5}}
   antimatter_power: {status: placeholder, note: Dense energy beyond fusion., tree: production, tier: 5, cost: 720, prereqs: [fusion_power], known_at_start: false, effects: {yield_pct: {production: 20}}}
 

@@ -3,7 +3,7 @@
 Tile index = row * width + col. Odd rows are shifted half a hex to the right.
 
 A map may wrap east to west (the world is round, designer 2026-11-15, SPEC_M10): column 0 then
-neighbours the last column. Whether a map wraps is a property of the game (GameState.wrap); the
+neighbors the last column. Whether a map wraps is a property of the game (GameState.wrap); the
 game registers its width here with `set_wrap` when it is created or loaded, so every function
 below handles the seam. Wrapping maps need an even width (odd rows are offset).
 """

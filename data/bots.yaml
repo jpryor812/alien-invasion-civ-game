@@ -27,7 +27,7 @@ production:
 combat:
   status: placeholder
   note: Attack when expected damage dealt is at least attack_ratio_pct of damage taken; retreat
-    below retreat_hp_pct of max HP; merge with a neighbour when the pair has at least
+    below retreat_hp_pct of max HP; merge with a neighbor when the pair has at least
     merge_min_hp_pct of a full stack's HP; hunt visible aliens within threat_radius of own cities;
     melee units assault a city once it is below siege_city_hp_pct of its HP; garrison the capital
     and cities within garrison_radius of known aliens.
@@ -65,7 +65,7 @@ defences:
 promotions:
   status: placeholder
   note: Promotions the bot prefers by unit class, taken in turn (least-taken first), before the
-    general attack and defence ones (designer 2026-11-14 - unit-specific promotions).
+    general attack and defense ones (designer 2026-11-14 - unit-specific promotions).
   prefer:
     infantry: [dig_in, field_medic]
     armour: [breakthrough, blitz]

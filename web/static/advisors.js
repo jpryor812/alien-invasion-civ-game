@@ -24,14 +24,14 @@
       more: "Enter does the same as the button; Shift+Enter or Shift-click ends the turn anyway. Space jumps to the next unit that needs orders. F fortifies, S skips. Right-click clears the selection; drag or use the arrow keys to pan, and the mouse wheel to zoom." },
     production: { who: "economic", title: "Building your cities",
       body: "Your engineers have nothing to build. Develop city (or click the town) opens the town view: buildings, walls and land works cost materials up front; then the engineers build them, and more engineers build faster. Production trains units and new engineers.",
-      more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favour food, production, science or gold." },
+      more: "Every number has a breakdown: hover a yield to see where it comes from. A city works the best tiles for its focus; change the focus to favor food, production, science or gold." },
     survivors: { who: "military", title: "Survivors",
-      body: "You have no city yet: just your leader and four survivors with makeshift weapons. Scout the land around you: abandoned crates may hold rifles, armour, alien weapons, or more people. You have no home: the first alien-held town you find becomes your first city.",
+      body: "You have no city yet: just your leader and four survivors with makeshift weapons. Scout the land around you: abandoned crates may hold rifles, armor, alien weapons, or more people. You have no home: the first alien-held town you find becomes your first city.",
       more: "Wounded units heal when they rest (fortify). Alien hunters do not chase a band at a distance, and cover (forest, hills) hides you better. Free the town and your survivors become its first citizens; then research and building begin." },
     resistance: { who: "military", title: "A friend inside",
-      body: "You have found a town the aliens hold, and it will be your first city. Its people are ready to rise if someone pays for their weapons. You <b>must</b> send them your 100 gold before you can take it: the town's defence falls by half and its gates open.",
+      body: "You have found a town the aliens hold, and it will be your first city. Its people are ready to rise if someone pays for their weapons. You <b>must</b> send them your 100 gold before you can take it: the town's defense falls by half and its gates open.",
       ok: "Fund the resistance", then: () => { const p = S.view.pending.find((x) => x.kind === "fund_resistance"); if (p && window.showFundCard) showFundCard(p.city); },
-      more: "Later you can fund the resistance in any alien city you have found (click it on the map). Stronger cities need more gold: perhaps 500 gold for a quarter of their defence." },
+      more: "Later you can fund the resistance in any alien city you have found (click it on the map). Stronger cities need more gold: perhaps 500 gold for a quarter of their defense." },
     first_city: { who: "economic", title: "Your first town",
       body: "The town is yours, and it is your capital. The three people you rescued and your survivors without gear now live here as citizens. Let's meet them: each citizen can work a tile, sit on the council, or (once you have a barracks) train as a soldier.",
       ok: "Meet your people", then: () => { if (typeof openScreen === "function") openScreen("population"); },
@@ -44,6 +44,10 @@
       body: "With the farm under way, two buildings are worth it soon. The <b>radio tower</b> is free to repair and lets you talk to the other continents. A <b>barracks</b> lets your citizens train as soldiers; your first one is cheap and quick.",
       ok: "Open Develop city", then: () => { const t = S.view && Object.values(S.view.cities).find((c) => c.owner === S.view.me && c.is_capital); if (t && window.Builder) Builder.open(t.id, "build"); },
       more: "Neither is required. Click your town any time to open Develop city." },
+    barracks_done: { who: "military", title: "Your barracks is ready",
+      body: "Your citizens can now <b>train as soldiers</b>. A citizen trains for a few turns (stronger units take longer), then leaves the town as the unit. Pick someone with a good military stat.",
+      ok: "Train soldiers", then: () => { const e = (S.view.events || []).find((x) => x.kind === "building_completed" && x.building === "military_base" && x.player === S.view.me); if (typeof openPopulation === "function") openPopulation(e ? e.city : null); },
+      more: "Training costs no production: the citizen is the soldier. A town always keeps one citizen at home." },
     research: { who: "science", title: "Research",
       body: "Choose what your scientists work on. The tree starts with two branches, Urban Planning and Advanced Manufacturing, and every tech opens two more. Each card shows how many turns it takes and what it unlocks.",
       more: "Urban Planning leads to International Accords (alliances) and Beacon Theory (recruits); Radio Beacons, Deep Space Radar and Orbital Barrage end the war. Advanced Manufacturing leads to science, industry and the army." },
@@ -85,7 +89,7 @@
       more: "Alliances need International Accords on both sides; allies share what they see. Techs and recruits travel by sea from your ports." },
     city_lost: { who: "military", title: "A city has fallen",
       body: "The aliens have taken one of your cities. You can win it back in battle. If a continent loses every city it falls, but others can still rescue it.",
-      more: "If your capital falls, your largest city becomes the new capital. A city's garrison and walls are its best defence." },
+      more: "If your capital falls, your largest city becomes the new capital. A city's garrison and walls are its best defense." },
     mothership: { who: "science", title: "The mothership",
       body: "The mothership strikes cities from orbit and keeps landing reinforcements. Researching <b>Orbital Barrage</b> stops the reinforcements; firing the world barrage destroys the ship.",
       more: "The barrage is a shared project: anyone can send production or gold. It takes at least twenty turns, and the aliens will target its host city." },
@@ -168,6 +172,7 @@
     if (v.events.some((e) => e.kind === "first_city" && e.player === v.me)) trigger("first_city");
     if ((v.pending || []).some((p) => p.kind === "repair_farm")) trigger("farm");
     else if (v.founded && seen().has("farm")) trigger("next_builds");
+    if (v.events.some((e) => e.kind === "building_completed" && e.building === "military_base" && e.player === v.me)) trigger("barracks_done");
     if (v.pending.some((p) => p.kind === "choose_research")) trigger("research");
     if (v.pending.some((p) => p.kind === "choose_production") && v.turn >= 1 && !v.pending.some((p) => p.kind === "repair_farm")) trigger("production");
     const known = Object.values(v.cities);

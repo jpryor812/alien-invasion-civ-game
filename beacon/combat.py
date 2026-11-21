@@ -138,7 +138,7 @@ def garrison(state: GameState, cfg: Config, city: City) -> Unit | None:
 
 
 def _open_ground(state: GameState, tile: int) -> bool:
-    """Flat, unwooded, not a city: where armour shines and infantry has no cover."""
+    """Flat, unwooded, not a city: where armor shines and infantry has no cover."""
     t = state.tiles[tile]
     return t.elevation == "flat" and t.feature is None and state.city_at(tile) is None
 
@@ -581,7 +581,7 @@ def defences_fire(state: GameState, cfg: Config) -> Events:
 
 
 def _guns_fire(state: GameState, cfg: Config) -> Events:
-    """City defence guns are part of their city: at the end of each turn every one that has not
+    """City defense guns are part of their city: at the end of each turn every one that has not
     fired shoots the weakest visible enemy in range (ties by hex). Nobody gives them orders."""
     from beacon import fog
 

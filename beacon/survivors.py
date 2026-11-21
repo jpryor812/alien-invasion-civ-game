@@ -4,7 +4,7 @@ Each player begins as a band - the leader (30 attack) and four survivors (20 eac
 The first alien-held town of its continent the band finds becomes its first town (designer
 2026-11-17): lightly held, and 100 gold to its resistance halves it. The old capital, a few hexes
 away, is lightly held from the start; any other town is weakened the same way when found.
-Caches nearby hold weapons, armour, alien weapons, more survivors and scrap. Taking the town
+Caches nearby hold weapons, armor, alien weapons, more survivors and scrap. Taking the town
 makes it the capital and starts the normal game: survivors become citizens (those carrying gear
 stay as units), the leader leaves the map to lead from the capital, scrap becomes production. If
 the leader falls first, it escapes to the band's starting hex with two new survivors.
@@ -268,7 +268,7 @@ def pick_up(state: GameState, cfg: Config) -> Events:
             if not any(_give(cfg, u, kind) for u in takers if u.owner == unit.owner):
                 if len(unit.pack) < pack_size(cfg):  # carried to a town's armoury (SPEC_M20)
                     unit.pack = [*unit.pack, kind]
-                    got += " (carried home for the armoury)"
+                    got += " (carried home for the armory)"
                 else:
                     got += " (nobody could use or carry it)"
         elif kind == "survivor":
@@ -364,7 +364,7 @@ def escape(state: GameState, cfg: Config) -> Events:
 
 def barricades_hold(state: GameState, cfg: Config, city: City, pid: str) -> bool:
     """A band's first town holds (cannot fall below 1 HP) until the band has found a weapon,
-    armour or another survivor (designer: not without an upgrade or an extra citizen)."""
+    armor or another survivor (designer: not without an upgrade or an extra citizen)."""
     player = state.players.get(pid)
     if player is None or player.founded or player.band_town != city.id or not player.band_claimed:
         return False

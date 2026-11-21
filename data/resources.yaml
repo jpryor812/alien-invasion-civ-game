@@ -9,7 +9,7 @@ resources:
   timber: {status: placeholder, note: Managed forest., category: bonus, yields: {production: 2}, improvement: extractor, terrains: [grassland, plains, tundra], elevations: [flat], quantity: 0}
   gold_ore: {status: placeholder, note: Precious metals., category: bonus, yields: {gold: 3}, improvement: mine, terrains: [grassland, plains, desert, tundra], elevations: [hills], quantity: 0}
   coffee: {status: placeholder, note: Cash crop., category: bonus, yields: {food: 1, gold: 2}, improvement: farm, terrains: [grassland], elevations: [flat], quantity: 0}
-  oil: {status: placeholder, note: Fuel for armour., category: strategic, yields: {production: 1}, improvement: extractor, terrains: [desert, tundra, plains], elevations: [flat], quantity: 2}
+  oil: {status: placeholder, note: Fuel for armor., category: strategic, yields: {production: 1}, improvement: extractor, terrains: [desert, tundra, plains], elevations: [flat], quantity: 2}
   aluminum: {status: placeholder, note: Light alloys., category: strategic, yields: {production: 1}, improvement: mine, terrains: [grassland, plains, desert, tundra], elevations: [hills], quantity: 2}
   uranium: {status: placeholder, note: Reactor fuel (used from M5 on)., category: strategic, yields: {production: 1}, improvement: mine, terrains: [plains, desert, tundra], elevations: [flat, hills], quantity: 1}
   rare_earths: {status: placeholder, note: Advanced electronics., category: strategic, yields: {gold: 1}, improvement: mine, terrains: [plains, desert, tundra], elevations: [hills], quantity: 2}

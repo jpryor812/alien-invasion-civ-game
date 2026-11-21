@@ -141,7 +141,7 @@ def unit_allowed(state: GameState, cfg: Config, city: City, u: str) -> str | Non
         for other in state.units_at(city.tile)
     ):
         return (
-            "the city already has one" if spec.get("air") else "the city already has a defence unit"
+            "the city already has one" if spec.get("air") else "the city already has a defense unit"
         )
     return None
 

@@ -371,6 +371,22 @@ class Session:
 
                 c["funded_pct"] = city.funded_pct
                 c["fund"] = threat.fund_quotes(s, cfg, me, city)
+                lead = city.alien_leader
+                if lead and me in lead.get("met", []):  # its alien leader (SPEC_M21)
+                    from beacon import alien_leaders
+
+                    c["leader"] = {
+                        "name": lead["name"],
+                        "hint": alien_leaders.hint(cfg, city),
+                        "face": lead["face"],
+                        "dealt": lead["dealt"],
+                        "angry": me in lead["angry"],
+                        "can_bribe": alien_leaders.can_bribe(cfg, city) and not lead["dealt"],
+                        "cost": alien_leaders.bribe_cost(s, cfg, city),
+                    }
+        v.pop("alien_leader", None)
+        for c in v["cities"].values():
+            c.pop("alien_leader", None)  # the truth stays hidden
         return v
 
     def _player_row(self, pid: str) -> dict[str, Any]:
@@ -1473,6 +1489,35 @@ class Session:
             )
         return {"cities": rows}
 
+    def trade(self, other: str) -> dict[str, Any]:
+        """Trading with one civ (designer 2026-11-21, SPEC_M21): what each side has to offer,
+        deals between the two, and whether an alliance is possible."""
+        from beacon import materials
+
+        s, cfg, me = self.state, self.cfg, self.human
+        if other not in s.players or other == me or other not in s.players[me].met:
+            raise ValueError(f"you have not met {other}")
+
+        def side(pid: str) -> dict[str, Any]:
+            stock = diplomacy.stock(s, pid)
+            return {
+                "gold": s.players[pid].gold,
+                "materials": {g: stock.get(g, 0) for g in materials.goods(cfg)},
+            }
+
+        need = cfg.t("trade.alliance_tech")
+        mine = [d for d in s.deals.values() if {d.proposer, d.receiver} == {me, other}]
+        return {
+            "other": self._player_row(other),
+            "me": side(me),
+            "them": side(other),
+            "durations": cfg.t("trade.deals.durations"),
+            "deals": [to_dict(d) for d in mine],
+            "allied": diplomacy.allied(s, me, other),
+            "alliance_tech": need,
+            "alliance_ready": need in s.players[me].techs and need in s.players[other].techs,
+        }
+
     def diplomacy(self) -> dict[str, Any]:
         s, cfg, me = self.state, self.cfg, self.human
         player = s.players[me]
@@ -1546,7 +1591,7 @@ PROJECT_INFO = {
 
 def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
     """What a building, unit, improvement or project does, as short lines, plus tags naming
-    what it helps (food, production, science, gold, beacon, military, defence, sight, movement)."""
+    what it helps (food, production, science, gold, beacon, military, defense, sight, movement)."""
     lines: list[str] = []
     tags: list[str] = []
     if kind == "project":
@@ -1561,7 +1606,7 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
             lines.append(f"+{v}% {YIELD_WORD.get(y, y)} in this city")
             tags.append(y)
         if b.get("city_strength"):
-            lines.append(f"+{b['city_strength']} city defence strength")
+            lines.append(f"+{b['city_strength']} city defense strength")
             tags.append("defence")
         if b.get("city_hp"):
             lines.append(f"+{b['city_hp']} city HP")
@@ -1593,7 +1638,7 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
                 lines.append("Does not fight")
         else:
             lines.append(
-                f"Strength {u['strength']}" + (" (defence only)" if u.get("no_attack") else "")
+                f"Strength {u['strength']}" + (" (defense only)" if u.get("no_attack") else "")
             )
             if u["ranged_strength"]:
                 lines.append(f"Ranged strength {u['ranged_strength']}, range {u['range']}")
@@ -1610,7 +1655,7 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
         for k, pct in (u.get("bonus_vs") or {}).items():
             lines.append(f"+{pct}% against {'cities' if k == 'city' else k + ' units'}")
         if u.get("rough_defence_pct"):
-            lines.append(f"+{u['rough_defence_pct']}% defence on hills, forest, jungle or marsh")
+            lines.append(f"+{u['rough_defence_pct']}% defense on hills, forest, jungle or marsh")
         if u.get("open_attack_pct"):
             lines.append(f"+{u['open_attack_pct']}% attacking units on open flat ground")
         if u.get("heal_adjacent"):
@@ -1632,7 +1677,7 @@ def describe(cfg: Config, kind: str, ident: str) -> dict[str, Any]:
             lines.append(f"+{v} {YIELD_WORD.get(y, y)} on its hex")
             tags.append(y)
         if m.get("defense_pct"):
-            lines.append(f"+{m['defense_pct']}% defence on its hex")
+            lines.append(f"+{m['defense_pct']}% defense on its hex")
             tags.append("defence")
         if m.get("vision"):
             lines.append(f"Reveals {m['vision']} hexes around it")

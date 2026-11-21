@@ -141,7 +141,12 @@ def test_unconnected_city_produces_and_a_road_adds_connection_gold(cfg, game):
         dormant.tile,
         net_tiles,
         lambda i: hexgrid.neighbours(i, w, h),
-        lambda a, b: 1 if is_passable_land(cfg, game.tiles[b]) else None,
+        lambda a, b: (
+            1
+            if is_passable_land(cfg, game.tiles[b])
+            and (game.tiles[b].city is None or game.city_at(b) is None or b == capital(game).tile)
+            else None
+        ),  # around other towns: a road does not run through them (closer since M21)
     )
     assert path
     for t in path[1:]:

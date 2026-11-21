@@ -21,7 +21,10 @@ const FOG_MIST = "#8794a0";     // explored, not seen now: thin mist
 const YIELD_KEYS = ["food", "production", "science", "gold", "beacon"];
 
 const $ = (id) => document.getElementById(id);
-const pretty = (id) => String(id).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+// American spellings for ids shown as text (designer 2026-11-21: ids keep their old spelling)
+const US_WORDS = { armour: "armor", armoured: "armored", armoury: "armory", defence: "defense", defences: "defenses", centre: "center", colour: "color", labour: "labor", harbour: "harbor", rumour: "rumor", neighbour: "neighbor" };
+const usText = (t) => String(t).replace(/\b(armour|armoured|armoury|defences?|centre|colour|labour|harbour|rumour|neighbour)\b/gi, (w) => { const u = US_WORDS[w.toLowerCase()]; return w[0] === w[0].toUpperCase() ? u[0].toUpperCase() + u.slice(1) : u; });
+const pretty = (id) => usText(String(id).replace(/_/g, " ")).replace(/\b\w/g, (c) => c.toUpperCase());
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const code = (type) => {
   const special = { infantry: "INF", artillery: "ART", recon_team: "RCN", engineers: "ENG", restoration_team: "RST",
@@ -30,7 +33,7 @@ const code = (type) => {
   const words = type.replace(/^alien_/, "").split("_");
   return (words.length > 1 ? words.map((w) => w[0]).join("") : words[0].slice(0, 3)).toUpperCase().slice(0, 3);
 };
-// UI icons (visuals pass 2): small bronze medallions, each with a coloured glyph, in the manner of
+// UI icons (visuals pass 2): small bronze medallions, each with a colored glyph, in the manner of
 // Civ's yield icons. One shared gradient set is defined once in the page (see ICON_DEFS).
 const medal = (glyph, tone) => `<svg class="icon medal" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9.3" fill="url(#md-${tone})" stroke="#3a2a10" stroke-width="0.8"/><circle cx="10" cy="10" r="8.1" fill="none" stroke="#f2d38a" stroke-opacity="0.55" stroke-width="0.7"/>${glyph}</svg>`;
 const ICON = {
@@ -127,7 +130,7 @@ function pick(sx, sy) {
   if (col < 0 || row < 0 || col >= S.view.width || row >= S.view.height) return null;
   return row * S.view.width + col;
 }
-// neighbours with the index of the shared edge (corner k to corner k+1, corners at 60k-30 degrees)
+// neighbors with the index of the shared edge (corner k to corner k+1, corners at 60k-30 degrees)
 const DIRS_EVEN = [[1, 0, 0], [0, -1, 5], [-1, -1, 4], [-1, 0, 3], [-1, 1, 2], [0, 1, 1]];
 const DIRS_ODD = [[1, 0, 0], [1, -1, 5], [0, -1, 4], [-1, 0, 3], [0, 1, 2], [1, 1, 1]];
 function neighbourEdges(i) {
@@ -284,7 +287,7 @@ for (const [kind, n] of Object.entries(FEATURE_FILES)) {
   }
 }
 const featureArt = (kind, v) => { if (featurePending) return null; const list = FEATURE_ART[kind].filter((im) => im.naturalWidth); return list.length ? list[v % list.length] : null; };
-// mountain rock graded to its land: warm sandstone in deserts, cold grey under snow
+// mountain rock graded to its land: warm sandstone in deserts, cold gray under snow
 const MOUNTAIN_GRADE = {
   desert: "sepia(0.55) saturate(1.5) hue-rotate(-8deg) brightness(1.1)",
   plains: "sepia(0.2) saturate(1.15) brightness(1.05)",
@@ -299,7 +302,7 @@ function forestFilter(t, variant) {
   if (variant === 4) return "hue-rotate(-14deg) saturate(1.55) brightness(1.06)";
   return "saturate(1.5) hue-rotate(12deg) brightness(1.1) contrast(1.08)";
 }
-// hill relief: the rendered grey shading, re-centred on mid-grey so that overlay only lights the
+// hill relief: the rendered gray shading, re-centred on mid-grey so that overlay only lights the
 // slopes facing the sun and shades the rest, with soft edges
 let RELIEF;
 function hillRelief() {
@@ -341,7 +344,7 @@ function featureSprite(t, Rb, variant, rendered = false) {
   if (t.feature === "forest") { g.filter = forestFilter(t, variant); if (!art("forest")) { g.filter = "none"; paintForest(g, cx, cy, Rb, rnd, t.terrain); } g.filter = "none"; }
   if (t.feature === "jungle") { g.filter = "saturate(1.7) hue-rotate(18deg) brightness(0.92) contrast(1.1)"; if (!art("jungle")) { g.filter = "none"; paintJungle(g, cx, cy, Rb, rnd); } g.filter = "none"; }
   if (t.elevation === "mountain") {
-    const im = featureArt("mountain", variant);  // rendered with the hex centre 62% down the frame
+    const im = featureArt("mountain", variant);  // rendered with the hex center 62% down the frame
     if (im) {  // a soft shadow where the range meets the ground, then the rock graded to its land
       const sh = g.createRadialGradient(cx + Rb * 0.1, cy + Rb * 0.12, Rb * 0.1, cx + Rb * 0.1, cy + Rb * 0.12, Rb * 0.95);
       sh.addColorStop(0, "rgba(20,18,14,0.35)"); sh.addColorStop(1, "rgba(20,18,14,0)");
@@ -371,13 +374,13 @@ function paintForest(g, cx, cy, R, rnd, terrain) {
   const cold = terrain === "tundra" || terrain === "snow";
   // trees grow in clumps with clearings between them; density varies from hex to hex
   const pts = [], clumps = 2 + Math.floor(rnd() * 3), total = 7 + Math.floor(rnd() * 8);
-  const centres = Array.from({ length: clumps }, () => [cx + (rnd() - 0.5) * 1.1 * R, cy + (rnd() - 0.5) * 0.9 * R]);
+  const centers = Array.from({ length: clumps }, () => [cx + (rnd() - 0.5) * 1.1 * R, cy + (rnd() - 0.5) * 0.9 * R]);
   for (let k = 0; k < total; k++) {
     const [qx, qy] = centres[k % clumps], a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * R * 0.32;
     pts.push([qx + Math.cos(a) * d, qy + Math.sin(a) * d * 0.75, 0.7 + rnd() * 0.55]);
   }
   // a darker forest floor under each clump
-  for (const [qx, qy] of centres) {
+  for (const [qx, qy] of centers) {
     const fg = g.createRadialGradient(qx, qy + R * 0.05, 0, qx, qy + R * 0.05, R * 0.42);
     fg.addColorStop(0, cold ? "rgba(40,60,45,0.35)" : "rgba(30,60,20,0.35)"); fg.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = fg; g.beginPath(); g.ellipse(qx, qy + R * 0.05, R * 0.45, R * 0.32, 0, 0, Math.PI * 2); g.fill();
@@ -557,7 +560,7 @@ function renderChunk(cx, cy, Rb) {
   const w = Math.ceil(((CHUNK + 1.5) * SQ3 * R0 + 2 * CHUNK_PAD) * k) + 4;
   const h = Math.ceil(((CHUNK * 1.5 + 2.5) * R0 + 2 * CHUNK_PAD) * k) + 4;
   const W0 = S.view.width;
-  const tiles = [], ring = [];  // the chunk's own hexes, and its own plus a ring of neighbours
+  const tiles = [], ring = [];  // the chunk's own hexes, and its own plus a ring of neighbors
   for (let r = cy * CHUNK - 2; r < Math.min(S.view.height, (cy + 1) * CHUNK + 2); r++) {
     if (r < 0) continue;
     for (let col = cx * CHUNK - 2; col < Math.min(W0, (cx + 1) * CHUNK + 2); col++) {
@@ -574,7 +577,7 @@ function renderChunk(cx, cy, Rb) {
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d");
   const coastal = (i) => neighbourEdges(i).some(([n]) => { const t2 = S.tilesByIndex.get(n); return t2 && isWater(t2); });
-  // 1. ground, clipped to this chunk's own hexes (the ring of neighbours only feeds the blending).
+  // 1. ground, clipped to this chunk's own hexes (the ring of neighbors only feeds the blending).
   //    Water first, then the land cut out by a smooth coastline mask with a beach band inside it
   //    and a surf band outside it.
   g.save(); g.beginPath();
@@ -617,7 +620,7 @@ function renderChunk(cx, cy, Rb) {
       if (mine.length) paintLayer(lg, kind, mine, () => (masks ? 1.22 : 1.02));
     }
     // patchwork: each land hex leans a little toward its own shade (soft-light, blurred), so wide
-    // grasslands read as a quilt of greens and golds as in Civ rather than one even colour
+    // grasslands read as a quilt of greens and golds as in Civ rather than one even color
     lg.save(); lg.globalCompositeOperation = "soft-light"; lg.globalAlpha = 0.6; lg.filter = `blur(${Math.max(2, Rb * 0.45)}px)`;
     for (const [i, t, x, y] of land) {
       const tones = PATCH[t.terrain];
@@ -647,7 +650,7 @@ function renderChunk(cx, cy, Rb) {
     }
   }
   // 3. hills shade the ground under them (rendered relief, laid in overlay so the terrain keeps
-  //    its colour), then features over the ground, back to front
+  //    its color), then features over the ground, back to front
   const relief = hillRelief();
   if (relief) {
     g.save(); g.globalCompositeOperation = "overlay";
@@ -693,7 +696,7 @@ function drawGroundAt(W, H, R, shift) {
     }
   }
 }
-// The hexes on screen, from the camera (rows and columns), with their screen centres.
+// The hexes on screen, from the camera (rows and columns), with their screen centers.
 function visibleTiles(W, H, R) {
   const out = [];
   const [wx0, wy0] = toWorld(-R * 3, -R * 3), [wx1, wy1] = toWorld(W + R * 3, H + R * 3);
@@ -803,7 +806,7 @@ async function refresh(keepSelection = true) {
   if (newWorld) { TILE_SIG = new Map(); CHUNKS.clear(); CHUNK_VER.clear(); }
   invalidateGround(v);
   S.unitsByTile = new Map();
-  S.defencesByTile = new Map();  // city defences are part of their city: not drawn or selected
+  S.defencesByTile = new Map();  // city defenses are part of their city: not drawn or selected
   // facing: a unit that moved turns toward its last step (client memory only)
   S.lastTile = S.lastTile || new Map(); S.facing = S.facing || new Map();
   for (const u of v.units) {
@@ -876,7 +879,7 @@ function draw(t = performance.now()) {
   const visible = visibleTiles(W, H, R);
   // 1-2. the ground (terrain and coasts), from cached chunks (see "ground chunks")
   drawGround(W, H, R);
-  // 3. routes: from each route hex's centre to the edge it shares with each joined neighbour, so
+  // 3. routes: from each route hex's center to the edge it shares with each joined neighbor, so
   //    joins meet at edges and bends look natural (dirt roads; railways with ties and rails)
   if (z > 0.25) for (const [i, sx, sy, shown] of visible) {
     if (!shown) continue;
@@ -906,7 +909,7 @@ function draw(t = performance.now()) {
     if (t1.nest != null && z > 0.3) drawNest(sx, sy, R, i);
     if (t1.resource && t1.visible && z > 0.6) drawResource(t1.resource, sx, sy, R);
   }
-  // 4b. territory borders: a line in the owner's colour along every edge where ownership changes,
+  // 4b. territory borders: a line in the owner's color along every edge where ownership changes,
   //     with a soft glow inside, as in Civ
   if (z > 0.2) drawBorders(visible, R);
   // 5. fog, and a light veil over remembered city hexes not seen right now
@@ -1001,7 +1004,7 @@ function drawBorders(visible, R) {
       lines.get(own).push([ax, ay, bx, by, sx, sy]);
     }
   }
-  // the inner glow: a band from each border edge fading toward the hex centre
+  // the inner glow: a band from each border edge fading toward the hex center
   for (const [own, sx, sy, ax, ay, bx, by] of glow) {
     const col = own === "aliens" ? "#e0362c" : OWNER[own] || "#999";
     const mx = (ax + bx) / 2, my = (ay + by) / 2, f = 0.5;
@@ -1094,7 +1097,7 @@ function paintImprovement(g, kind, cx, cy, R, variant = 0) {
   if (kind === "farm") {
     // a patchwork of rectangular fields (greens, golds, ploughed browns) at an angle that changes from
     // hex to hex, with hedgerows between fields, crop rows in each and a farmstead
-    g.save(); hexPath(g, cx, cy, R * 1.05); g.clip();  // a little past the hex, so neighbouring farms join
+    g.save(); hexPath(g, cx, cy, R * 1.05); g.clip();  // a little past the hex, so neighboring farms join
     const cols = ["#7fa83a", "#9bb848", "#c9b04a", "#d9c25a", "#6b8f32", "#b89a4a", "#8a6a3a", "#a9c060"];
     g.translate(cx, cy); g.rotate(-0.6 + rnd() * 1.2);
     const fw = R * (0.42 + rnd() * 0.12), fh = R * (0.3 + rnd() * 0.1);
@@ -1245,7 +1248,7 @@ function paintImprovement(g, kind, cx, cy, R, variant = 0) {
       };
       hut(cx - R * 0.22, ey - R * 0.08, R * 0.42, R * 0.14, "#6b7550");
       hut(cx + R * 0.2, ey + R * 0.16, R * 0.36, R * 0.12, "#5e6847");
-      // a parked armoured car
+      // a parked armored car
       const vx = cx - R * 0.3, vy = ey + R * 0.22;
       g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(vx - R * 0.1, vy, R * 0.24, R * 0.04);
       g.fillStyle = "#4b5536"; g.fillRect(vx - R * 0.12, vy - R * 0.08, R * 0.24, R * 0.08);
@@ -1343,7 +1346,7 @@ const CITY_ART_PENDING = () => Object.values(CITY_IMG).some((im) => !im.complete
 // Cities (visuals pass 1): painted once per look and zoom step, drawn scaled. Four modern tiers by
 // population (houses, mid-rise town, towers, skyscraper metropolis), a domed capitol and flag for
 // capitals, a concrete ring for walls and a dome for plasma shields; alien hives grow organic
-// spires; lost cities are greyed or rubble.
+// spires; lost cities are grayed or rubble.
 const CITY_SPRITES = new Map();
 function cityTier(pop) { return pop <= 2 ? 0 : pop <= 5 ? 1 : pop <= 9 ? 2 : 3; }
 function drawCity(c, sx, sy, R, i) {
@@ -1381,8 +1384,8 @@ function drawHiveLife(sx, sy, R, i, tier) {
   }
   ctx.restore();
 }
-// Outskirts (visuals pass 2): towns and cities spill suburbs onto open neighbouring land; a hive's
-// creep spreads onto its neighbours instead. Chosen per city from a hash, so they stay put.
+// Outskirts (visuals pass 2): towns and cities spill suburbs onto open neighboring land; a hive's
+// creep spreads onto its neighbors instead. Chosen per city from a hash, so they stay put.
 const OUTSKIRTS = new Map();
 function drawOutskirts(c, i, sx, sy, R) {
   if (R < 9 || c.status === "empty" || c.status === "dormant") return;
@@ -1477,7 +1480,7 @@ const ROOFS = ["#6e3a2c", "#8a4a35", "#5b5f66", "#4f5a4a", "#7a6450", "#3f4650"]
 function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, rnd, art = null) {
   const spread = [0.8, 0.9, 1.0, 1.1][tier];
   const rx = R * spread * 1.12, ry = R * spread * 0.8;
-  if (art) {  // a Blender render (hex centre 62% down a 3.2-hex frame); walls, capitol and shield go over it
+  if (art) {  // a Blender render (hex center 62% down a 3.2-hex frame); walls, capitol and shield go over it
     const s = R * 3.2;
     g.filter = dormant ? "grayscale(0.85) brightness(0.8)" : "saturate(1.35) contrast(1.18) brightness(1.12)";
     g.drawImage(art, cx - s / 2, cy - s * 0.62, s, s); g.filter = "none";
@@ -1504,7 +1507,7 @@ function paintCity(g, cx, cy, R, tier, owner, capital, walls, shield, dormant, r
     g.strokeStyle = "#c8c1b2"; g.lineWidth = Math.max(1, R * 0.025);
     g.beginPath(); g.ellipse(cx, cy + R * 0.01, rx * 0.98, ry * 0.98, 0, Math.PI, 0); g.stroke();
   }
-  // buildings, back to front; taller toward the centre and with the tier
+  // buildings, back to front; taller toward the center and with the tier
   const count = [16, 24, 32, 42][tier];
   const blocks = [];
   for (let k = 0; k < count; k++) {
@@ -1556,7 +1559,7 @@ function paintCityExtras(g, cx, cy, R, rx, ry, owner, capital, walls, shield, do
     g.strokeStyle = "#a59f93"; g.lineWidth = Math.max(2, R * 0.07);
     g.beginPath(); g.ellipse(cx, cy + R * 0.04, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2); g.stroke();
   }
-  if (capital && !dormant) {  // a domed capitol and a flag in the owner's colour
+  if (capital && !dormant) {  // a domed capitol and a flag in the owner's color
     const x = cx + R * 0.04, y = cy + R * 0.36, w = R * 0.44;
     box(g, x, y, w, w * 0.55, R * 0.16, "#f2ede2", "#f7f2e6", "#d3ccbc");
     g.fillStyle = "#d9d2c2"; for (let q = 0; q < 6; q++) g.fillRect(x - w / 2 + (q + 0.3) * w / 6, y - R * 0.15, w / 16, R * 0.14);
@@ -1626,8 +1629,16 @@ function roundRect(x, y, w, h, r) {
 // Civ-style city banner: a dark plate with owner-coloured end caps (population on the left,
 // production turns on the right), bevelled ends, a gold rim on your own cities, the capital star,
 // and the city's health bar beneath.
-const GEAR_NAME = { weapon: "Rifle (+5 attack)", armour: "Body armour (+5 defence)", alien_weapon: "Alien weapon (+12 attack)" };
+const GEAR_NAME = { weapon: "Rifle (+5 attack)", armour: "Body armor (+5 defense)", alien_weapon: "Alien weapon (+12 attack)" };
 const MAT_ICON = { timber: "🪵", stone: "🪨", iron: "⚙️" };
+// What a rumor about an alien town means (designer 2026-11-21: "Rumor: danger" said nothing)
+const RUMOR_TEXT = {
+  people: ["people to rescue?", "Scouts heard of prisoners or survivors inside: freeing the town may rescue them."],
+  knowledge: ["knowledge?", "Something the aliens are studying is inside: freeing the town may give science."],
+  arms: ["weapons?", "Scouts saw weapons going in: freeing the town may give you soldiers."],
+  wealth: ["riches?", "Supplies are stored inside: freeing the town may give gold."],
+  danger: ["a strong guard?", "Something big guards this town, maybe a hive heart: harder to take, but it holds science and alien tech."],
+};
 const CONTENTS_NAME = { survivors: "survivors", captive: "a captive specialist", lab: "a working lab", cache: "a weapons cache", depot: "a fuel depot", hive_heart: "a hive heart" };
 // An announced alien strike (SPEC_M12): a red arrow from where it gathers to the city, with the
 // turns left in a disc on the city.
@@ -1673,7 +1684,7 @@ function drawBanner(c, sx, sy, R) {
   const owner = hive ? "#b8322a" : c.owner ? OWNER[c.owner] : "#7e858b";
   const mine = c.owner === S.view.me;
   const known = hive && (c.contents || c.rumour);  // what an alien city holds (SPEC_M12)
-  const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : known ? ` · ${c.contents ? CONTENTS_NAME[c.contents] || pretty(c.contents) : `rumour: ${c.rumour}`}` : "";
+  const status = c.status === "dormant" ? " · dormant" : c.status === "empty" ? " · ruins" : known ? ` · ${c.contents ? CONTENTS_NAME[c.contents] || pretty(c.contents) : `rumor: ${(RUMOR_TEXT[c.rumour] || [c.rumour])[0]}`}` : "";
   const label = c.name + status;
   const fs = Math.max(10, Math.round(11 * Math.min(1.35, S.cam.zoom)));
   ctx.font = `600 ${fs}px Roboto, Arial, sans-serif`;
@@ -1720,7 +1731,7 @@ function drawBanner(c, sx, sy, R) {
     ctx.strokeStyle = "#e69a5c"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = "#ffd9b0"; ctx.font = `700 ${fs - 1}px sans-serif`; ctx.textAlign = "center"; ctx.fillText(prodText, px, pcy + 0.5);
   }
-  if (c.strength && fs >= 10) {  // the defence shield above the banner's left end, as in Civ
+  if (c.strength && fs >= 10) {  // the defense shield above the banner's left end, as in Civ
     const sw = fs * 2.0, sh = fs * 1.9, sxl = bx + cap * 0.55 - sw / 2, syt = by - sh * 0.9;
     ctx.fillStyle = "rgba(0,0,0,0.45)"; shieldPath(sxl + 1.5, syt + 2, sw, sh); ctx.fill();
     const sg = ctx.createLinearGradient(0, syt, 0, syt + sh); sg.addColorStop(0, "#3c4a56"); sg.addColorStop(1, "#1a232b");
@@ -1859,7 +1870,7 @@ function drawUnits(us, sx, sy, R, inCity = false) {
 function drawBadge(u, x, y, r, R, flag = false) {
   const owner = OWNER[u.owner] || "#999";
   const alien = u.owner === "aliens";
-  if (flag) {  // Civ's unit flag: a disc in the owner's colour, a dark rim, a white class icon
+  if (flag) {  // Civ's unit flag: a disc in the owner's color, a dark rim, a white class icon
     const col = alien ? "#b8322a" : owner;
     // the shape tells the class at a glance: shields for melee, discs for ranged and civilians,
     // diamonds for recon
@@ -2051,10 +2062,12 @@ function describePending(p) {
     story_choice: `Event: ${pretty(p.event)}`,
     council_vote: "The council is voting",
     repair_farm: `${cityName(p.city)}: repair the damaged farm`,
+    alien_leader: `${cityName(p.city)}: its alien leader awaits an answer`,
     unit_promotion: `${unitLabel(p.unit)} can be promoted`,
   }[p.kind] || pretty(p.kind);
 }
 async function resolvePending(p) {
+  if (p.kind === "alien_leader") { centerOnTile(S.view.cities[p.city].tile); return showAlienLeader(p.city); }
   if (p.kind === "repair_farm") { centerOnTile(S.view.cities[p.city].tile); if (window.Builder) return Builder.open(p.city, "land", p.tile); return selectCity(p.city); }
   if (p.kind === "choose_research") return openScreen("techs");
   if (p.kind === "council_vote") return openScreen("council");
@@ -2097,9 +2110,14 @@ function describeEvent(e) {
     winter_coming: () => `Scientists warn of a galactic winter in ${e.in} turns: for ${e.turns} turns crops will give half their food. Fill your stores.`,
     winter_began: () => `The galactic winter has begun: crops give half their food for ${e.turns} turns.`,
     winter_ended: () => `The galactic winter is over: the skies clear and the crops recover.`,
-    gear_stored: () => `${(e.items || []).map((g) => GEAR_NAME[g] || pretty(g)).join(", ")} left in ${cityName(e.city)}'s armoury.`,
-    gear_equipped: () => `A unit took ${GEAR_NAME[e.item] || pretty(e.item)} from ${cityName(e.city)}'s armoury.`,
+    gear_stored: () => `${(e.items || []).map((g) => GEAR_NAME[g] || pretty(g)).join(", ")} left in ${cityName(e.city)}'s armory.`,
+    gear_equipped: () => `A unit took ${GEAR_NAME[e.item] || pretty(e.item)} from ${cityName(e.city)}'s armory.`,
     unit_joined_city: () => `Your ${pretty(e.type)} settled in ${cityName(e.city)} as a citizen (population ${e.pop}).`,
+    alien_leader_met: () => `You have found ${cityName(e.city)} and its alien leader${e.angry ? ", who has turned on you" : ""}.`,
+    alien_leader_left: () => `You left ${cityName(e.city)}'s leader alone for now.`,
+    alien_bribe_taken: () => `${e.name} took your ${e.gold} gold and gave nothing back.`,
+    alien_leader_defected: () => `${e.name} took your ${e.gold} gold and defected to your council: ${cityName(e.city)}'s defense is halved.`,
+    city_liberated: () => `${cityName(e.city)} is free${e.gold && e.by === S.view.me ? `: its people paid you ${e.gold} gold` : ""}.`,
     unit_starved: () => `Your ${pretty(e.type)} starved to death.`,
     unit_hungry: () => `A unit is starving: no rations left (${e.hp} HP). Bring it home.`,
     rations_out: () => `A unit has eaten its last ration. Bring it into friendly land.`,
@@ -2118,7 +2136,7 @@ function describeEvent(e) {
     strike_launched: () => `The alien strike on ${cityName(e.city)} has begun.`,
     sabotage: () => `Sabotage at ${cityName(e.city)}: -${e.damage} HP (the saboteur took ${e.hurt}).`,
     resistance_armed: () => `Weapons smuggled into ${cityName(e.city)} (resistance ${e.level}).`,
-    resistance_funded: () => `${e.gold} gold to the resistance in ${cityName(e.city)}: its defence -${e.total_pct}%.`,
+    resistance_funded: () => `${e.gold} gold to the resistance in ${cityName(e.city)}: its defense -${e.total_pct}%.`,
     uprising: () => `Uprising in ${cityName(e.city)}! The garrison is hit.`,
     nest_destroyed: () => `An alien nest near ${cityName(e.city)} destroyed.`,
     city_intel: () => `Scouts report ${cityName(e.city)} holds ${CONTENTS_NAME[e.contents] || pretty(e.contents)}.`,
@@ -2133,7 +2151,6 @@ function describeEvent(e) {
     tech_learned: () => `Learned ${pretty(e.tech)}.`,
     city_reclaimed: () => `Reclaimed ${cityName(e.city)}.`,
     city_refounded: () => `Refounded ${cityName(e.city)}.`,
-    city_liberated: () => `Liberated ${cityName(e.city)}!`,
     city_overrun: () => `${cityName(e.city)} was overrun by aliens.`,
     unit_destroyed: () => `${pretty(e.type)} destroyed.`,
     recruit_arrived: () => `${e.name} answered the beacon${e.legendary ? " (legendary)" : ""}.`,
@@ -2204,11 +2221,11 @@ function renderUnitPanel() {
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
     ${(() => { const sh = (S.view.shards || []).find((x) => x.tile === u.tile && !x.claimed_by); return sh && u.owner === S.view.me ? `<div class="row small good">✦ Mining the ${esc(sh.name)} shard: ${(sh.progress || {})[S.view.me] || 0}/${sh.needed}. Stay here at the end of each turn; ${spec.survivor || spec.can_build || spec.role === "recon" ? "this unit can mine it" : '<span class="bad">only a scout, a road crew or your band can mine</span>'}.</div>` : ""; })()}
-    ${o.gear && o.gear.pack.length ? `<div class="row small">Carrying: ${o.gear.pack.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")} <span class="muted">· left in your nearest town's armoury when it is inside your land</span></div>` : ""}
-    ${o.gear && Object.keys(o.gear.armoury).length ? `<div class="row small">Armoury here: ${Object.entries(o.gear.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")}</div>` : ""}
+    ${o.gear && o.gear.pack.length ? `<div class="row small">Carrying: ${o.gear.pack.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")} <span class="muted">· left in your nearest town's armory when it is inside your land</span></div>` : ""}
+    ${o.gear && Object.keys(o.gear.armoury).length ? `<div class="row small">Armory here: ${Object.entries(o.gear.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")}</div>` : ""}
     ${spec.survivor && S.view.founded === false ? `<div class="muted small">${S.view.band_town != null
       ? `Your band has found its first town, ${esc((Object.values(S.view.cities).find((c) => c.tile === S.view.band_town) || {}).name || "")}: fund its resistance (100 gold halves it), then attack.`
-      : "Your band is homeless: explore. Crates may hold weapons, armour or people. The first alien-held town you find becomes yours to take."}${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
+      : "Your band is homeless: explore. Crates may hold weapons, armor or people. The first alien-held town you find becomes yours to take."}${S.view.scrap ? ` Scrap ${S.view.scrap}.` : ""}</div>` : ""}
     ${spec.air ? '<div class="muted">Circles its city on its own: it cannot be ordered or fight, sees 4 hexes, and warns you of alien strikes gathering against the city.</div>' : ""}
     ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
@@ -2232,7 +2249,7 @@ function renderUnitPanel() {
     }
   }
   if (u.job) add(`Cancel ${pretty(u.job.improvement)}`, () => send({ kind: "cancel_job", unit: u.id }), "Stop building (the work is lost) so the engineers can move away");
-  if (spec.role !== "civilian" && !u.job && u.attacks_left > 0) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defence; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
+  if (spec.role !== "civilian" && !u.job && u.attacks_left > 0) add("Fortify (F)", () => send({ kind: "fortify", unit: u.id }), "+25% defense; a unit that neither moves nor attacks heals 20 HP a turn at home, 10 outside");
   add("Skip (S)", () => send({ kind: "skip_unit", unit: u.id }));
   for (const imp of o.builds) {
     const bi = o.build_info[imp];
@@ -2252,9 +2269,9 @@ function renderUnitPanel() {
   for (const cid of o.sabotage || []) add(`Sabotage ${cityName(cid)}`, () => send({ kind: "sabotage", unit: u.id, city: cid }), "Cut its hit points; the saboteur may be hurt");
   for (const cid of o.arm || []) add(`Arm the resistance in ${cityName(cid)}`, () => send({ kind: "arm_resistance", unit: u.id, city: cid }), `${o.arm_gold} gold: each level gives a ${S.view.uprising_pct}% chance a turn of an uprising inside`);
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
-  if (o.gear && u.owner === S.view.me) {  // the armoury and joining a town (SPEC_M20)
+  if (o.gear && u.owner === S.view.me) {  // the armory and joining a town (SPEC_M20)
     for (const e of o.gear.equip) if (!e.why) add(`Equip ${GEAR_NAME[e.item] || pretty(e.item)}`, () => send({ kind: "equip_gear", unit: u.id, item: e.item }), "Take it from the town's armoury");
-    if (o.gear.join && !o.gear.join_why) add(`Join ${o.gear.join}`, () => send({ kind: "join_city", unit: u.id }), "Settle in the town as a grown citizen (its gear goes to the armoury)");
+    if (o.gear.join && !o.gear.join_why) add(`Join ${o.gear.join}`, () => send({ kind: "join_city", unit: u.id }), "Settle in the town as a grown citizen (its gear goes to the armory)");
   }
   if (o.merges.length) a.insertAdjacentHTML("afterend", '<div class="muted small">Move onto the highlighted unit of the same type to merge into a stack of two.</div>');
   if (o.splits.length) add("Split stack", () => send({ kind: "split_unit", unit: u.id, target: o.splits[0] }));
@@ -2317,11 +2334,11 @@ function renderCityPanel() {
     <h3>Citizens <button class="small" id="citpage">Citizens page</button></h3>
     <div class="muted small">Improved tiles are outlined on the map: green ✓ is worked, gold + is free; click a + to put your best citizen there.</div>
     <div class="citizens">${d.citizens.map((p) => citizenRow(p, d)).join("")}</div>
-    <h3>Defences</h3>
+    <h3>Defenses</h3>
     <div class="muted">${(S.defencesByTile.get(c.tile) || []).map((u) => `${esc(pretty(u.type))} (${u.hp}/${u.max_hp} HP${u.promotion ? `, level ${u.promotion.level + 1}` : ""})${u.promotion && u.promotion.upgrade_cost != null ? ` <button class="small" data-upgrade-gun="${u.id}" ${S.view.economy.gold < u.promotion.upgrade_cost ? "disabled" : ""} title="+${u.promotion.strength_pct}% attack and defence">Upgrade (${u.promotion.upgrade_cost}g)</button>` : ""}`).join(", ") || "none"}${(S.defencesByTile.get(c.tile) || []).some((u) => !S.view.unit_types[u.type].no_attack) ? ". Guns fire at the nearest weak enemy in range at the end of every turn." : ""}</div>
     <h3>Buildings</h3>
     <div class="muted">${c.buildings.map(pretty).join(", ") || "none"}${(c.wrecked || []).length ? ` · <span class="bad">wrecked: ${c.wrecked.map(pretty).join(", ")} (free to repair)</span>` : ""}</div>
-    ${Object.keys(d.armoury || {}).length ? `<h3>Armoury</h3><div class="muted">${Object.entries(d.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")} · a unit standing in the town can equip it</div>` : ""}
+    ${Object.keys(d.armoury || {}).length ? `<h3>Armory</h3><div class="muted">${Object.entries(d.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")} · a unit standing in the town can equip it</div>` : ""}
     ${d.bombard.length ? `<div class="actions"><span class="bad">Enemies in range are marked red: click one to fire.</span>${S.view.pending.some((p) => p.kind === "city_can_attack" && p.city === c.id) ? '<button id="holdfire">Hold fire</button>' : ""}</div>` : ""}`;
   side.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = () => send({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }));
   if ($("holdfire")) $("holdfire").onclick = () => send({ kind: "city_hold_fire", city: c.id });
@@ -2368,10 +2385,10 @@ async function send(cmd) {
 }
 // Like Civ V, the big button names the next thing that needs you and takes you there; it only
 // says "Next turn" when nothing is left. Shift-click (or Shift+Enter) ends the turn anyway.
-const ACTION_ORDER = ["repair_farm", "story_choice", "fund_resistance", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
+const ACTION_ORDER = ["repair_farm", "alien_leader", "story_choice", "fund_resistance", "council_vote", "city_can_attack", "unit_promotion", "choose_research", "choose_production", "unit_needs_orders", "choose_espionage_tech",
   "deal_received", "offer_received", "recruit_unseated"];
 const ACTION_LABEL = {
-  repair_farm: "Repair the farm", fund_resistance: "Fund the resistance", choose_research: "Choose research", choose_production: "Engineers are idle", unit_needs_orders: "Unit needs orders",
+  repair_farm: "Repair the farm", alien_leader: "Meet a leader", fund_resistance: "Fund the resistance", choose_research: "Choose research", choose_production: "Engineers are idle", unit_needs_orders: "Unit needs orders",
   choose_espionage_tech: "Choose alien tech", deal_received: "Answer a proposal", offer_received: "Answer an offer",
   recruit_unseated: "Seat a recruit", council_vote: "Council vote", city_can_attack: "City can attack", story_choice: "An event awaits", unit_promotion: "Promote a unit",
 };
@@ -2487,7 +2504,7 @@ function showTooltip(i, x, y) {
     const target = S.citiesByTile.get(i);  // fund the resistance first (designer 2026-11-17)
     if (target && target.fund && target.fund.length && !target.funded_pct) {
       const q = target.fund[0];
-      html = `<div class="fundwarn">⚠ <b>Fund the resistance first.</b> ${q.gold} gold cuts its defence by ${q.pct}%. Attacking opens the offer first.</div>` + html;
+      html = `<div class="fundwarn">⚠ <b>Fund the resistance first.</b> ${q.gold} gold cuts its defense by ${q.pct}%. Attacking opens the offer first.</div>` + html;
     }
   }
   else {
@@ -2512,7 +2529,7 @@ function showTooltip(i, x, y) {
     if (t && t.nest != null) html += '<br><b class="bad">Alien nest</b>: it heals and feeds the alien city next to it every turn. End a soldier\'s turn here to destroy it.';
     if (c) {
       html += `<br><b>${esc(c.name)}</b> · ${c.status}${c.owner ? ` · ${pretty(c.owner)}` : ""} · pop ${c.pop}`;
-      if (c.strength) html += `<br>🛡 <b>Defence strength ${Math.round(c.strength / 100)}</b>: what an attacker fights against (the shield on the banner). Walls, garrison, buildings${c.owner === S.view.me ? " and your leader" : ""} raise it.`;
+      if (c.strength) html += `<br>🛡 <b>Defense strength ${Math.round(c.strength / 100)}</b>: what an attacker fights against (the shield on the banner). Walls, garrison, buildings${c.owner === S.view.me ? " and your leader" : ""} raise it.`;
     }
     for (const u of us) html += `<br>${pretty(u.owner)}: ${esc(unitName(u))}${u.count > 1 ? " ×2" : ""} (${u.hp} HP)`;
   }
@@ -2575,6 +2592,7 @@ window.addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || !S.inGame) return;
   if (e.key === "Escape") {
     if (!$("modal").classList.contains("hidden")) closeModal();
+    else if ($("poppane") && !$("poppane").classList.contains("hidden")) closePopulation();
     else if (S.selected) clearSelection();
     else openScreen("menu");
   } else if (e.key === "Enter") mainButton(e.shiftKey);
@@ -2599,7 +2617,10 @@ window.addEventListener("keydown", (e) => {
 // =============================================================================================
 // screens (modal)
 
-document.querySelectorAll("#topbar nav button").forEach((b) => b.onclick = () => openScreen(b.dataset.screen));
+// The screens live in one menu (designer 2026-11-21: the top bar was cut off)
+document.querySelectorAll("#topbar nav button").forEach((b) => b.onclick = () => { $("menulist").classList.add("hidden"); openScreen(b.dataset.screen); });
+$("menubtn").onclick = (e) => { e.stopPropagation(); $("menulist").classList.toggle("hidden"); };
+document.addEventListener("click", (e) => { if (!e.target.closest("#menulist") && e.target.id !== "menubtn") $("menulist").classList.add("hidden"); });
 // Top-bar numbers open their screens: science -> tech, beacon -> council, gold -> diplomacy,
 // mothership -> projects (Civ V style).
 for (const [id, screen] of [["science", "techs"], ["beacon", "council"], ["gold", "diplomacy"], ["threat", "projects"]]) {
@@ -2623,7 +2644,54 @@ document.addEventListener("mouseover", (e) => {
 });
 function closeModal() { $("modal").classList.add("hidden"); document.querySelector(".modal-box").classList.remove("narrow", "leaderbox"); S.screen = null; }
 
+// Population as a side panel over the map (designer 2026-11-21, like CK3's council pane): the map
+// stays in view; each citizen shows a portrait, name and stats, and the job is chosen there.
+async function openPopulation(only = null) {
+  let pane = $("poppane");
+  if (!pane) { pane = document.createElement("div"); pane.id = "poppane"; document.body.appendChild(pane); }
+  S.popOnly = only;
+  const d = await api("/api/population");
+  const cities = d.cities.filter((c) => only == null || c.id === only);
+  pane.innerHTML = `<div class="pophead"><h2>Population</h2><button class="small" id="pop-x" title="Close (Esc)">✕</button></div>
+    <div class="popscroll">
+    <div class="popguide small">
+      <div>🌾 <b>Tile</b>: works a farm, mine or camp, adding half their stats there.</div>
+      <div>⚖ <b>Council</b>: a seat adds their stats to every town.</div>
+      <div>🎖 <b>Train</b>: at a barracks, trains for a few turns and leaves as a soldier. ${cities.some((c) => (c.train_options || []).length) ? "" : '<span class="bad">Build a barracks first.</span>'}</div>
+      <div>👪 <b>Family</b>: your leader can start a family with a grown citizen. <button class="small" id="pop-family">Leader & family</button></div>
+    </div>
+    ${only != null && d.cities.length > 1 ? '<button class="small" id="pop-all">Show all towns</button>' : ""}
+    ${cities.map((c) => `<div class="popcity"><h3>${esc(c.name)} · ${c.pop} people</h3>
+      <div class="muted small">${c.on_tiles} on tiles · ${c.on_council} on the council · ${c.children} growing up${c.idle ? ` · <span class="bad">${c.idle} idle</span>` : ""} · food ${c.surplus_food >= 0 ? "+" : ""}${c.surplus_food}/turn</div>
+      <div class="popcards">${c.citizens.map((p) => popCard(p, c)).join("")}</div></div>`).join("")}
+    </div>`;
+  pane.classList.remove("hidden");
+  pane.querySelectorAll("select[data-citizen]").forEach((el) => el.onchange = async () => { await act({ kind: "set_citizen_job", citizen: Number(el.dataset.citizen), job: el.value }, null); openPopulation(S.popOnly); });
+  $("pop-x").onclick = closePopulation;
+  if ($("pop-all")) $("pop-all").onclick = () => openPopulation(null);
+  if ($("pop-family")) $("pop-family").onclick = () => openScreen("leader");
+}
+function closePopulation() { const p = $("poppane"); if (p) p.classList.add("hidden"); }
+function popCard(p, d) {
+  const stats = Object.entries(p.stats).map(([k, v]) => `<span class="tag ${k}">+${v} ${k}</span>`).join("") || '<span class="muted small">stats come when grown</span>';
+  const traits = p.traits.map((t) => `<span class="trait" title="${esc(t.note)}">${esc(pretty(t.id))}</span>`).join("");
+  let where;
+  if (!p.adult) where = `child · grows up in ${p.turns_to_grow} turns`;
+  else if (p.job.startsWith("train:")) where = `<span class="good">training as ${esc(pretty(p.job.slice(6)))}: ${p.training}/${p.train_turns}</span>`;
+  else if (p.tile != null) where = `works a ${esc(pretty(p.improvement))}`;
+  else if (p.seats.length) where = `council: ${pretty(p.seats[0])} seat`;
+  else if (p.job === "idle") where = "unassigned";
+  else where = '<span class="bad">idle: nothing free</span>';
+  const opt = (v, label, extra = "") => `<option value="${v}" ${p.job === v ? "selected" : ""} ${extra}>${label}</option>`;
+  const seats = ["general", ...Object.keys(p.stats).filter((k) => p.stats[k] > 0)].map((s) => opt(`council:${s}`, `Council: ${pretty(s)} seat`)).join("");
+  const tiles = d.workable.map((w) => opt(`tile:${w.tile}`, `Tile: ${pretty(w.improvement)}`)).join("");
+  const train = (d.train_options || []).map((o) => opt(`train:${o.unit}`, `Train as ${esc(o.name)} (${o.turns} turns)`, o.why ? "disabled" : "")).join("");
+  const pick = p.adult ? `<select data-citizen="${p.id}">${opt("auto", "Auto")}${opt("idle", "Unassigned")}${opt("council", "Council: any seat")}${seats}${tiles}${train}</select>` : "";
+  return `<div class="popcard">${portraitImg("citizen", p.id, "face", { child: !p.adult })}<div class="pcbody"><div class="pcname"><b>${esc(p.name)}</b> ${traits}</div>
+    <div class="pcstats">${stats}</div><div class="muted small">${where}</div>${pick}</div></div>`;
+}
 async function openScreen(name, arg = null) {
+  if (name === "population") { closeModal(); return openPopulation(arg); }
   S.screen = name; S.screenArg = arg;
   const body = $("modal-body");
   try {
@@ -2656,7 +2724,7 @@ async function act(cmd, screen) {
 // show what they help (military, science, food...). Hover an unlock for the details.
 const TIER_NAME = ["Present day (2025)", "Near future", "Next generation", "Advanced", "Far future", "Beyond"];
 const TAG_LABEL = { food: "Food", production: "Production", science: "Science", gold: "Gold", beacon: "Beacon",
-  military: "Military", defence: "Defence", sight: "Sight", movement: "Movement" };
+  military: "Military", defence: "Defense", sight: "Sight", movement: "Movement" };
 function tagChips(tags) { return tags.map((t) => `<span class="tag ${t}">${TAG_LABEL[t] || pretty(t)}</span>`).join(""); }
 function infoHtml(title, info, extra = "") {
   return `<div class="tip-title">${esc(title)}</div>${info.note ? `<div class="tip-note">${esc(info.note)}</div>` : ""}
@@ -2710,7 +2778,7 @@ function techScreen(d) {
 // Portraits (visuals pass 1): every citizen and recruit gets a painted bust, drawn once from a seed
 // (their id) and cached as an image. People are fictional; no real faces. Citizens vary in skin,
 // hair, eyes, brows, clothes and accessories; alien recruits get elongated crania, large eyes and
-// crests in their own colours.
+// crests in their own colors.
 const PORTRAITS = new Map();
 const SKIN = [["#f3d6c1", "#d9a98c"], ["#e8bf9c", "#c9926e"], ["#d6a67c", "#b07c55"], ["#bf8a5e", "#946240"], ["#9c6b45", "#74492b"], ["#7a4f33", "#55341f"], ["#5e3b26", "#3f2617"], ["#efc9a8", "#cf9b78"]];
 const HAIR = ["#1d1611", "#3a2618", "#5b3a22", "#8a5a33", "#b98a4e", "#d9b87a", "#9a9a9a", "#e8e3da", "#6b2a1c", "#2a2a33"];
@@ -2753,7 +2821,7 @@ function paintHumanBust(g, N, rnd, opts) {
   const [skin, skinD] = pickOf(rnd, SKIN), hair0 = pickOf(rnd, HAIR), cloth = pickOf(rnd, CLOTH);
   const kid = !!opts.child, cx = N / 2, hy = kid ? N * 0.5 : N * 0.44, hw = kid ? N * 0.2 : N * (0.19 + rnd() * 0.03), hh = kid ? N * 0.22 : N * (0.24 + rnd() * 0.03);
   const style = Math.floor(rnd() * 7), beard = !kid && rnd() < 0.22, glasses = rnd() < 0.15, scarf = rnd() < 0.12;
-  // age (young, grown, older: lines and greying hair) and mood (calm, warm, stern, wry)
+  // age (young, grown, older: lines and graying hair) and mood (calm, warm, stern, wry)
   const age = kid ? 0 : rnd() < 0.28 ? 2 : rnd() < 0.4 ? 0 : 1, mood = Math.floor(rnd() * 4);
   const hair = age === 2 && rnd() < 0.8 ? mixHex(hair0, "#cfcac2", 0.6 + rnd() * 0.3) : hair0;
   // shoulders and clothes
@@ -2929,9 +2997,9 @@ const ACCESSORY_ART = {  // painted overlays, placed in % of the figure box (bot
   family_crest: '<div class="acc crest" title="Family crest"></div>',
 };
 function leaderFigure(look, outfit, accessories, age) {
-  const grey = Math.max(0, Math.min(0.55, (age - 50) / 40));  // greying hair with age (a tint, not new models)
+  const gray = Math.max(0, Math.min(0.55, (age - 50) / 40));  // graying hair with age (a tint, not new models)
   return `<div class="figure"><img src="leaders/${look}_${outfit}.webp" alt="" onerror="this.src='leaders/${look}_civilian.webp'">
-    ${grey ? `<div class="grey" style="opacity:${grey.toFixed(2)}"></div>` : ""}${(accessories || []).map((a) => ACCESSORY_ART[a] || "").join("")}</div>`;
+    ${gray ? `<div class="grey" style="opacity:${gray.toFixed(2)}"></div>` : ""}${(accessories || []).map((a) => ACCESSORY_ART[a] || "").join("")}</div>`;
 }
 function leaderPortrait(look, outfit, cls = "") {
   return `<img class="lportrait ${cls}" alt="" src="leaders/${look}_${outfit}_portrait.webp" onerror="this.src='leaders/${look}_civilian_portrait.webp'">`;
@@ -3159,6 +3227,8 @@ function termsText(t) {
   if ((t.recruits || []).length) parts.push(`${t.recruits.length} recruit(s)`);
   if ((t.units || []).length) parts.push(`${t.units.length} unit(s)`);
   if (t.alliance) parts.push("alliance");
+  for (const [g, n] of Object.entries(t.materials || {})) parts.push(`${n} ${g}`);
+  for (const [g, n] of Object.entries(t.materials_per_turn || {})) parts.push(`${n} ${g}/turn`);
   return parts.join(", ") || "nothing";
 }
 function diplomacyScreen(d) {
@@ -3166,11 +3236,7 @@ function diplomacyScreen(d) {
   const rows = d.players.filter((p) => p.met).map((p) => `<tr>
       <td><b style="color:${OWNER[p.id]}">${esc(p.name)}</b><br><span class="muted">${pretty(p.character || "")}</span></td>
       <td>${p.cities} cities${p.fallen ? ' · <span class="bad">fallen</span>' : ""}${p.allied ? ' · <span class="good">allied</span>' : ""}</td>
-      <td><div class="actions">
-        <input type="number" min="1" value="50" style="width:70px" data-goldfor="${p.id}"><button class="small" data-aid="${p.id}">Send gold</button>
-        ${d.giftable_techs[p.id].length ? `<select data-techfor="${p.id}">${d.giftable_techs[p.id].map((t) => `<option value="${t}">${pretty(t)}</option>`).join("")}</select><button class="small" data-giftech="${p.id}">Give tech</button>` : ""}
-        ${!p.allied ? `<button class="small" data-ally="${p.id}" ${d.has_alliance_tech ? "" : `disabled title="Needs ${pretty(d.alliance_tech)} on both sides"`}>Propose alliance</button>` : ""}
-      </div></td></tr>`).join("");
+      <td><div class="actions"><button class="small primary" data-talk="${p.id}">Talk and trade</button></div>      </div></td></tr>`).join("");
   const incoming = d.incoming.map((x) => `<div class="row">${pretty(x.proposer)} gives <b>${termsText(x.give)}</b> for <b>${termsText(x.take)}</b>
       <button class="small" data-accept-deal="${x.id}">Accept</button><button class="small" data-decline-deal="${x.id}">Decline</button></div>`).join("");
   const active = d.active.map((x) => `<div class="row muted">${pretty(x.proposer)} ↔ ${pretty(x.receiver)}: ${termsText(x.give)} for ${termsText(x.take)} (until turn ${x.ends_turn})</div>`).join("");
@@ -3179,7 +3245,7 @@ function diplomacyScreen(d) {
     ${rows ? `<table><tr><th>Continent</th><th>Status</th><th>Actions</th></tr>${rows}</table>` : '<p>You have not met any other continent yet.</p>'}
     ${unmet.length ? `<h3>Not yet met</h3><p class="muted">${unmet.map((p) => esc(p.name)).join(", ")}: somewhere across the ocean, and the map is different every game. Build a <b>scout boat</b> in a coastal city and sail out to find them; once you sight their land or units you can trade, ally, give aid and ship troops.</p>` : ""}
     ${active ? `<h3>Active deals</h3>${active}` : ""}
-    <p class="muted">Nobody fights anybody: gifts count toward your MVP score. Techs and recruits travel by sea from your ports.</p>`;
+    <p class="muted">Nobody fights anybody: gifts count toward your MVP score. Click Talk and trade to deal with one continent at a time.</p>`;
 }
 function projectsScreen(d) {
   const b = d.barrage;
@@ -3298,6 +3364,7 @@ function wireScreen(name) {
     on("[data-aid]", (el) => act(deal(el.dataset.aid, { gold: Number(body.querySelector(`[data-goldfor="${el.dataset.aid}"]`).value) }, {}), "diplomacy"));
     on("[data-giftech]", (el) => act(deal(el.dataset.giftech, { techs: [body.querySelector(`[data-techfor="${el.dataset.giftech}"]`).value] }, {}), "diplomacy"));
     on("[data-ally]", (el) => act(deal(el.dataset.ally, { alliance: true }, { alliance: true }), "diplomacy"));
+    on("[data-talk]", (el) => showTrade(el.dataset.talk));
     on("[data-accept-deal]", (el) => act({ kind: "accept_deal", deal: Number(el.dataset.acceptDeal) }, "diplomacy"));
     on("[data-decline-deal]", (el) => act({ kind: "decline_deal", deal: Number(el.dataset.declineDeal) }, "diplomacy"));
   }
@@ -3456,7 +3523,7 @@ function citizenRow(p, d) {
 }
 
 function promoName(id) {
-  return { attack_10: "+10% attack", defence_10: "+10% defence", dig_in: "Dig in (+20% defence)", field_medic: "Field medic (+10 heal)",
+  return { attack_10: "+10% attack", defence_10: "+10% defence", dig_in: "Dig in (+20% defense)", field_medic: "Field medic (+10 heal)",
     blitz: "Blitz (+1 move)", breakthrough: "Breakthrough (+20% vs infantry)", siege_master: "Siege master (+25% vs cities)",
     barrage: "Barrage (+15% attack)", sea_legs: "Sea legs (+1 move)", gold_upgrade: "Upgraded" }[id] || pretty(id);
 }
@@ -3495,7 +3562,7 @@ function showTurretPanel(i) {
   side.classList.remove("hidden");
 }
 
-// Turrets: a concrete emplacement with an armoured gun house; one barrel per level, gold pips.
+// Turrets: a concrete emplacement with an armored gun house; one barrel per level, gold pips.
 const TURRETS = new Map();
 function drawTurret(t, sx, sy, R) {
   const Rb = zoomStep(R), lvl = Math.max(1, Math.min(3, t.turret)), key = `${lvl}|${Rb}`;
@@ -3511,7 +3578,7 @@ function drawTurret(t, sx, sy, R) {
     // barrels (behind the dome), pointing up-right
     g.strokeStyle = "#2c3238"; g.lineCap = "round"; g.lineWidth = Math.max(1.5, s * 0.16);
     for (let b = 0; b < lvl; b++) { const off = (b - (lvl - 1) / 2) * s * 0.22; g.beginPath(); g.moveTo(x + off, y - s * 0.35); g.lineTo(x + off + s * 1.0, y - s * 0.95); g.stroke(); }
-    // armoured gun house
+    // armored gun house
     const dg = g.createRadialGradient(x - s * 0.25, y - s * 0.55, s * 0.05, x, y - s * 0.3, s * 0.7);
     dg.addColorStop(0, "#9aa8b4"); dg.addColorStop(1, "#3c4752");
     g.fillStyle = dg; g.beginPath(); g.ellipse(x, y - s * 0.25, s * 0.62, s * 0.5, 0, Math.PI, 0); g.lineTo(x + s * 0.62, y - s * 0.1); g.lineTo(x - s * 0.62, y - s * 0.1); g.closePath(); g.fill();
@@ -3540,7 +3607,7 @@ function drawCityTile(w, i, sx, sy, R) {
   hexPath(ctx, sx, sy, R - 2);
   ctx.fillStyle = worker ? "rgba(90,200,110,0.16)" : "rgba(242,211,138,0.12)"; ctx.fill();
   ctx.strokeStyle = worker ? "#6fdc7c" : "#f2d38a"; ctx.lineWidth = 2.4; ctx.setLineDash(worker ? [] : [R * 0.15, R * 0.1]); ctx.stroke(); ctx.setLineDash([]);
-  // yield dots: one coloured disc per yield type with its amount
+  // yield dots: one colored disc per yield type with its amount
   const ys = Object.entries(w.yields).filter(([, v]) => v > 0);
   const r = Math.max(5, R * 0.17);
   ys.forEach(([k, v], n) => {
@@ -3781,27 +3848,27 @@ function paintScene(g, key, W, H, bg, glow, rnd) {
   return ready;
 }
 // Fund the resistance (designer 2026-11-16): gold sent to the people of an alien-held city cuts
-// its defence. At the band's first town the whole starting treasury halves it.
+// its defense. At the band's first town the whole starting treasury halves it.
 function showFundCard(cityId, attacking = false) {
   const c = S.view.cities[String(cityId)];
   if (!c) return;
   const first = S.view.pending.some((p) => p.kind === "fund_resistance" && p.city === cityId);
   const gold = S.view.economy.gold, strength = Math.round(c.strength / 100);
-  const offers = (c.fund || []).map((q, k) => `${first && !k ? '<div class="fundarrow" aria-hidden="true">▼</div>' : ""}<button class="${k ? "" : "primary"}${first && !k ? " pulse" : ""}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defence falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
+  const offers = (c.fund || []).map((q, k) => `${first && !k ? '<div class="fundarrow" aria-hidden="true">▼</div>' : ""}<button class="${k ? "" : "primary"}${first && !k ? " pulse" : ""}" data-fund="${q.gold}" ${gold < q.gold ? "disabled" : ""}><b>Send ${q.gold} gold</b><span class="muted"> its defense falls ${q.pct}% (${strength} → ${Math.round(strength * (100 - q.pct) / 100)})</span></button>`).join("");
   const body = $("modal-body");
   const text = first
-    ? `You have found ${esc(c.name)}: it will be your first city. The aliens hold it, but its people have not given up; they are hiding weapons and waiting for a signal. Send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury): its defence falls by half and its gates open. <b>Your band cannot take it until you do.</b>`
-    : `The people of ${esc(c.name)} want to fight back. Gold buys them weapons: its defence falls while they hold out, until the city is free. Stronger cities need more gold for the same effect.`;
+    ? `You have found ${esc(c.name)}: it will be your first city. The aliens hold it, but its people have not given up; they are hiding weapons and waiting for a signal. Send them your <b>${(c.fund[0] || {}).gold} gold</b> (your whole treasury): its defense falls by half and its gates open. <b>Your band cannot take it until you do.</b>`
+    : `The people of ${esc(c.name)} want to fight back. Gold buys them weapons: its defense falls while they hold out, until the city is free. Stronger cities need more gold for the same effect.`;
   body.innerHTML = `<div class="evcard">${pictureSvg("survivors", false)}<h2>Fund the resistance in ${esc(c.name)}</h2>
     <p class="evbody">${text}</p>${c.funded_pct ? `<div class="evresult"><span class="tag">Already funded: -${c.funded_pct}%</span></div>` : ""}
     <div class="evchoices">${offers || '<span class="muted">Its resistance has all the help it can use.</span>'}<button id="fund-no">${attacking && !first ? "Attack without it" : "Not now"}</button></div>
-    <div class="muted small">Treasury: ${gold} gold · defence strength now ${strength}</div></div>`;
+    <div class="muted small">Treasury: ${gold} gold · defense strength now ${strength}</div></div>`;
   document.querySelector(".modal-box").classList.add("narrow");
   $("modal").classList.remove("hidden"); S.screen = "event";
   body.querySelectorAll("[data-fund]").forEach((el) => el.onclick = async () => {
     closeModal(); await send({ kind: "fund_resistance", city: cityId, gold: Number(el.dataset.fund) });
     const now = S.view.cities[String(cityId)];
-    if (now && now.funded_pct) toast(`The resistance in ${now.name} is armed: its defence is down ${now.funded_pct}%. Attack!`);
+    if (now && now.funded_pct) toast(`The resistance in ${now.name} is armed: its defense is down ${now.funded_pct}%. Attack!`);
   });
   $("fund-no").onclick = () => {
     if (first) S.fundSkipped = cityId;
@@ -3826,42 +3893,143 @@ function showEventCard(ev) {
   });
   if ($("ev-ok")) $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
 }
-// Meeting another leader (designer 2026-11-19, SPEC_M20): both leaders face each other in the
-// hall, a greeting by their agenda, and what we can talk about.
+// A new citizen (designer 2026-11-21): its face, and the chances of its stats when it grows up.
+function showBirths(list) {
+  const body = $("modal-body");
+  const rows = list.map((e) => {
+    const o = e.odds || { domains: {}, patterns: [] };
+    const odds = Object.entries(o.domains).sort((a, b) => b[1] - a[1]).map(([d, p]) => `<span class="tag ${d}" style="--p:${p}">${pretty(d)} ${p}%</span>`).join("");
+    const pats = o.patterns.map((p) => p.picks >= 6 ? `+1 in everything ${p.pct}%` : `+${p.each} in ${p.picks} ${p.pct}%`).join(" · ");
+    return `<div class="birth">${portraitImg("citizen", e.citizen, "face", { child: true })}<div><b>${esc(e.name)}</b> is born in ${esc(cityName(e.city))}${e.claimed != null ? ' <span class="muted small">(the town claims a new hex)</span>' : ""}
+      <div class="muted small">Stats are decided when ${esc(e.name)} grows up. Chance of being strong in:</div><div class="oddsbar">${odds}</div>
+      <div class="muted small">${pats}${o.focus && o.focus !== "balanced" ? ` · the town's ${esc(o.focus)} focus makes ${esc(o.focus)} likelier` : ""}</div></div></div>`;
+  }).join("");
+  body.innerHTML = `<div class="evcard"><h2>${list.length > 1 ? "New citizens" : "A new citizen"}</h2><p class="evbody">Spare food brought ${list.length > 1 ? "new children" : "a new child"}. A child eats 4 food and grows up faster when the town has food to spare.</p>
+    <div class="births">${rows}</div><div class="row"><button class="primary" id="ev-ok">Continue</button></div></div>`;
+  document.querySelector(".modal-box").classList.add("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "event";
+  $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
+}
+// A child grows up (designer 2026-11-21): its stats, and what to do with it.
+function showGrownUp(list) {
+  const body = $("modal-body");
+  const rows = list.map((e) => `<div class="birth">${portraitImg("citizen", e.citizen, "face")}<div><b>${esc(e.name)}</b> of ${esc(cityName(e.city))} has grown up.
+    <div class="oddsbar">${Object.entries(e.stats || {}).map(([d, v]) => `<span class="tag ${d}">+${v} ${d}</span>`).join("")}${(e.traits || []).map((t) => `<span class="trait">${esc(pretty(t))}</span>`).join("")}</div>
+    <div class="row"><button class="small" data-gjob="${e.citizen}:auto">Work the best tile</button><button class="small" data-gjob="${e.citizen}:council">Join the council</button><button class="small" data-gpop="${e.city}">Train as a soldier…</button></div></div></div>`).join("");
+  body.innerHTML = `<div class="evcard"><h2>${list.length > 1 ? "Grown up" : `${esc(list[0].name)} has grown up`}</h2><p class="evbody">Choose what ${list.length > 1 ? "each one does" : "they do"}. You can change it any time in Population.</p>
+    <div class="births">${rows}</div><div class="row"><button class="primary" id="ev-ok">Continue</button></div></div>`;
+  document.querySelector(".modal-box").classList.add("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "event";
+  body.querySelectorAll("[data-gjob]").forEach((el) => el.onclick = async () => {
+    const [id, job] = el.dataset.gjob.split(":");
+    await send({ kind: "set_citizen_job", citizen: Number(id), job });
+    el.parentElement.innerHTML = `<span class="good small">${job === "council" ? "On the council" : "Working the best tile"}</span>`;
+  });
+  body.querySelectorAll("[data-gpop]").forEach((el) => el.onclick = () => { closeModal(); openPopulation(Number(el.dataset.gpop)); });
+  $("ev-ok").onclick = () => { closeModal(); showNewStory(); };
+}
+// Meeting the leader of an alien town (designer 2026-11-21, SPEC_M21): a cutaway with the leader,
+// what scouts say of it, and a bribe that may work, may be pocketed, or is not on offer.
+const TEMPER_TEXT = {
+  "Fond of gold": "It counts everything twice and smiles at every coin. Some of its kind can be bought: a bribed leader defects to your council and the town's defense halves. Others take the gold and give nothing.",
+  "Spoiling for a fight": "It has seen you, and it wants you to know it. Expect its warriors to come for your towns while this one holds its town.",
+  "Cold and patient": "It does not answer, and it does not move. It will not deal; the town must be taken.",
+};
+function showAlienLeader(cityId) {
+  const c = S.view.cities[String(cityId)];
+  if (!c || !c.leader) return;
+  const L = c.leader, body = $("modal-body"), gold = S.view.economy.gold;
+  const rumor = c.rumour ? RUMOR_TEXT[c.rumour] : null;
+  body.innerHTML = `<div class="alienmeet">
+    <div class="alienface">${portraitImg("recruit", L.face, "alien")}</div>
+    <div class="alientext"><h2>${esc(L.name)}</h2><div class="muted">holds ${esc(c.name)} for the aliens</div>
+      <p class="evbody"><b>Scouts say: ${esc(L.hint)}.</b> ${esc(TEMPER_TEXT[L.hint] || "")}</p>
+      ${L.angry ? '<p class="bad">It has turned on you: the aliens will pay you more attention while it holds this town.</p>' : ""}
+      ${rumor ? `<p class="muted small">Rumor about the town: ${esc(rumor[1])}</p>` : ""}
+      <div class="evchoices">
+        ${L.can_bribe ? `<button class="primary" id="al-bribe" ${gold < L.cost ? "disabled" : ""}><b>Offer ${L.cost} gold</b><span class="muted"> it may defect to your council, or keep the gold</span></button>` : ""}
+        <button id="al-leave">${L.can_bribe ? "Not now" : "Leave"}</button>
+      </div>
+      <div class="muted small">Treasury: ${gold} gold. You can come back to this leader from the town later.</div></div></div>`;
+  document.querySelector(".modal-box").classList.remove("narrow");
+  $("modal").classList.remove("hidden"); S.screen = "event";
+  if ($("al-bribe")) $("al-bribe").onclick = async () => { closeModal(); await send({ kind: "answer_alien_leader", city: cityId, bribe: true }); };
+  $("al-leave").onclick = async () => { closeModal(); await send({ kind: "answer_alien_leader", city: cityId, bribe: false }); };
+}
+// Talking to another leader (designer 2026-11-21, SPEC_M21, after Civ V's trade screen): their
+// leader in the hall, their goods on the left, yours on the right, the deal built in the middle.
+// Gold and materials go once or every turn. An alliance is its own button, explained.
 const AGENDA_GREETING = {
   liberator: "Every town we take back is a family coming home. Fight beside us and we will not forget it.",
   scientist: "Whatever the aliens are, they can be understood. Share what you learn and we will share what we find.",
   merchant: "Trade kept the world together before the sky broke. It can again: gold, goods, a fair deal.",
-  warden: "We hold what is ours, and our walls hold. A strong neighbour is a welcome one.",
+  warden: "We hold what is ours, and our walls hold. A strong neighbor is a welcome one.",
   mystic: "The beacons are calling. Not everyone hears them yet. Perhaps you will.",
 };
-function showMeeting(other) {
-  const body = $("modal-body"), me = S.view.leader, them = other.leader || {};
-  const fig = (L, flip) => L && L.look ? `<img class="meetfig${flip ? " flip" : ""}" alt="" src="leaders/${L.look}_${L.outfit || "civilian"}.webp" onerror="this.src='leaders/${L.look}_civilian.webp'">` : "";
-  const greet = AGENDA_GREETING[other.agenda] || "We have heard your radio. It is good to know we are not alone.";
-  body.innerHTML = `<div class="meeting" style="background-image:url(leaders/backdrop_hall.webp)">
-    ${fig(me, false)}${fig(them, true)}
-    <div class="meetbox">
-      <div class="meethead"><b>${esc(them.name || pretty(other.id))}</b> <span class="muted">· leader of ${esc(other.name)}${other.agenda ? ` · ${esc(pretty(other.agenda))}` : ""}</span></div>
-      <p class="meetsay">"${esc(greet)}"</p>
-      <div class="meetopts">
-        <button class="primary" data-meet="ally" title="Needs International Accords on both sides">🤝 Propose an alliance</button>
-        <button data-meet="trade">⚖ Propose a trade</button>
-        <button data-meet="aid">💰 Send 50 gold as a greeting</button>
-        <button data-meet="bye">Farewell</button>
-      </div>
-      <div class="muted small">You can talk again any time from Diplomacy.</div>
-    </div></div>`;
+const MAT_ICON_T = { timber: "🪵", stone: "🪨", iron: "⛓" };
+async function showTrade(otherId, first = false) {
+  const d = await api(`/api/trade/${otherId}`);
+  S.trade = { other: otherId, give: [], take: [], duration: d.durations[0], data: d, first };
+  renderTrade();
+}
+function renderTrade() {
+  const T = S.trade, d = T.data, o = d.other, L = o.leader || {};
+  const body = $("modal-body");
+  const items = (who, side) => [["gold", side.gold], ...Object.entries(side.materials)].map(([g, n]) =>
+    `<button class="titem" data-add="${who}:${g}" ${n <= 0 ? "disabled" : ""}>${g === "gold" ? "💰" : MAT_ICON_T[g] || ""} ${pretty(g)} <span class="muted">(${n})</span></button>`).join("");
+  const line = (list, key) => list.map((x, k) => `<div class="tline">${x.good === "gold" ? "💰" : MAT_ICON_T[x.good] || ""} <input type="number" min="1" value="${x.n}" data-n="${key}:${k}"> ${pretty(x.good)}
+      <select data-per="${key}:${k}"><option value="once" ${x.per ? "" : "selected"}>once</option><option value="turn" ${x.per ? "selected" : ""}>every turn</option></select>
+      <button class="small" data-del="${key}:${k}">✕</button></div>`).join("") || '<div class="muted small">Click items on this side to add them.</div>';
+  const per = [...T.give, ...T.take].some((x) => x.per);
+  const greet = AGENDA_GREETING[o.agenda] || "We have heard your radio. It is good to know we are not alone.";
+  const deals = d.deals.filter((x) => x.active).map((x) => `<div class="small muted">In force: ${termsText(x.give)} for ${termsText(x.take)} (until turn ${x.ends_turn})</div>`).join("");
+  body.innerHTML = `<div class="tradescreen" style="background-image:url(leaders/backdrop_hall.webp)">
+    ${L.look ? `<img class="tradefig" alt="" src="leaders/${L.look}_${L.outfit || "civilian"}.webp" onerror="this.src='leaders/${L.look}_civilian.webp'">` : ""}
+    <div class="tradesay"><b>${esc(L.name || o.name)}</b> <span class="muted">· ${esc(o.name)}${o.agenda ? ` · ${esc(pretty(o.agenda))}` : ""}</span>
+      <div>"${esc(T.first ? greet : "What do you have in mind?")}"</div></div>
+    <div class="tradecols">
+      <div class="tcol"><h3>${esc(o.name)}'s items</h3>${items("take", d.them)}</div>
+      <div class="tmid"><h3>They give</h3>${line(T.take, "take")}<h3>You give</h3>${line(T.give, "give")}
+        ${per ? `<div class="row small">Every-turn parts last <select id="t-dur">${d.durations.map((n) => `<option ${n === T.duration ? "selected" : ""}>${n}</option>`).join("")}</select> turns</div>` : ""}
+        <div class="row"><button class="primary" id="t-propose" ${T.give.length + T.take.length ? "" : "disabled"}>Propose</button><button id="t-clear">Clear</button><button id="t-close">Close</button></div>
+        ${deals}</div>
+      <div class="tcol"><h3>Your items</h3>${items("give", d.me)}</div>
+    </div>
+    <div class="tally">${d.allied ? '<span class="good">You are allies</span>: you share sight, your troops are fed in each other\'s land, and you fight the aliens together.'
+      : `<button id="t-ally" ${d.alliance_ready ? "" : "disabled"}>🤝 Form an alliance</button> <span class="muted small">Allies share sight, feed each other's troops and fight the aliens together. ${d.alliance_ready ? "" : `Both sides need ${pretty(d.alliance_tech)}.`}</span>`}</div>
+  </div>`;
   document.querySelector(".modal-box").classList.remove("narrow");
-  $("modal").classList.remove("hidden"); S.screen = "meeting";
-  const deal = (give, take) => ({ kind: "propose_deal", to_player: other.id, give, take, duration: 10 });
-  body.querySelectorAll("[data-meet]").forEach((el) => el.onclick = async () => {
-    const k = el.dataset.meet;
-    if (k === "ally") { closeModal(); await send(deal({ alliance: true }, { alliance: true })); }
-    else if (k === "trade") openScreen("diplomacy");
-    else if (k === "aid") { closeModal(); await send(deal({ gold: 50 }, {})); }
-    else { closeModal(); showNewStory(); }
+  $("modal").classList.remove("hidden"); S.screen = "trade";
+  const list = (key) => (key === "give" ? T.give : T.take);
+  body.querySelectorAll("[data-add]").forEach((el) => el.onclick = () => {
+    const [who, g] = el.dataset.add.split(":");
+    if (!list(who).some((x) => x.good === g)) list(who).push({ good: g, n: g === "gold" ? 50 : 10, per: false });
+    renderTrade();
   });
+  body.querySelectorAll("[data-n]").forEach((el) => el.onchange = () => { const [k, i] = el.dataset.n.split(":"); list(k)[Number(i)].n = Math.max(1, Number(el.value) || 1); });
+  body.querySelectorAll("[data-per]").forEach((el) => el.onchange = () => { const [k, i] = el.dataset.per.split(":"); list(k)[Number(i)].per = el.value === "turn"; renderTrade(); });
+  body.querySelectorAll("[data-del]").forEach((el) => el.onclick = () => { const [k, i] = el.dataset.del.split(":"); list(k).splice(Number(i), 1); renderTrade(); });
+  if ($("t-dur")) $("t-dur").onchange = (e) => { T.duration = Number(e.target.value); };
+  const terms = (xs) => {
+    const t = {};
+    for (const x of xs) {
+      if (x.good === "gold") t[x.per ? "gold_per_turn" : "gold"] = x.n;
+      else { const k = x.per ? "materials_per_turn" : "materials"; t[k] = { ...(t[k] || {}), [x.good]: x.n }; }
+    }
+    return t;
+  };
+  $("t-propose").onclick = async () => {
+    const res = await api("/api/command", { kind: "propose_deal", to_player: T.other, give: terms(T.give), take: terms(T.take), duration: T.duration }).catch((e) => ({ ok: false, error: e.message }));
+    if (res.ok === false) return toast(res.error);
+    toast(`Proposal sent to ${o.name}: they answer at the end of the turn.`);
+    T.give = []; T.take = []; await refresh(); showTrade(T.other);
+  };
+  $("t-clear").onclick = () => { T.give = []; T.take = []; renderTrade(); };
+  $("t-close").onclick = () => { closeModal(); showNewStory(); };
+  if ($("t-ally")) $("t-ally").onclick = async () => {
+    const res = await api("/api/command", { kind: "propose_deal", to_player: T.other, give: { alliance: true }, take: { alliance: true }, duration: T.duration }).catch((e) => ({ ok: false, error: e.message }));
+    toast(res.ok === false ? res.error : `You asked ${o.name} for an alliance: they answer at the end of the turn.`);
+  };
 }
 // The wonder-style screen for a claimed shard (Civ's wonder splash).
 function showShardScreen(c) {
@@ -3880,6 +4048,16 @@ function showShardScreen(c) {
 function showNewStory() {
   if (!S.view || !$("modal").classList.contains("hidden")) return;
   S.seenStory = S.seenStory || new Set();
+  // first contact comes first: straight to talking with the new civ (designer 2026-11-21)
+  for (const e of S.view.events || []) {
+    if (e.kind !== "contact_made" || (e.player !== S.view.me && e.other !== S.view.me)) continue;
+    const otherId = e.player === S.view.me ? e.other : e.player;
+    const key = `meet-${otherId}`;
+    if (S.seenStory.has(key)) continue;
+    S.seenStory.add(key);
+    const other = S.view.players.find((p) => p.id === otherId);
+    if (other && other.met) return showTrade(otherId, true);
+  }
   for (const c of S.view.shards_claimed || []) {
     if (S.seenStory.has(c.key)) continue;
     S.seenStory.add(c.key);
@@ -3895,7 +4073,7 @@ function showNewStory() {
     if (e.turn < S.view.turn - 1) continue;  // old news from a loaded game
     const LOOT = {
       weapon: ["Rifles!", "The crate holds working rifles. The unit that found it fights harder now."],
-      armour: ["Body armour", "Scavenged armour plates: the unit that found it is harder to hurt."],
+      armour: ["Body armor", "Scavenged armor plates: the unit that found it is harder to hurt."],
       alien_weapon: ["An alien weapon", "A weapon dropped by the aliens, still charged. Whoever carries it hits far harder."],
       survivor: ["A survivor", "Someone was hiding by the crate and joins your band. One more pair of hands for the town."],
       scrap: ["Salvage", "Scrap metal and parts: it will speed your first city's building."],
@@ -3903,16 +4081,20 @@ function showNewStory() {
     }[e.loot] || ["Supplies", "Your band found supplies."];
     return showEventCard({ title: LOOT[0], body: LOOT[1], picture: "cache", result: e.result || [], tile: e.tile });
   }
-  // first contact: meet the other leader (SPEC_M20)
-  for (const e of S.view.events || []) {
-    if (e.kind !== "contact_made" || (e.player !== S.view.me && e.other !== S.view.me)) continue;
-    const otherId = e.player === S.view.me ? e.other : e.player;
-    const key = `meet-${otherId}`;
-    if (S.seenStory.has(key)) continue;
-    S.seenStory.add(key);
-    const other = S.view.players.find((p) => p.id === otherId);
-    if (other && other.met) return showMeeting(other);
+  // a new barracks: straight to the population panel when advice is off (SPEC_M21)
+  const bar = (S.view.events || []).find((e) => e.kind === "building_completed" && e.building === "military_base" && e.player === S.view.me);
+  if (bar && !S.seenStory.has(`barracks-${bar.city}`) && window.Advisors && Advisors.isOff()) {
+    S.seenStory.add(`barracks-${bar.city}`); toast("Your barracks is ready: citizens can train as soldiers."); openPopulation(bar.city);
   }
+  // births and children growing up (SPEC_M21): one card each per turn
+  const mineEv = (k) => (S.view.events || []).filter((e) => e.kind === k && e.player === S.view.me && e.turn >= S.view.turn - 1);
+  const born = mineEv("citizen_born"), grown = mineEv("citizen_grew_up");
+  const bkey = `births-${S.view.turn}`, gkey = `grown-${S.view.turn}`;
+  if (born.length && !S.seenStory.has(bkey)) { S.seenStory.add(bkey); return showBirths(born); }
+  if (grown.length && !S.seenStory.has(gkey)) { S.seenStory.add(gkey); return showGrownUp(grown); }
+  // an alien town's leader, met when the town is first seen (SPEC_M21)
+  const al = (S.view.pending || []).find((p) => p.kind === "alien_leader" && !S.seenStory.has(`al-${p.city}-${S.view.turn}`));
+  if (al) { S.seenStory.add(`al-${al.city}-${S.view.turn}`); return showAlienLeader(al.city); }
   // the galactic winter (SPEC_M19): a card when it is announced and when it begins
   for (const e of S.view.events || []) {
     if (!["winter_coming", "winter_began"].includes(e.kind)) continue;

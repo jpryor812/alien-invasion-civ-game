@@ -4,7 +4,7 @@
   better strike targets and draw bigger strikes (the director, beacon/aliens.py).
 - Strike plans: the director announces a siege a few turns ahead (AlienPlan); its units gather,
   then besiege on the launch turn.
-- Contents: what each alien-held city holds, seen first as a rumour; freeing the city gives it.
+- Contents: what each alien-held city holds, seen first as a rumor; freeing the city gives it.
 - Other ways to free a city: sabotage, arming the resistance (uprisings), destroying nests.
 """
 
@@ -33,6 +33,9 @@ def heat(state: GameState, cfg: Config, pid: str) -> int:
         total += sum(h["buildings"].get(b, 0) for b in city.buildings)
         if city.convoy:
             total += h["per_convoy"]
+    from beacon.alien_leaders import angry_heat  # aggressive leaders found (SPEC_M21)
+
+    total += angry_heat(state, cfg, pid)
     from beacon.techfx import total as fx  # Beacon silence (council, SPEC_M13)
 
     return max(0, total * (100 + fx(cfg, state.players.get(pid), "heat_pct")) // 100)
@@ -378,7 +381,7 @@ def _first_town(state: GameState, pid: str, city: City) -> bool:
 
 
 def fund_pct(state: GameState, cfg: Config, pid: str, city: City, gold: int) -> int:
-    """Percent of defence strength `gold` takes off the city (before the cap). A Liberator's
+    """Percent of defense strength `gold` takes off the city (before the cap). A Liberator's
     agenda (fund_pct) makes gold go further."""
     from beacon import techfx
 

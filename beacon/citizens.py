@@ -65,11 +65,8 @@ def trait(cfg: Config, c: Citizen, key: str, default: int) -> int:
 def make(state: GameState, cfg: Config, city: City, adult: bool) -> Citizen:
     cid = state.new_id()
     r = rng.stream(state.seed, "citizen", cid)
-    stats_cfg = cfg.t("citizens.stats")
-    patterns = stats_cfg["patterns"]
-    pat = rng.weighted_choice(r, patterns, [p["weight"] for p in patterns])
-    chosen = r.sample(list(DOMAINS), pat["picks"])
-    stats = {d: pat["each"] for d in DOMAINS if d in chosen}
+    # a child's stats are rolled when it grows up (designer 2026-11-21, SPEC_M21)
+    stats = _roll(cfg, r, _weights(cfg, city)) if adult else {}
     traits = []
     if rng.percent_roll(r, cfg.t("citizens.trait_pct")):
         traits = [r.choice(sorted(cfg.t("citizens.traits")))]
@@ -87,6 +84,53 @@ def make(state: GameState, cfg: Config, city: City, adult: bool) -> Citizen:
     )
     state.citizens[str(cid)] = citizen
     return citizen
+
+
+def _weights(cfg: Config, city: City) -> dict[str, int]:
+    """How likely each domain is to be a strength: the town's focus counts double."""
+    g = cfg.t("citizens.stats")
+    return {d: g["focus_weight"] if city.focus == d else g["base_weight"] for d in DOMAINS}
+
+
+def _roll(cfg: Config, r: Any, weights: dict[str, int]) -> dict[str, int]:
+    patterns = cfg.t("citizens.stats.patterns")
+    pat = rng.weighted_choice(r, patterns, [p["weight"] for p in patterns])
+    pool, chosen = list(DOMAINS), []
+    for _ in range(pat["picks"]):
+        d = rng.weighted_choice(r, pool, [weights[x] for x in pool])
+        chosen.append(d)
+        pool.remove(d)
+    return {d: pat["each"] for d in DOMAINS if d in chosen}
+
+
+def stat_odds(cfg: Config, city: City) -> dict[str, Any]:
+    """A child's chances (percent): each stat pattern, and each domain being a strength."""
+    from itertools import permutations
+
+    patterns = cfg.t("citizens.stats.patterns")
+    weights = _weights(cfg, city)
+    wsum = sum(p["weight"] for p in patterns)
+    chance = dict.fromkeys(DOMAINS, 0.0)
+    for p in patterns:
+        if p["picks"] >= len(DOMAINS):
+            for d in DOMAINS:
+                chance[d] += p["weight"] / wsum
+            continue
+        for order in permutations(DOMAINS, p["picks"]):
+            pr, left = 1.0, sum(weights.values())
+            for d in order:
+                pr *= weights[d] / left
+                left -= weights[d]
+            for d in order:
+                chance[d] += p["weight"] / wsum * pr
+    return {
+        "patterns": [
+            {"picks": p["picks"], "each": p["each"], "pct": p["weight"] * 100 // wsum}
+            for p in patterns
+        ],
+        "domains": {d: round(v * 100) for d, v in chance.items()},
+        "focus": city.focus,
+    }
 
 
 def remove_youngest(state: GameState, city: City) -> None:
@@ -116,6 +160,8 @@ def born(state: GameState, cfg: Config, city: City) -> dict[str, Any]:
     claimed = borders.grow(state, cfg, city)
     return {
         "claimed": claimed,
+        "player": city.owner,
+        "odds": stat_odds(cfg, city),  # its stats come when it grows up (SPEC_M21)
         "kind": "citizen_born",
         "city": city.id,
         "citizen": c.id,
@@ -139,11 +185,22 @@ def grow(state: GameState, cfg: Config, city: City, surplus_food: int) -> Events
         if c.growth >= g["needed"]:
             c.growth = g["needed"]
             c.adult = True
+            if not c.stats:  # rolled now (SPEC_M21); hybrids inherited theirs at birth
+                r = rng.stream(state.seed, "citizen", c.id, "grown")
+                c.stats = _roll(cfg, r, _weights(cfg, city))
             from beacon.leader import child_grew_up  # the leader's XP (SPEC_M11)
 
             child_grew_up(state, c)
             events.append(
-                {"kind": "citizen_grew_up", "city": city.id, "citizen": c.id, "name": c.name}
+                {
+                    "kind": "citizen_grew_up",
+                    "player": city.owner,
+                    "city": city.id,
+                    "citizen": c.id,
+                    "name": c.name,
+                    "stats": dict(c.stats),
+                    "traits": list(c.traits),
+                }
             )
     return events
 
@@ -205,7 +262,7 @@ def council_military(cfg: Config, c: Citizen) -> int:
 
 
 def base_food(state: GameState, cfg: Config, city: City) -> int:
-    """Food a city makes without workers: its own hex, the centre bonus and buildings."""
+    """Food a city makes without workers: its own hex, the center bonus and buildings."""
     food = tile_yields(cfg, state.tiles[city.tile])["food"]
     food += cfg.t("economy.city_center_yields").get("food", 0)
     if city.is_capital:

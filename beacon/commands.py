@@ -73,8 +73,18 @@ class SetConvoy(Command):
 
 @register
 @dataclass(frozen=True)
+class AnswerAlienLeader(Command):
+    """Answer an alien town's leader: bribe it, or leave (SPEC_M21)."""
+
+    kind: ClassVar[str] = "answer_alien_leader"
+    city: int
+    bribe: bool = False
+
+
+@register
+@dataclass(frozen=True)
 class EquipGear(Command):
-    """Take gear from the armoury of the town the unit stands in (SPEC_M20)."""
+    """Take gear from the armory of the town the unit stands in (SPEC_M20)."""
 
     kind: ClassVar[str] = "equip_gear"
     unit: int
@@ -400,7 +410,7 @@ class ArmResistance(Command):
 @register
 @dataclass(frozen=True)
 class FundResistance(Command):
-    """Send gold to the resistance in an alien city: its defence falls (designer 2026-11-16)."""
+    """Send gold to the resistance in an alien city: its defense falls (designer 2026-11-16)."""
 
     kind: ClassVar[str] = "fund_resistance"
     city: int

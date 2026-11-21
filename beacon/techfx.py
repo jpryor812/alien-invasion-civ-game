@@ -6,11 +6,11 @@ Keys (all integers):
   city_yields {yield: n}     flat yield in every city
   growth_pct                 faster births and children growing up
   build_turns                change to engineers' build time (negative is faster; at least 1)
-  labour_pct                 percent more labour from each city's engineers (SPEC_M17)
+  labour_pct                 percent more labor from each city's engineers (SPEC_M17)
   unit_cost_pct              change to units' production cost
   free_upkeep_per_city       extra units per city with no gold upkeep
   flanking_pct               extra strength per flanking unit
-  class_defence_pct {class: pct}  defence bonus for a unit class
+  class_defence_pct {class: pct}  defense bonus for a unit class
   ranged_attack_pct          bonus to ranged attacks
   hunt_immune [class]        unit classes alien hunters ignore
   ship_time_pct              change to the time troops take by sea
@@ -92,7 +92,7 @@ def listed(cfg: Config, player: Player | None, key: str) -> set[str]:
 DESCRIBE = {
     "growth_pct": "Cities grow {v}% faster; children grow up {v}% faster",
     "build_turns": "Engineers build {n} turn faster",
-    "labour_pct": "+{v}% labour from engineers",
+    "labour_pct": "+{v}% labor from engineers",
     "fund_pct": "Gold to a resistance goes {v}% further",
     "exchange_pct": "{v}% better prices at the Galactic Exchange",
     "unit_cost_pct": "Units cost {n}% less production",
@@ -115,7 +115,7 @@ def describe(effects: dict[str, Any]) -> list[str]:
         elif k == "city_yields":
             out += [f"+{n} {y} in every city" for y, n in v.items()]
         elif k == "class_defence_pct":
-            out += [f"{c.capitalize()} units +{p}% defence" for c, p in v.items()]
+            out += [f"{c.capitalize()} units +{p}% defense" for c, p in v.items()]
         elif k == "hunt_immune":
             out.append(f"Alien hunters ignore your {', '.join(v)} units")
         elif k in DESCRIBE:

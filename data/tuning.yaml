@@ -19,14 +19,14 @@ time:
 
 map:
   width:
-    value: 216
+    value: 188
     status: placeholder
-    note: Map columns (216 x 128 from 2026-11-14, room to shuffle the continents; was 192 x 116).
+    note: Map columns (188 x 112 from 2026-11-21, 25% less area - designer, SPEC_M21; 216 x 128 from 2026-11-14, room to shuffle the continents; was 192 x 116).
       Earlier - 192 x 116 = 22272 tiles (designer 2026-11-14 - continents about twice as
       big, about 1000 land hexes each, for 15 well-spaced real cities). Each continent's box is
       in data/continents.yaml.
   height:
-    value: 128
+    value: 112
     status: placeholder
     note: Map rows.
   wrap:
@@ -35,7 +35,7 @@ map:
     note: The world wraps east to west - the earth is round, there is no edge (designer
       2026-11-15, SPEC_M10). The map width must be even.
   land_per_continent:
-    value: 2750
+    value: 2090
     status: placeholder
     note: Land hexes each continent grows to from its real outline, so land is about 60% of the
       map and every continent has about the same (designer 2026-11-15, SPEC_M10 - "more 60/40
@@ -53,7 +53,7 @@ map:
     value: [0, 10, 25, 45, 70, 90, 100]
     status: placeholder
     note: Chance a coastal ocean hex becomes land in one growth pass, by how many land
-      neighbours it has (0-6); bays fill first, so the coast stays ragged.
+      neighbors it has (0-6); bays fill first, so the coast stays ragged.
   row_gap:
     value: -1
     status: placeholder
@@ -62,7 +62,7 @@ map:
   layout_gap_min:
     value: -1
     status: placeholder
-    note: Columns between neighbouring continents in a row (negative - their ocean margins
+    note: Columns between neighboring continents in a row (negative - their ocean margins
       overlap, leaving a strait one hex wide; designer 2026-11-15, SPEC_M10).
   ocean_margin:
     value: 1
@@ -76,7 +76,7 @@ map:
   biome_blend_pct:
     value: 30
     status: placeholder
-    note: Chance a hex near a climate border takes the neighbouring zone's biome instead.
+    note: Chance a hex near a climate border takes the neighboring zone's biome instead.
   hill_pct:
     value: 8
     status: placeholder
@@ -92,11 +92,12 @@ map:
 
 cities:
   min_distance:
-    value: 5
+    value: 4
     status: placeholder
     note: Minimum hex distance between any two cities. The real city list in
       data/continents.yaml is chosen to keep it (checked by a test); designer 2026-11-14 asked
-      for more space between cities.
+      for more space between cities. 4 since the 25% smaller map (SPEC_M21) - New York and
+      Montreal, Seattle and Calgary, Beijing with Shanghai and Ulaanbaatar sit 4 apart.
   known_count:
     value: 1
     status: placeholder
@@ -145,6 +146,11 @@ cities:
     value: 50
     status: placeholder
     note: Population lost (rounded down) when a city is liberated in battle.
+  liberation_gold_per_pop:
+    value: 25
+    status: placeholder
+    note: Gold the liberator gets for each citizen the town held before the battle (designer
+      2026-11-21, SPEC_M21) - bigger towns later in the game pay more.
   liberated_hp_pct:
     value: 50
     status: placeholder
@@ -168,7 +174,7 @@ cities:
       near-impregnable to early units in M4 runs).
   capital:
     status: placeholder
-    note: A capital's built-in defences (like Civ's palace), added to its strength and HP, and the
+    note: A capital's built-in defenses (like Civ's palace), added to its strength and HP, and the
       palace's own food and production (so 5 starting citizens are fed before any farm). With one
       starting city (designer 2026-11-14) an undefended capital fell to the first alien sieges.
     strength: 15
@@ -203,12 +209,13 @@ economy:
     status: placeholder
     note: Food a grown citizen eats per turn (a child eats food.child_eats).
   growth_base:
-    value: 20
+    value: 25
     status: placeholder
     note: Food to grow from population 1; threshold = base + per_pop*(p-1) + quad*(p-1)^2.
-      SPEC_M18 (designer 2026-11-18) - a birth costs 20 food plus 5 per citizen past the first.
+      SPEC_M18 (designer 2026-11-18) - a birth costs 20 food plus 5 per citizen past the first;
+      SPEC_M21 (designer 2026-11-21) - births 25% slower, so 25 plus 6.
   growth_per_pop:
-    value: 5
+    value: 6
     status: placeholder
     note: Linear growth threshold term.
   growth_quad:
@@ -296,7 +303,7 @@ combat:
   fortify_pct:
     value: 25
     status: placeholder
-    note: Defence bonus for a fortified unit.
+    note: Defense bonus for a fortified unit.
   flanking_pct:
     value: 10
     status: placeholder
@@ -331,7 +338,7 @@ start:
       - {type: infantry, count: 1}
   city_units:
     status: placeholder
-    note: City defence units placed on the tile of every city a player owns at the start
+    note: City defense units placed on the tile of every city a player owns at the start
       (designer 2026-11-14 - a city artillery that cannot move).
     list: [city_artillery]
 
@@ -412,6 +419,10 @@ citizens:
     note: Every citizen has 6 points over the six domains, in one of three seeded patterns
       (designer 2026-11-14) - +1 in all six, +3 in two, or +2 in three. Weights pick the pattern.
     points: 6
+    base_weight: 2
+    focus_weight: 4
+    weights_note: SPEC_M21 (designer 2026-11-21) - a child's stats are rolled when it grows up;
+      the town's focus domain is twice as likely to be one of its strengths.
     patterns:
       - {status: placeholder, note: +1 everywhere., weight: 1, picks: 6, each: 1}
       - {status: placeholder, note: Two strengths., weight: 1, picks: 2, each: 3}
@@ -470,8 +481,8 @@ promotions:
       defence_pct, vs {class or city - pct}, heal (extra HP a turn when resting), moves (extra).
       Bonuses add up.
     attack_10: {note: +10% attack strength., attack_pct: 10}
-    defence_10: {note: +10% defence strength., defence_pct: 10}
-    dig_in: {note: +20% defence; infantry hold ground., defence_pct: 20, classes: [infantry]}
+    defence_10: {note: +10% defense strength., defence_pct: 10}
+    dig_in: {note: +20% defense; infantry hold ground., defence_pct: 20, classes: [infantry]}
     field_medic: {note: Heals 10 HP more a turn when resting., heal: 10, classes: [infantry, armour]}
     blitz: {note: +1 move., moves: 1, classes: [armour, recon]}
     breakthrough: {note: +20% attacking infantry., vs: {infantry: 20}, classes: [armour]}
@@ -483,7 +494,7 @@ defences:
   upgrade:
     status: placeholder
     note: Designer 2026-11-14 - city guns do not earn experience; they are upgraded with gold.
-      Each level adds strength_pct to attack and defence; level k (from 1) costs cost_base +
+      Each level adds strength_pct to attack and defense; level k (from 1) costs cost_base +
       cost_step x (k - 1) gold, up to max_level.
     cost_base: 60
     cost_step: 40
@@ -558,10 +569,10 @@ survivor:
     (town_garrison, at town_hp_pct of its HP). Caches hold loot (weights); near_caches of them lie
     just beyond the band's sight (none beside it, nearer than the town, which starts unseen) and
     always hold gear; the rest lie within radius, out of sight (designer 2026-11-16). A unit holds one
-    weapon (weapon or alien_weapon, the better counts) and one armour. Alien hunters ignore band
+    weapon (weapon or alien_weapon, the better counts) and one armor. Alien hunters ignore band
     units farther than hunt_radius (one less in forest or hills). If the leader falls before the
     first town, it escapes to the band's starting hex with escape_survivors survivors. The town's
-    barricades hold (it cannot fall below 1 HP) until the band has found a weapon, armour or another
+    barricades hold (it cannot fall below 1 HP) until the band has found a weapon, armor or another
     survivor (designer - no capture without an upgrade or an extra citizen). Taking the
     first town turns survivors without gear into citizens; geared survivors stay as units; the
     leader leaves the map; scrap becomes production; founding_units join. AI bands storm the town
@@ -607,7 +618,7 @@ food:
   supply_radius: 4
   rations: 10
   starve_hp: 10
-  store_cap: 60
+  store_cap: 75
   granary: food_depot
   granary_cap: 120
   freed_store: 30

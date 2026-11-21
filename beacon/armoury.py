@@ -1,7 +1,7 @@
 """Gear and people moving between units and towns (docs/SPEC_M20.md, designer 2026-11-19).
 
 A unit that finds gear it does not use carries it (up to `pack_size` items); inside its own land
-it leaves it in the nearest town's armoury, where a unit standing in the town can take it. Any
+it leaves it in the nearest town's armory, where a unit standing in the town can take it. Any
 unit standing in its own town's land can join the town as a grown citizen."""
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ def store(city: City, items: list[str]) -> None:
 
 
 def deposit(state: GameState, cfg: Config) -> Events:
-    """End of turn: units carrying gear inside their own land leave it in the town's armoury."""
+    """End of turn: units carrying gear inside their own land leave it in the town's armory."""
     events: Events = []
     for u in state.sorted_units():
         if not u.pack or u.owner not in state.players:
@@ -71,7 +71,7 @@ def equip_problem(state: GameState, cfg: Config, unit: Unit, item: str) -> str |
     if city is None or city.owner != unit.owner:
         return "stand in one of your towns to take gear from its armoury"
     if city.armoury.get(item, 0) <= 0:
-        return f"{city.name}'s armoury has no {item.replace('_', ' ')}"
+        return f"{city.name}'s armory has no {item.replace('_', ' ')}"
     if carries_only(cfg, unit):
         return "scouts and civilians carry gear but do not use it"
     from beacon.survivors import ARMOUR, WEAPONS, settings
@@ -104,7 +104,7 @@ def equip(state: GameState, cfg: Config, unit: Unit, item: str) -> Events:
 
 def join_problem(state: GameState, cfg: Config, unit: Unit) -> str | None:
     if cfg.units[unit.type].get("fixed"):
-        return "city defences cannot join a town"
+        return "city defenses cannot join a town"
     if unit.type == "band_leader":
         return "the leader leads; it does not join a town as a citizen"
     if home_of(state, unit) is None:
@@ -113,7 +113,7 @@ def join_problem(state: GameState, cfg: Config, unit: Unit) -> str | None:
 
 
 def join(state: GameState, cfg: Config, unit: Unit) -> Events:
-    """The unit settles in the town as a grown citizen; its gear goes to the armoury."""
+    """The unit settles in the town as a grown citizen; its gear goes to the armory."""
     from beacon import citizens
     from beacon.units import remove_unit
 

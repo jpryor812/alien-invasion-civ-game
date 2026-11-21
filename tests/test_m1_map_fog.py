@@ -14,7 +14,9 @@ from beacon.view import PlayerView, observe
 # Update deliberately (and say why in the commit) when map generation or the data changes.
 # Last change: SPEC_M12 (designer 2026-11-15) - tiles carry alien nests (Tile.nest); the land itself
 # is unchanged since SPEC_M10.
-GOLDEN_MAP_SEED_1 = "fae570629419649710e7b496adc20c3763ac16489aa3c2809259849a0265c61f"
+GOLDEN_MAP_SEED_1 = (
+    "db3b4de4d4e8bb77c2da2c2643a1033125699641098a0a577562fe67a2d40639"  # 188 x 112 (SPEC_M21)
+)
 
 
 MAP_CITY_FIELDS = ("id", "name", "continent", "tile", "status", "owner", "pop", "is_capital")

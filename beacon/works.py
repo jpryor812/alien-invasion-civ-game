@@ -1,8 +1,8 @@
 """Works: buildings, walls and tile works built by a city's engineers (docs/SPEC_M17.md).
 
-Ordering a work pays its materials at once. Each turn the city's crew puts `per_engineer` labour
+Ordering a work pays its materials at once. Each turn the city's crew puts `per_engineer` labor
 apiece into its works in order: the first takes what it needs and the rest passes on, so a work's
-turns are the labour left before and in it over the crew's labour a turn. Cancelling refunds.
+turns are the labor left before and in it over the crew's labor a turn. Cancelling refunds.
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def order_building(
     state: GameState, cfg: Config, city: City, b: str, spot: tuple[int, int] | None = None
 ) -> dict[str, Any]:
     """Pay and order a building (the caller checked building_problem); placed at `spot` or at
-    the free spot nearest the centre."""
+    the free spot nearest the center."""
     if spot is None:
         spot = layout.auto_spot(state, cfg, city, b)
     if spot is not None:
@@ -232,7 +232,7 @@ def _finish(state: GameState, cfg: Config, city: City, job: dict[str, Any]) -> d
         layout.complete(state, cfg, city, b)
         hp = cfg.buildings[b].get("city_hp", 0)
         city.hp = min(economy.max_hp(cfg, city), city.hp + hp)
-        return {"kind": "building_completed", "city": city.id, "building": b}
+        return {"kind": "building_completed", "player": city.owner, "city": city.id, "building": b}
     if what == "walls":
         gained = 0
         for x, y, m in job["cells"]:
@@ -257,7 +257,7 @@ def _finish(state: GameState, cfg: Config, city: City, job: dict[str, Any]) -> d
 
 
 def progress(state: GameState, cfg: Config, city: City) -> Events:
-    """One turn of the crew's labour."""
+    """One turn of the crew's labor."""
     ensure_crew(cfg, city)
     r = rate(state, cfg, city)
     events: Events = []

@@ -3,7 +3,7 @@
 Every combat a unit takes part in, attacking or attacked, earns it 1 experience. A promotion
 becomes due at 2 experience, then each time the total doubles (4, 8, 16), then each time it grows
 by half (24, 36, 54, 81...). The player picks one option per promotion; for now every unit has
-the same two (+10% attack or +10% defence); unit-specific options can be added in the data.
+the same two (+10% attack or +10% defense); unit-specific options can be added in the data.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ def upgrade_cost(cfg: Config, unit: Unit) -> int | None:
 
 def upgrade_problem(state: GameState, cfg: Config, unit: Unit) -> str | None:
     if not cfg.units[unit.type].get("fixed"):
-        return "only city defences are upgraded with gold; field units earn promotions"
+        return "only city defenses are upgraded with gold; field units earn promotions"
     cost = upgrade_cost(cfg, unit)
     if cost is None:
         return "already at the top level"

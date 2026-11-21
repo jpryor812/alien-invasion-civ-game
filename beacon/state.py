@@ -74,6 +74,7 @@ class City:
     resistance: int = 0  # weapons smuggled in to its people (SPEC_M12)
     grow: bool = True  # births allowed; off banks food for the army (SPEC_M18)
     wrecked: list[str] = field(default_factory=list)  # buildings to repair (SPEC_M20)
+    alien_leader: dict[str, Any] = field(default_factory=dict)  # its alien leader (SPEC_M21)
     border: list[int] = field(default_factory=list)  # its land; [] is the old 2-hex area (M20)
     armoury: dict[str, int] = field(default_factory=dict)  # gear left by units (SPEC_M20)
     funded_pct: int = 0  # its defence strength cut by gold sent to the resistance (2026-11-16)
@@ -200,6 +201,8 @@ class DealTerms:
     recruits: list[int] = field(default_factory=list)
     units: list[int] = field(default_factory=list)
     alliance: bool = False
+    materials: dict[str, int] = field(default_factory=dict)  # timber, stone, iron once (M21)
+    materials_per_turn: dict[str, int] = field(default_factory=dict)  # each turn (SPEC_M21)
 
 
 @dataclass

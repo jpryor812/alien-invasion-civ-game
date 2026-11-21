@@ -9,7 +9,7 @@ buildings:
   market: {status: placeholder, note: Commerce., cost: 80, maintenance: 0, tech: market_economy, yields: {gold: 2}, yield_pct: {gold: 25}}
   library: {status: placeholder, note: The first science building - buildable from turn 1 (designer 2026-11-15 SPEC_M10)., cost: 45, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}}
   school: {status: placeholder, note: Education., cost: 80, maintenance: 1, tech: industrial_base, yields: {science: 2}, yield_pct: {}, requires_building: library}
-  port: {status: placeholder, note: Harbour; trade role arrives in M6., cost: 90, maintenance: 1, tech: market_economy, yields: {food: 5, gold: 1}, yield_pct: {}, coastal: true}
+  port: {status: placeholder, note: Harbor; trade role arrives in M6., cost: 90, maintenance: 1, tech: market_economy, yields: {food: 5, gold: 1}, yield_pct: {}, coastal: true}
   military_base: {status: placeholder, note: The barracks - needed to train military units (designer 2026-11-16)., cost: 100, maintenance: 2, tech: modern_warfare, yields: {}, yield_pct: {}, unit_production_pct: 25, city_strength: 4}
   radio_tower: {status: placeholder, note: "Contact with the other continents and a seat on the council (designer 2026-11-16 - cheap, about 2 turns; the first thing a new city builds). Wider city sight.", cost: 12, maintenance: 0, tech: industrial_base, yields: {}, yield_pct: {}, vision: 2}
   factory: {status: placeholder, note: Heavy industry., cost: 140, maintenance: 2, tech: advanced_manufacturing, yields: {production: 1}, yield_pct: {production: 25}, requires_building: workshop}
@@ -21,7 +21,7 @@ buildings:
 
   # Promoted in M5 from the proposed content (commit 0b79762).
   water_treatment: {status: placeholder, note: Clean water and food security., cost: 90, maintenance: 1, tech: industrial_base, yields: {food: 10}, yield_pct: {}}
-  air_defence_battery: {status: placeholder, note: Anti-air and close defence., cost: 80, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, city_strength: 3}
+  air_defence_battery: {status: placeholder, note: Anti-air and close defense., cost: 80, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, city_strength: 3}
   armoury: {status: placeholder, note: Weapons production., cost: 85, maintenance: 1, tech: mechanized_warfare, yields: {}, yield_pct: {}, unit_production_pct: 15}
   metro: {status: placeholder, note: Urban transit., cost: 120, maintenance: 1, tech: high_speed_rail, yields: {}, yield_pct: {production: 10}}
   shipyard: {status: placeholder, note: Naval production., cost: 100, maintenance: 1, tech: modern_warfare, yields: {}, yield_pct: {}, coastal: true, unit_production_pct: 20}

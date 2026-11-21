@@ -30,6 +30,7 @@ from beacon import (
 from beacon.commands import (
     AcceptDeal,
     AcceptOffer,
+    AnswerAlienLeader,
     ArmResistance,
     AssignBestCitizen,
     Attack,
@@ -258,6 +259,19 @@ def _set_focus(state: GameState, cfg: Config, cmd: SetFocus) -> Events:
     return [{"kind": "focus_set", "city": city.id, "focus": cmd.focus}]
 
 
+@handles(AnswerAlienLeader)
+def _answer_alien_leader(state: GameState, cfg: Config, cmd: AnswerAlienLeader) -> Events:
+    from beacon import alien_leaders
+
+    if not 0 <= cmd.city < len(state.cities):
+        raise CommandError(f"no city {cmd.city}")
+    city = state.cities[cmd.city]
+    problem = alien_leaders.answer_problem(state, cfg, cmd.player, city, cmd.bribe)
+    if problem:
+        raise CommandError(problem)
+    return alien_leaders.answer(state, cfg, cmd.player, city, cmd.bribe)
+
+
 @handles(EquipGear)
 def _equip_gear(state: GameState, cfg: Config, cmd: EquipGear) -> Events:
     from beacon import armoury
@@ -375,9 +389,10 @@ def _move(state: GameState, cfg: Config, cmd: MoveUnit) -> Events:
             events = movement.move_along(state, cfg, unit, detour[0])
     if not events:
         raise CommandError(f"unit {unit.id} cannot make progress toward {cmd.target} this turn")
+    from beacon.alien_leaders import meet  # the leaders of towns now in sight (SPEC_M21)
     from beacon.survivors import claim_town  # a homeless band finds its first town (2026-11-17)
 
-    return [*events, *claim_town(state, cfg, cmd.player)]
+    return [*events, *claim_town(state, cfg, cmd.player), *meet(state, cfg)]
 
 
 @handles(Attack)
@@ -881,6 +896,10 @@ def pending_decisions(state: GameState, cfg: Config, pid: str) -> list[dict[str,
     for city in state.cities:  # engineers with nothing to build (designer 2026-11-19)
         if city.owner == pid and city.status == ACTIVE and works.crew(city) > 0 and not city.works:
             out.append({"kind": "choose_production", "city": city.id})
+    from beacon.alien_leaders import pending as leaders_pending  # SPEC_M21
+
+    for cid in leaders_pending(state, pid):
+        out.append({"kind": "alien_leader", "city": cid})
     farm = _farm_to_repair(state, cfg, pid)
     if farm is not None:  # the first town's first step (SPEC_M20)
         out.insert(0, {"kind": "repair_farm", "city": farm[0], "tile": farm[1]})

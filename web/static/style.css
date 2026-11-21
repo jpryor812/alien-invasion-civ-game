@@ -567,3 +567,46 @@ body:has(#side:not(.hidden):not(.unitmode)) #leaderbadge { left: 312px; }
 .meetopts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
 .popguide { display: grid; gap: 4px; margin: 6px 0 12px; padding: 8px 10px; border: 1px solid rgba(217,174,85,0.35); border-radius: 6px; background: rgba(217,174,85,0.06); }
 .landhint { margin-top: 8px; color: #d8cfb8; }
+
+/* an alien town's leader (SPEC_M21) */
+.alienmeet { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: start; padding: 10px; background: radial-gradient(circle at 20% 30%, rgba(160,40,30,0.35), rgba(10,6,8,0.0) 60%); }
+.alienface .portrait { width: 220px; height: 220px; border-radius: 12px; border: 2px solid #b8322a; box-shadow: 0 0 24px rgba(220,60,40,0.45); }
+.alientext h2 { margin: 0; }
+/* births and growing up (SPEC_M21) */
+.births { display: grid; gap: 10px; }
+.birth { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; }
+.birth .portrait { width: 64px; height: 64px; border-radius: 50%; }
+.oddsbar { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.oddsbar .tag { opacity: calc(0.45 + var(--p) / 180); }
+
+/* population side panel (SPEC_M21) */
+#poppane { position: fixed; top: 44px; right: 0; bottom: 0; width: min(560px, 46vw); z-index: 30; background: linear-gradient(180deg, #13202b, #0c151c); border-left: 2px solid var(--brass); box-shadow: -10px 0 30px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+#poppane.hidden { display: none; }
+#poppane .pophead { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(217,174,85,0.4); }
+#poppane .pophead h2 { margin: 0; font-family: var(--heading); color: var(--brass); }
+#poppane .popscroll { overflow-y: auto; padding: 8px 12px 20px; }
+.popcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.popcard { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 6px; border: 1px solid rgba(217,174,85,0.3); border-radius: 6px; background: rgba(255,255,255,0.03); }
+.popcard .portrait { width: 72px; height: 72px; border-radius: 6px; border: 1px solid var(--brass); }
+.popcard select { width: 100%; margin-top: 4px; font-size: 12px; }
+.pcstats { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0; }
+.pcstats .tag { font-size: 11px; }
+
+/* the screens menu (SPEC_M21) */
+#menubtn { margin-left: auto; }
+#topbar nav#menulist { position: fixed; top: 42px; right: 8px; margin: 0; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: linear-gradient(#24323f, #121b23); border: 1px solid var(--brass); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 40; }
+#topbar nav#menulist.hidden { display: none; }
+#topbar nav#menulist button { text-align: left; min-width: 160px; }
+#topbar { overflow: hidden; }
+
+/* talking to another leader (SPEC_M21) */
+.tradescreen { position: relative; min-height: 600px; background-size: cover; background-position: center top; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.tradefig { position: absolute; left: 50%; top: 10px; height: 330px; transform: translateX(-50%); filter: drop-shadow(0 8px 18px rgba(0,0,0,0.7)); pointer-events: none; }
+.tradesay { margin-top: 250px; align-self: center; width: min(560px, 80%); background: rgba(12,18,24,0.92); border: 1px solid var(--brass); border-radius: 8px; padding: 8px 12px; position: relative; }
+.tradecols { display: grid; grid-template-columns: 200px 1fr 200px; gap: 10px; position: relative; }
+.tcol, .tmid { background: rgba(12,18,24,0.92); border: 1px solid var(--brass); border-radius: 8px; padding: 8px; }
+.tcol h3, .tmid h3 { margin: 2px 0 6px; font-size: 13px; color: var(--brass); }
+.titem { display: block; width: 100%; text-align: left; margin-bottom: 4px; }
+.tline { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.tline input { width: 64px; }
+.tally { background: rgba(12,18,24,0.92); border: 1px solid var(--brass); border-radius: 8px; padding: 8px; position: relative; }

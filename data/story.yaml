@@ -15,7 +15,7 @@ events:
     title: Survivors
     picture: survivors
     body: "Smoke from a chimney where there should be none. Inside a gutted school, twelve
-      people who have lived on canned food and rumour since the sky opened. They look at your
+      people who have lived on canned food and rumor since the sky opened. They look at your
       soldiers the way you look at the first warm day after winter."
     choices:
       - label: Take them home
@@ -55,8 +55,8 @@ events:
     ai_choice: 0
   abandoned_armoury:
     status: placeholder
-    note: Exploration find - an armoury still stocked.
-    title: The Armoury
+    note: Exploration find - an armory still stocked.
+    title: The Armory
     picture: armoury
     body: "The doors were welded shut from the inside. The crew who did it are long gone, but
       the racks are full and one vehicle bay still has charge."

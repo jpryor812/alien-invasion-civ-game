@@ -390,3 +390,16 @@ live in the main game, and the sandbox page is gone.*
 - Meeting a leader opens a meeting screen with a greeting and options.
 - The band can mine meteor remnants; more crates across each continent.
 - Units carry gear they cannot use to a town's armoury; units in their land can join a town.
+
+## M21: people, alien leaders, trading (designer 2026-11-21, docs/SPEC_M21.md)
+
+- Births 25% slower; the map has 25% less area (188 x 112); freeing a town pays 25 gold a
+  citizen.
+- A child's stats are rolled when it grows up; birth and growing-up cards show the odds, then
+  the stats and a job choice. Population is a side panel over the map.
+- Every alien town has a leader (bribable, greedy, aggressive or stoic; scouts see only a hint),
+  met in a scene when the town is found. Bribed leaders defect to the council and halve the
+  town's defense; greedy ones keep the gold; aggressive ones bring more alien attacks.
+- Talks are with one civ at a time, Civ V style: gold and materials once or every turn. An
+  alliance has its own button. First contact opens the talks.
+- Screens live in one Menu; American English in all text players see.

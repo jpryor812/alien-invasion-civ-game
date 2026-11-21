@@ -25,23 +25,23 @@ def test_children_eat_double_and_farms_feed_ten(cfg):
     kids = len(people) - adults
     assert citizens.food_eaten(s, cfg, city) >= 2 * adults + 4 * kids
     assert cfg.improvements["farm"]["yields"]["food"] == 20
-    assert economy.growth_threshold(cfg, 1) == 20
-    assert economy.growth_threshold(cfg, 5) == 40
+    assert economy.growth_threshold(cfg, 1) == 25
+    assert economy.growth_threshold(cfg, 5) == 49
 
 
 def test_the_store_is_capped_by_the_granary_and_births_can_pause(cfg):
     s, city = _city(cfg)
     granary = food.F(cfg, "granary")
     city.buildings = [b for b in city.buildings if b != granary]
-    assert food.store_cap(cfg, city) == 60
+    assert food.store_cap(cfg, city) == 75
     city.buildings.append(granary)
-    assert food.store_cap(cfg, city) == 180
+    assert food.store_cap(cfg, city) == 195
     city.buildings.remove(granary)
     apply_command(s, cfg, SetGrowth(player=EU, city=city.id, grow=False))
     assert not city.grow
-    city.food_store, pop = 59, city.pop
+    city.food_store, pop = 74, city.pop
     economy.process_city(s, cfg, city, s.players[EU])
-    assert city.pop == pop and city.food_store <= 60  # banked, capped, nobody born
+    assert city.pop == pop and city.food_store <= 75  # banked, capped, nobody born
     assert state_to_json(state_from_json(state_to_json(s))) == state_to_json(s)
 
 

@@ -29,7 +29,7 @@ techs:
   mycelial_network: {status: placeholder, note: Shared healing through the root network., order: 13, cost: 3800, effects: {heal: 15}}
   deep_brood: {status: placeholder, note: Faster growth and larger cities., order: 14, cost: 4200, effects: {growth: 3, max_pop: 2}}
   void_shield: {status: placeholder, note: Energy barrier over alien cities., order: 15, cost: 4600, effects: {city_strength: 12, city_hp: 100}}
-  living_metal: {status: placeholder, note: Armour grown into the walls., order: 16, cost: 5000, effects: {city_hp: 150, city_strength: 4}}
+  living_metal: {status: placeholder, note: Armor grown into the walls., order: 16, cost: 5000, effects: {city_hp: 150, city_strength: 4}}
   swarm_minds: {status: placeholder, note: One mind across every hive., order: 17, cost: 5400, effects: {growth: 4, production: 2}}
   dark_matter_heart: {status: placeholder, note: A dark-matter core in each city., order: 18, cost: 5800, effects: {production: 6}}
 
@@ -78,14 +78,14 @@ reinforcements:
 director:
   status: placeholder
   note: Orders for alien units. A siege attacks once alien strength within gather_radius of the
-    target is siege_ratio_pct of the city's defence. Opportunistic attacks need expected damage
+    target is siege_ratio_pct of the city's defense. Opportunistic attacks need expected damage
     dealt of at least attack_ratio_pct of damage taken (or a kill). Patrols roam to seeded
     points within patrol_radius. Recently liberated cities (within retake_turns) and capitals
     score higher as targets. For the first grace_turns turns aliens only patrol; no player city is
     besieged before city_grace_turns (designer 2026-11-14 - at least 25 turns to warm up). Hunters
     stalk lone player units (scouts, engineers, stragglers) within hunt_radius, weakest first. A
     unit that starts a siege gathers a cohort of cohort_min to cohort_max nearby aliens (seeded)
-    onto the same city; sieges favour weak cities (defence_per_strength). Raids (weight raised
+    onto the same city; sieges favor weak cities (defence_per_strength). Raids (weight raised
     from 2 to 4) skip land within raid_safe_radius of a player city and treat each turret level
     as turret_penalty extra hexes away; a turret must be destroyed before its tile is pillaged.
     When a Starfall shard lands, the nearest free alien on that continent goes to mine it with
@@ -230,7 +230,7 @@ heat:
 contents:
   status: placeholder
   note: What each alien-held city holds, seeded by weight at the start. Seeing the city tells its
-    rumour (a category); a recon unit beside it or a spy tells the truth. Freeing the city gives
+    rumor (a category); a recon unit beside it or a spy tells the truth. Freeing the city gives
     the reward. hive_heart cities get an extra garrison unit (guard).
   survivors: {rumour: people, weight: 5, pop: 2}
   captive: {rumour: people, weight: 3, citizen_points: 9}
@@ -260,7 +260,7 @@ resistance:
 
 funding:
   status: placeholder
-  note: Designer 2026-11-16 - gold sent to an alien city's resistance weakens it. Its defence
+  note: Designer 2026-11-16 - gold sent to an alien city's resistance weakens it. Its defense
     strength falls by the funded percent (funding adds up, to at most max_pct) until it is freed,
     and a band's first town no longer holds its barricades. At the band's first town first_gold
     buys first_pct (a tutorial step - the starting treasury halves the town). Elsewhere one percent
@@ -282,3 +282,19 @@ nests:
   heal: 5
   production: 1
 
+leaders:
+  status: placeholder
+  note: The leaders of alien-held towns (designer 2026-11-21, SPEC_M21). Temperament by weight,
+    seeded per town. A bribe costs bribe_per_strength gold per point of the town's strength (at
+    least bribe_min); a bribable leader defects as a recruit of recruit_level and the town's
+    defense halves; a greedy one keeps the gold. An aggressive leader found adds aggressive_heat
+    to the finder's heat while its town stands. hint is all scouts learn.
+  bribe_per_strength: 10
+  bribe_min: 100
+  recruit_level: 1
+  aggressive_heat: 6
+  temperaments:
+    bribable: {weight: 35, offers_bribe: true, hint: Fond of gold}
+    greedy: {weight: 25, offers_bribe: true, hint: Fond of gold}
+    aggressive: {weight: 25, offers_bribe: false, hint: Spoiling for a fight}
+    stoic: {weight: 15, offers_bribe: false, hint: Cold and patient}

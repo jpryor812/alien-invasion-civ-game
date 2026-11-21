@@ -1161,3 +1161,35 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   21; units starved 278; town famines 354 (0 in M19; about 6 per player per game, a lost citizen
   each) - freed towns now start with one ring of land and must repair their farm before it
   feeds them. Watch in play; a starting store bigger than 30 would soften it.
+
+## People, alien leaders, trading (SPEC_M21, designer 2026-11-21)
+- Births: growth_base 25, per_pop 6 (was 20 and 5): 25% more food per birth. Store cap 75
+  (195 with the food depot) so the granary still comes at about pop 9.
+- Map: 188 x 112, continent boxes scaled by 0.87, land_per_continent 2090. Generation checked on
+  seeds 1-5 (90 towns each).
+- Liberation gold: 25 per citizen the town held before the battle (before the half lost in the
+  fighting), on top of what the town held (its contents).
+- Child stats: the pattern is drawn as before; strengths are drawn one at a time by weight, 2
+  for each domain and 4 for the town's focus. The birth card shows exact chances (computed over
+  every draw order). Old saves: children with stats keep them.
+- Alien leaders: seeded from the events stream by town and turn (towns the aliens take later
+  get a new leader). Weights bribable 35, greedy 25, aggressive 25, stoic 15. Bribe 10 gold per
+  point of strength, at least 100. A bribable leader becomes a level-1 recruit with its own name
+  and sets the town's resistance funding to the 50% cap. One deal per leader. Aggressive leaders
+  add 6 heat per player who found them while their town stands. Leaders are met when a town is
+  first known (after moves and at each turn's start); the meeting waits as a pending decision.
+  The AI bribes only a leader fond of gold when it holds twice the price.
+- Deals: `materials` and `materials_per_turn` terms (timber, stone, iron). Once: moved when the
+  deal is accepted, from the giver's towns with the most of each good, to the receiver's capital
+  (may pass its store cap). Every turn: moved at the end of each turn; a shortfall breaks the
+  deal. The AI values materials at the Exchange's buying price.
+- Alliance still travels as a deal term under the hood; the client offers it only as its own
+  button.
+- Spelling: player-facing strings in Python (strings with spaces), data notes, names and
+  comments, and client text use American English; ids such as `armour`, `defence_pct` and
+  `labour` keep their spelling so saves and data stay compatible. The client's `pretty()` prints
+  ids in American spelling.
+- City spacing (cities.min_distance) is 4 since the smaller map: four real pairs sit 4 apart.
+- Batch (10 seeds, 100 turns, AI): towns freed median 83.5 (79.5 in M20); people per town about
+  19; units starved 255; town famines 641 (354 in M20, about 11 per player per game) - more,
+  smaller freed towns starting short of food. The famine count is the next balance item.

@@ -1,6 +1,6 @@
 # Terrain, elevation, features and biomes. Tile yields add terrain + elevation + feature (then
 # resource and improvement), floored at 0. Movement cost is the largest of the three, in move
-# points (multiplied by movement.scale). Defence percent adds up.
+# points (multiplied by movement.scale). Defense percent adds up.
 
 terrains:
   grassland: {status: placeholder, note: Temperate food land., water: false, yields: {food: 2}, move_cost: 1, defense_pct: 0}
