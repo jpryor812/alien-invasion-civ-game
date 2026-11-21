@@ -2673,7 +2673,10 @@ async function openPopulation(only = null) {
 }
 function closePopulation() { const p = $("poppane"); if (p) p.classList.add("hidden"); }
 function popCard(p, d) {
-  const stats = Object.entries(p.stats).map(([k, v]) => `<span class="tag ${k}">+${v} ${k}</span>`).join("") || '<span class="muted small">stats come when grown</span>';
+  // stats as brass gauges (CLAUDE.md: dossiers show gauges, not spreadsheet tags)
+  const GAUGE = ["food", "production", "military", "science", "gold", "beacon"];
+  const ABBR = { food: "FOO", production: "PRO", military: "MIL", science: "SCI", gold: "GLD", beacon: "BEA" };
+  const stats = Object.keys(p.stats).length ? `<div class="gauges">${GAUGE.map((k) => `<div class="gauge" title="${pretty(k)} +${p.stats[k] || 0}" style="--c:${SKILL_COLOR[k]}"><span class="gv">${p.stats[k] || 0}</span><div class="gt"><i style="height:${Math.min(100, (p.stats[k] || 0) * 100 / 3)}%"></i></div><span class="gl muted">${ABBR[k]}</span></div>`).join("")}</div>` : '<span class="muted small">stats come when grown</span>';
   const traits = p.traits.map((t) => `<span class="trait" title="${esc(t.note)}">${esc(pretty(t.id))}</span>`).join("");
   let where;
   if (!p.adult) where = `child · grows up in ${p.turns_to_grow} turns`;

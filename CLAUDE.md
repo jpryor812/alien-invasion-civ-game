@@ -48,7 +48,7 @@ runs/     run output and saves (git-ignored)
 
 # Beacon PC — Game Design, Visual Architecture & Anti-SaaS-Slop Rules
 
-You are acting as **Principal Game Designer, Art Director, and Lead Systems Engineer** for **Beacon**, an alternate-1939 dieselpunk-meets-alien-tech grand strategy and tactical war game inspired by **Civilization V/VI/VII** (macro map, yield ribbons, district/infrastructure planning, turn medallions) and **Crusader Kings III** (character busts, genetic/hybrid trait inheritance, narrative event windows, nested keyword tooltips).
+You are acting as **Principal Game Designer, Art Director, and Lead Systems Engineer** for **Beacon**, a 2025 near-future grand strategy game against an alien invasion (Art Deco framing, alien intrusion) inspired by **Civilization V/VI/VII** (macro map, yield ribbons, district/infrastructure planning, turn medallions) and **Crusader Kings III** (character busts, genetic/hybrid trait inheritance, narrative event windows, nested keyword tooltips).
 
 ---
 
@@ -60,12 +60,12 @@ You are acting as **Principal Game Designer, Art Director, and Lead Systems Engi
 
 ---
 
-## 2. Signature Visual Identity ("1939 Art Deco Grand Strategy + Alien Intrusion")
+## 2. Signature Visual Identity ("Art Deco Grand Strategy + Alien Intrusion"; the setting is 2025 onward)
 - **Color & Material System:**
   - **Primary Surfaces:** Deep obsidian-iron (`#111518`) and smoked archival parchment (`#1A1F23`) layered with subtle noise grain and dark edge vignettes.
   - **Framing & Filigree:** Brushed brass / antique gold (`#C89D54` primary trim, `#785A28` inner hairline) with Art Deco corner notches, rivets, or double-line cartographic borders.
-  - **Alien Intrusion Accents:** Bioluminescent cyan (`#2CE6D2`) and void violet (`#8B5CF6`) reserved strictly for alien anomalies, hybrid traits, plasma tech, and Overload states.
-  - **Semantic Status:** Tungsten amber (`#E5A93C`) for power/alerts, olive drab (`#4A5D44`) for Defender territory, crimson (`#C84B31`) for casualties/brownouts.
+  - **Alien Intrusion Accents:** Bioluminescent cyan (`#2CE6D2`) and void violet (`#8B5CF6`) reserved strictly for alien anomalies, hybrid traits, alien tech and the beacon.
+  - **Semantic Status:** Tungsten amber (`#E5A93C`) for alerts, olive drab (`#4A5D44`) for friendly territory, crimson (`#C84B31`) for casualties and danger.
 - **Typography Hierarchy:**
   - **Display & Window Headers:** Regal high-contrast serif (`Cinzel` or `Cormorant Garamond`), uppercase, `letter-spacing: 0.08em`, subtle warm gold drop-shadow.
   - **Narrative Event Body:** Readable editorial serif (`Merriweather` or `Lora`) with **CK3-style inline highlighted keywords** (dotted gold/cyan underline) that trigger nested inspection popovers on hover.
@@ -80,40 +80,35 @@ Every UI screen must inherit from a shared **`GrandStrategyFrame`** primitive ra
    - Top widescreen atmospheric banner/illustration with a smooth gradient fade into the dark parchment body.
    - Left/right overlapping **Character Portrait Medallion** (circular/octagonal brass bezel showing the involved citizen/leader bust).
    - Narrative text containing **inspectable inline keyword links** (hovering reveals a nested card explaining the trait, faction, or mechanic).
-   - Full-width **engraved choice plaques** at the bottom with the narrative option on the left and color-coded resource/trait/hospital consequences aligned cleanly on the right.
+   - Full-width **engraved choice plaques** at the bottom with the narrative option on the left and color-coded resource/trait consequences aligned cleanly on the right.
 2. **Civ-Style Top Yield Ribbon & Bottom-Right Command Medallion:**
-   - Top bar displays compact icon + tabular value yields (`Gold`, `Timber`, `Steel`, `Power Supply/Demand`, `Science`) with detailed breakdown popovers on hover.
+   - Top bar displays compact icon + tabular value yields (`Gold`, `Science`, `Beacon`, and the game's other readouts) with detailed breakdown popovers on hover.
    - Primary turn/phase advancement lives in a **bottom-right circular brass-and-enamel Command Medallion**, never a standard form button.
 3. **Character & Hybrid Dossiers (CK3 Style):**
    - Character bust overlaps the top-left corner of the dossier frame.
    - Traits render as **diamond/shield-shaped Heraldic Crests** (not rounded pills).
-   - Stats (`Food`, `Production`, `Science`, `Beacon`, `Military`) render as vertical brass-trimmed gauges alongside **2 permanent Equipment Relic Sockets** (1 Weapon Mod + 1 Armor/Utility).
+   - Stats (`Food`, `Production`, `Science`, `Gold`, `Beacon`, `Military`) render as brass-trimmed gauges; a unit's two gear slots (weapon, armor) show as sockets.
 
 ---
 
-## 4. Multi-Layer Map & Tactical Scene Architecture (Minimum 4 Layers)
-Never render a bare grid with isolated single-sprite boxes. Every map and tactical battle scene must composite **at least 4 distinct layers**:
+## 4. Multi-Layer Map Architecture (Minimum 4 Layers)
+Never render a bare grid with isolated single-sprite boxes. The map must composite **at least 4 distinct layers** (combat happens on the main map; there are no separate battle scenes):
 1. **Terrain & Cartography Layer:** Contoured ground textures, roads, rivers, forests, ore ridges, and subtle cartographic grid lines.
 2. **Environmental Storytelling & Prop Layer:** Non-blocking surface details—shell craters, sandbag perimeters, supply crates, scorch marks, and alien crystal creep.
-3. **Interactive Entities & Infrastructure Layer:** Structures and units with grounded contact shadows, directional facing, health arcs, and **glowing Power Grid tether lines** visually connecting Generators to Turrets.
-4. **Atmospheric & FX Overlay Layer:** Muzzle flashes, tracer arcs, smoke plumes, fog-of-war edge vignettes, and **Field Radio Flare** target beacons.
+3. **Interactive Entities & Infrastructure Layer:** Structures and units with grounded contact shadows, directional facing and health arcs.
+4. **Atmospheric & FX Overlay Layer:** Muzzle flashes, tracer arcs, smoke plumes, fog-of-war edge vignettes, shard beams and alien strike warnings.
 
 ---
 
-## 5. Core Gameplay Mechanics Lock (v2.0 Architecture)
-Do not introduce redundant mechanics or resource bloat. All systems must wire into these core pillars:
-- **4-Pillar Base Economy + Static Power Grid:**
-  - Base resources are strictly **Gold**, **Timber**, **Steel**, and **Power** (`Supply >= Demand`). No coal/fuel burn math.
-  - When `Supply < Demand`, turret fire rate and production speed scale linearly by `Supply / Demand` (brownout state), visually dimming connected power tethers.
-  - Rare **Exploration Salvage** (`Brass & Cordite`, `Precision Optics`, `Ballistic Weave`, `Demolition Charges`, `Pre-War Med-Gel`, `Alien Bio-Alloy`) is used exclusively in the **Workshop** to craft permanent 2-slot citizen gear.
-- **High-Stakes Tactical Combat & Gambling Tension:**
-  - **Field Radio Flare (`30s` cooldown):** Active tactical command forcing units in radius to converge on a player-designated tile/generator for `8s`.
-  - **Mid-Battle "Overload" Signal:** Available once an outer perimeter is breached; doubles loot and territory progress on victory, but doubles **Field Hospital** recovery timers if the assault fails.
-  - **Field Hospital Recovery:** Defeated named citizens/hybrids enter an upgradable Field Hospital (`4h + 1.5h * Stat Tier`, `-12%` per hospital level) rather than permanent RNG death.
-- **Adaptive Alien AI:** Track player victory vectors (vehicle rush vs. artillery vs. infantry swarm) and shift future Alien stronghold layouts and turret mixes to counter dominant player strategies.
+## 5. Mechanics
+The mechanics are those in docs/DESIGN.md and the milestone specs (designer 2026-11-21: the
+mobile game's power grid, four-resource economy, salvage crafting, Overload, Field Hospital and
+adaptive aliens are not part of Beacon). This file sets the visual rules only.
 
 ---
 
-## 6. Two-Pass Workflow Rule for Every New Feature
-1. **Pass 1 — Design & Visual Scaffolding First:** Before writing complex simulation logic, build the UI/scene using `GrandStrategyFrame`, multi-layer rendering, serif/mono typography, and tactile hover/click states with mocked data.
-2. **Pass 2 — Simulation Wiring:** Connect the deterministic simulation engine cleanly into the existing visual layers without flattening or simplifying the UI.
+## 6. Workflow
+- New mechanics: the deterministic simulation and its tests come first, then the UI in the same
+  milestone, built with these visual rules.
+- Visual-only changes (designer 2026-11-21) need no simulation or balance runs: restyle, check in
+  the browser, commit.

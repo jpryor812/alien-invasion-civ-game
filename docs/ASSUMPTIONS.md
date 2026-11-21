@@ -1193,3 +1193,18 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
 - Batch (10 seeds, 100 turns, AI): towns freed median 83.5 (79.5 in M20); people per town about
   19; units starved 255; town famines 641 (354 in M20, about 11 per player per game) - more,
   smaller freed towns starting short of food. The famine count is the next balance item.
+
+## Visual rules applied to the browser client (CLAUDE.md, designer 2026-11-21)
+- CLAUDE.md's visual section was kept with the 2025 setting; its mechanics section (power grid,
+  four resources, salvage, Overload, Field Hospital, adaptive aliens) was removed - the designer
+  had decided against them. Visual-only changes need no simulation runs.
+- One theme layer at the end of style.css: obsidian/parchment surfaces with an SVG noise grain,
+  a dark outer bevel, a brass hairline, inset shadows and brass corner marks; corners 3px or less
+  except medallions (portraits, the leader, unit actions, close buttons). Fonts (all SIL Open
+  Font License, loaded from Google Fonts, no files committed): Cinzel for headers, Lora for
+  narrative text, JetBrains Mono for numbers. Primary actions and event choices are chamfered
+  engraved plaques; stat tags are small notched plaques; traits are violet shield crests; the
+  turn button is a round brass-and-enamel medallion; citizen stats are brass gauges in the
+  Population panel.
+- Not done yet: CK3-style hoverable keywords in event text, and the 4-layer map (it waits for
+  the renderer decision).
