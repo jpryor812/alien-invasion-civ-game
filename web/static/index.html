@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500;700&family=Cinzel:wght@500;700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- title screen -->
+  <section id="title">
+    <canvas id="title-bg"></canvas>
+    <div class="title-wrap">
+      <h1 class="logo">BEACON</h1>
+      <p class="tagline">Earth is lost in the fog. Six continents. One enemy. Light the beacons.</p>
+      <div id="title-main" class="title-panel">
+        <button id="btn-continue" class="menu-btn hidden"></button>
+        <button id="btn-new" class="menu-btn">New Game</button>
+        <button id="btn-load" class="menu-btn">Load Game</button>
+        <button id="btn-howto" class="menu-btn">How to Play</button>
+      </div>
+      <div id="title-new" class="title-panel wide hidden">
+        <h2>Choose your continent</h2>
+        <div id="continent-cards" class="continent-cards"></div>
+        <div class="row center">
+          <label>Map seed <input id="new-seed" type="number" min="1" style="width:110px"></label>
+          <button id="btn-random" class="small">Random</button>
+          <label class="small" title="Start with your cities and an army instead of a survivor band"><input type="checkbox" id="new-classic"> Classic start</label>
+        </div>
+        <div class="row center">
+          <button class="menu-btn back">Back</button>
+          <button id="btn-start" class="menu-btn primary">Begin</button>
+        </div>
+      </div>
+      <div id="title-load" class="title-panel wide hidden">
+        <h2>Load a game</h2>
+        <div id="save-list" class="save-list"></div>
+        <div class="row center"><button class="menu-btn back">Back</button></div>
+      </div>
+      <div id="title-howto" class="title-panel wide hidden">
+        <h2>How to play</h2>
+        <div class="howto">
+          <p>You lead one continent. Nobody fights anybody else: every nation fights the aliens, and the world wins or loses together. Your MVP score ranks how much you did.</p>
+          <p><b>Win</b> by destroying the mothership with the world barrage <i>and</i> freeing every alien city. <b>Lose</b> if every continent falls.</p>
+          <p><b>Explore</b> through the fog to find your lost cities, all held by aliens, and storm them: a freed city is yours again. Cities only produce once a road joins them to your capital.</p>
+          <p><b>Citizens</b> are born from spare food and grow up before they work. Each works one improved tile (farm, mine...) or sits on the council. Bare tiles cannot be worked, so keep engineers building.</p>
+          <p><b>Beacons</b> call alien recruits; seat them on councils for bonuses. <b>Trade</b>, give aid and ship troops to help other continents.</p>
+          <p class="muted">Click a unit, then a highlighted hex to move or a red hex to attack (hover first for the odds). Enter: next turn · Space: next unit · F: fortify · S: skip · T/C/D/P: screens · Esc: menu · drag or arrows: pan · wheel: zoom.</p>
+        </div>
+        <div class="row center"><button class="menu-btn back">Back</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- game -->
+  <section id="game" class="hidden">
+    <header id="topbar">
+      <div class="brand">BEACON</div>
+      <div id="turninfo" class="stat"></div>
+      <div id="gold" class="stat" title="Treasury (change per turn)"></div>
+      <div id="science" class="stat" title="Science per turn and current research"></div>
+      <div id="beacon" class="stat" title="Beacon points toward the next recruit"></div>
+      <div id="threat" class="stat" title="The mothership and the alien cities you know of"></div>
+      <div id="influence" class="stat clickable" title="Influence on the council, and your MVP rank"></div>
+      <div id="heat" class="stat clickable"></div>
+      <button id="menubtn" title="All screens">☰ Menu</button>
+      <nav id="menulist" class="hidden">
+        <button data-screen="techs" title="Tech tree (T)">Tech</button>
+        <button data-screen="cities" title="All your cities on one page">Cities</button>
+        <button data-screen="units" title="All your units on one page">Units</button>
+        <button data-screen="population" title="Every city's citizens: who works tiles, who sits on the council">Population</button>
+        <button data-screen="leader" title="Your leader: skills, traits, family, wardrobe (L)">Leader</button>
+        <button data-screen="council" title="Recruits and councils (C)">Council</button>
+        <button data-screen="diplomacy" title="Deals, aid and alliances (D)">Diplomacy</button>
+        <button data-screen="projects" title="Barrage and espionage (P)">Projects</button>
+        <button data-screen="scores" title="MVP ranking">Scores</button>
+        <button data-screen="menu" title="Save, load, main menu (Esc)">Save / load</button>
+      </nav>
+    </header>
+
+    <main id="stage">
+      <canvas id="map"></canvas>
+      <button id="leaderbadge" class="hidden" title="Your leader (L)"></button>
+      <aside id="side" class="panel hidden"></aside>
+      <aside id="right" class="panel">
+        <h3>Needs attention</h3>
+        <ul id="pending"></ul>
+        <h3>This turn <button class="small" id="open-log" title="Every event of the last turns">Log</button></h3>
+        <ul id="log"></ul>
+      </aside>
+      <div id="tooltip" class="hidden"></div>
+      <div id="bottom">
+        <div class="minimap-frame"><canvas id="minimap" width="240" height="144" title="Click to jump"></canvas></div>
+        <button id="endturn">Next turn</button>
+      </div>
+      <div id="toast" class="hidden"></div>
+      <div id="splash" class="hidden"></div>
+    </main>
+  </section>
+
+  <section id="builder" class="hidden">
+    <canvas id="bcanvas"></canvas>
+    <aside id="bpanel" class="panel"></aside>
+    <div id="bbar" class="panel"></div>
+    <button id="bclose" class="primary" title="Back to the map (Esc)">Back to the map</button>
+  </section>
+
+  <div id="modal" class="hidden">
+    <div class="modal-box">
+      <button class="close" title="Close (Esc)">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="advisor" class="hidden"></div>
+
+  <script src="app.js"></script>
+  <script src="advisors.js"></script>
+  <script src="builder.js"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+# Settings for the simple deterministic test bot (beacon/bots.py). Not the M6 AI.
+
+production:
+  status: placeholder
+  note: The bot keeps about this many military units per active city (one garrison plus one
+    field unit at 200), this many road crews (engineers units) and a city crew of `crew`
+    engineers (SPEC_M17). Buildings are ordered as works, one at a time. The capital builds capital_priority (beacons)
+    once military reaches capital_build_military_pct of the city count. It keeps at least
+    min_military units however few cities it has (one starting city, designer 2026-11-14).
+  military_per_city_pct: 250
+  min_military: 4
+  engineers: 1
+  crew: 3
+  recon: 2
+  scout_boats: 1
+  building_priority: [workshop, food_depot, market, school, military_base, port, factory,
+                      research_lab, storehouse, vertical_farm, financial_center, hospital,
+                      radio_tower, fusion_plant]
+  capital_priority: [beacon_i, beacon_ii, beacon_iii]
+  capital_build_military_pct: 50
+  military_priority: [hover_tank, walker, exo_infantry, swarm_drones, mech_infantry, tank, infantry]
+  ranged_every:
+    value: 2
+    status: placeholder
+    note: Every second military unit the bot builds is ranged, if one is available.
+
+combat:
+  status: placeholder
+  note: Attack when expected damage dealt is at least attack_ratio_pct of damage taken; retreat
+    below retreat_hp_pct of max HP; merge with a neighbor when the pair has at least
+    merge_min_hp_pct of a full stack's HP; hunt visible aliens within threat_radius of own cities;
+    melee units assault a city once it is below siege_city_hp_pct of its HP; garrison the capital
+    and cities within garrison_radius of known aliens.
+  attack_ratio_pct: 100
+  retreat_hp_pct: 35
+  merge_min_hp_pct: 50
+  threat_radius: 3
+  siege_city_hp_pct: 60
+  garrison_radius: 6
+
+explore:
+  status: placeholder
+  note: Frontier targets an explorer tries per turn before giving up (bounds pathfinding cost).
+  attempts: 3
+  find_radius: 10
+
+recruits:
+  status: placeholder
+  note: Recruits scoring in at least general_min_domains domains take a general seat; others take
+    one seat in each domain where they score. Recruits with no free seat are gifted to the player
+    with the fewest recruits.
+  general_min_domains: 3
+
+research:
+  status: placeholder
+  note: Techs researched as soon as available; otherwise the cheapest first.
+  priority: [beacon_theory, signal_amplification]
+
+defences:
+  status: placeholder
+  note: The bot upgrades its most threatened city gun with gold when it holds at least
+    gold_reserve_pct percent of the price (designer 2026-11-14 - city guns upgrade with gold).
+  gold_reserve_pct: 300
+
+promotions:
+  status: placeholder
+  note: Promotions the bot prefers by unit class, taken in turn (least-taken first), before the
+    general attack and defense ones (designer 2026-11-14 - unit-specific promotions).
+  prefer:
+    infantry: [dig_in, field_medic]
+    armour: [breakthrough, blitz]
+    artillery: [siege_master, barrage]
+    naval: [barrage, sea_legs]
+    recon: [blitz]
+
+starfall:
+  status: placeholder
+  note: A landed shard within reach hexes of our units (same continent) gets our nearest engineer or
+    scout as miner and our guards nearest soldiers as escort (docs/SPEC_M9.md).
+  reach: 30
+  guards: 2
+
+
+tools:
+  status: placeholder
+  note: The M12-M14 tools (designer 2026-11-16 - the AI uses them all). The first city builds the
+    radio tower first; every city adds a UAV patrol once it can. Soldiers within strike_radius of
+    a city whose UAV saw a strike coming go to defend it; idle soldiers clear nests within
+    nest_radius. A unit beside an alien city arms its resistance when the treasury holds
+    resistance_reserve gold beyond the cost (one city a turn); scouts beside an alien city
+    sabotage it while they have at least sabotage_min_hp_pct of their HP.
+  strike_radius: 6
+  nest_radius: 4
+  resistance_reserve: 120
+  sabotage_min_hp_pct: 60
+
+market:
+  status: placeholder
+  note: SPEC_M17 - the Galactic Exchange. Sell sell_pct of a store's cap when it is at least
+    sell_at_pct full; buy a building's shortfall of up to buy_up_to units when gold stays above
+    reserve afterwards.
+  sell_at_pct: 90
+  sell_pct: 20
+  buy_up_to: 30
+  reserve: 150
+
+enlist:
+  status: placeholder
+  note: Designer 2026-11-17 - a city of at least min_pop with a barracks trains one citizen at a
+    time as a soldier while the army is below the production target.
+  min_pop: 6
+
+food:
+  status: placeholder
+  note: SPEC_M18 (designer 2026-11-18). A city trains soldiers only while its spare food after its
+    army is at least unit_room; below want_surplus its crew builds farms before mines; it builds the
+    granary first once its store reaches granary_at_pct of the cap. A unit outside friendly land
+    heads home when its rations fall to its distance home plus home_margin.
+  unit_room: 2
+  want_surplus: 6
+  granary_at_pct: 80
+  home_margin: 2

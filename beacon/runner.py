@@ -1,0 +1,257 @@
+"""Command-line runner: single runs, batches and replays.
+
+    python -m beacon.runner run --seed 1 --turns 100 --out runs/s1
+    python -m beacon.runner batch --seeds 1-20 --turns 100
+
+Every player is driven by the test bot (`beacon.bots`). A run writes the final state, the event
+log, the command log (enough to replay it) and a summary.
+"""
+
+from __future__ import annotations
+
+import argparse
+import time
+from pathlib import Path
+from typing import Any
+
+from beacon import ai, bots, canonical, council, endgame, mvp
+from beacon.actions import apply_command
+from beacon.commands import Command, CommandError, command_from_dict, command_to_dict
+from beacon.config import Config, load
+from beacon.game import new_game
+from beacon.state import ACTIVE, ALIENS, OVERRUN, GameState, state_digest, state_to_json
+from beacon.turn import advance_turn
+
+DRIVERS = {"bot": bots.take_turn, "ai": ai.take_turn}
+
+
+def play(
+    cfg: Config,
+    seed: int,
+    turns: int,
+    continents: list[str] | None = None,
+    driver: str = "bot",
+    humans: tuple[str, ...] = (),
+    start: str | None = None,
+) -> tuple[GameState, list[dict[str, Any]], list[dict[str, Any]]]:
+    """Play `turns` turns. Every non-human player is driven by `driver` ("bot", the M3-M5 test
+    bot, or "ai", the M6 characters). Human seats issue no commands here (a client drives them).
+    Returns final state, event log and command log. `start`: survivor or classic (default:
+    data/tuning.yaml start.mode)."""
+    state = new_game(cfg, seed, continents, start or cfg.t("start.mode"))
+    for pid in humans:
+        state.players[pid].controller = "human"
+    take_turn = DRIVERS[driver]
+    events: list[dict[str, Any]] = []
+    log: list[dict[str, Any]] = []
+
+    def submit(cmd: Command) -> list[dict[str, Any]]:
+        entry = {"turn": state.turn, "cmd": command_to_dict(cmd)}
+        try:
+            out = apply_command(state, cfg, cmd)
+        except CommandError as err:
+            log.append({**entry, "ok": False, "error": str(err)})
+            raise
+        log.append({**entry, "ok": True})
+        events.extend(out)
+        return out
+
+    for _ in range(turns):
+        if state.outcome is not None:
+            break
+        for pid in state.player_ids():
+            if state.players[pid].controller != "human":
+                take_turn(state, cfg, pid, submit)
+        events.extend(advance_turn(state, cfg))
+    return state, events, log
+
+
+def replay(
+    cfg: Config,
+    seed: int,
+    turns: int,
+    log: list[dict[str, Any]],
+    continents: list[str] | None = None,
+    start: str | None = None,
+) -> GameState:
+    """Rebuild a game from its seed and accepted commands."""
+    state = new_game(cfg, seed, continents, start or cfg.t("start.mode"))
+    accepted = [e for e in log if e["ok"]]
+    i = 0
+    for _ in range(turns):
+        if state.outcome is not None:
+            break
+        while i < len(accepted) and accepted[i]["turn"] == state.turn:
+            apply_command(state, cfg, command_from_dict(accepted[i]["cmd"]))
+            i += 1
+        advance_turn(state, cfg)
+    if i != len(accepted):
+        raise ValueError("command log has entries past the final turn")
+    return state
+
+
+def _barrage_summary(state: GameState) -> dict[str, Any] | None:
+    b = endgame.barrage(state)
+    if b is None:
+        return None
+    return {
+        "started": b.started_turn,
+        "progress": b.progress,
+        "done": b.done,
+        "host": b.host_city,
+        "contributions": dict(b.contributions),
+    }
+
+
+def summary(
+    state: GameState, log: list[dict[str, Any]], elapsed_ms: int, cfg: Config
+) -> dict[str, Any]:
+    status_counts: dict[str, int] = {}
+    for city in state.cities:
+        status_counts[city.status] = status_counts.get(city.status, 0) + 1
+    credits: dict[str, dict[str, int]] = {pid: dict(p.credits) for pid, p in state.players.items()}
+    return {
+        "seed": state.seed,
+        "turn": state.turn,
+        "digest": state_digest(state),
+        "elapsed_ms": elapsed_ms,
+        "cities": status_counts,
+        "player_cities": sum(1 for c in state.cities if c.status == ACTIVE),
+        "alien_cities": sum(1 for c in state.cities if c.status == OVERRUN),
+        "units": {
+            "players": sum(u.count for u in state.units.values() if u.owner != ALIENS),
+            "aliens": sum(u.count for u in state.units.values() if u.owner == ALIENS),
+        },
+        "alien_start_cities": state.aliens.start_cities,
+        "player_cities_lost": sum(p.credits.get("cities_lost", 0) for p in state.players.values()),
+        "liberated": sum(p.credits.get("cities_liberated", 0) for p in state.players.values()),
+        "fallen": sorted(pid for pid, p in state.players.items() if p.fallen),
+        "recruits_arrived": sum(
+            p.credits.get("recruits_gained", 0) for p in state.players.values()
+        ),
+        "recruits_held": sum(1 for r in state.recruits.values() if r.patron is not None),
+        "recruits_betrayed": sum(p.credits.get("recruits_lost", 0) for p in state.players.values()),
+        "deals": sum(1 for e in log if e["ok"] and e["cmd"]["kind"] == "accept_deal"),
+        "aid_gold": sum(p.credits.get("aid_gold", 0) for p in state.players.values()),
+        "shipped_units": sum(1 for e in log if e["ok"] and e["cmd"]["kind"] == "ship_unit"),
+        "alliances": sum(len(p.allies) for p in state.players.values()) // 2,
+        "characters": {pid: p.character for pid, p in state.players.items()},
+        "outcome": state.outcome,
+        "outcome_turn": state.outcome_turn,
+        "mothership_alive": state.aliens.mothership_alive,
+        "barrage": _barrage_summary(state),
+        "alien_techs_gained": sum(
+            1 for p in state.players.values() for t in p.techs if t in endgame.alien_techs(cfg)
+        ),
+        "mvp": [[r["player"], r["total"]] for r in mvp.ranking(state, cfg)],
+        "commands": len(log),
+        "rejected_commands": sum(1 for e in log if not e["ok"]),
+        "credits": credits,
+        # SPEC_M11: sea bridges built and each leader's level, children and hybrids
+        "sea_bridges": sum(1 for t in state.tiles if t.route == "sea_bridge"),
+        "leaders": {
+            pid: {
+                "level": p.leader.level,
+                "children": len(p.leader.children),
+                "hybrids": sum(
+                    1
+                    for k in p.leader.children
+                    if str(k) in state.citizens and state.citizens[str(k)].hybrid
+                ),
+            }
+            for pid, p in state.players.items()
+            if p.leader is not None
+        },
+        # SPEC_M14: when each player took its first town (None: not yet)
+        "first_city_turn": first_city_turns(state),
+        "hybrids_voted_out": sum(1 for c in state.citizens.values() if c.banned_until >= 0),
+        # SPEC_M13: the council of continents
+        "council_sessions": state.council.sessions,
+        "chair": state.council.chair,
+        "objectives_met": sorted(
+            pid for pid in state.player_ids() if council.objective_met(state, cfg, pid)
+        ),
+    }
+
+
+def first_city_turns(state: GameState) -> dict[str, int | None]:
+    """The turn each player's first town was freed (survivor start); 0 for a classic start."""
+    out: dict[str, int | None] = {}
+    for pid, p in state.players.items():
+        if p.band_town is None:
+            out[pid] = 0
+        elif not p.founded:
+            out[pid] = None
+        else:
+            out[pid] = state.cities[p.band_town].liberated_turn
+    return out
+
+
+def write_run(out: Path, state: GameState, events: list, log: list, info: dict) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "final_state.json").write_text(state_to_json(state), encoding="utf-8")
+    (out / "events.jsonl").write_text(
+        "".join(canonical.dumps(e) + "\n" for e in events), encoding="utf-8"
+    )
+    (out / "commands.jsonl").write_text(
+        "".join(canonical.dumps(c) + "\n" for c in log), encoding="utf-8"
+    )
+    (out / "summary.json").write_text(canonical.dumps(info, indent=2) + "\n", encoding="utf-8")
+
+
+def _parse_seeds(text: str) -> list[int]:
+    if "-" in text:
+        lo, hi = text.split("-", 1)
+        return list(range(int(lo), int(hi) + 1))
+    return [int(s) for s in text.split(",")]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="beacon.runner")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    run_p = sub.add_parser("run")
+    run_p.add_argument("--seed", type=int, default=1)
+    run_p.add_argument("--turns", type=int, default=10)
+    run_p.add_argument("--continents", default="")
+    run_p.add_argument("--out", default="")
+    run_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
+    run_p.add_argument("--human", default="", help="comma-separated player ids left to a human")
+    run_p.add_argument("--start", choices=["survivor", "classic"], default=None)
+    batch_p = sub.add_parser("batch")
+    batch_p.add_argument("--seeds", default="1-5")
+    batch_p.add_argument("--turns", type=int, default=50)
+    batch_p.add_argument("--continents", default="")
+    batch_p.add_argument("--out", default="runs/batch")
+    batch_p.add_argument("--driver", choices=sorted(DRIVERS), default="ai")
+    batch_p.add_argument("--start", choices=["survivor", "classic"], default=None)
+    args = parser.parse_args(argv)
+
+    cfg = load()
+    continents = [c for c in args.continents.split(",") if c] or None
+    if args.cmd == "run":
+        start = time.perf_counter()
+        humans = tuple(h for h in args.human.split(",") if h)
+        state, events, log = play(
+            cfg, args.seed, args.turns, continents, args.driver, humans, args.start
+        )
+        info = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
+        out = Path(args.out or f"runs/seed{args.seed}")
+        write_run(out, state, events, log, info)
+        print(canonical.dumps(info, indent=2))
+        return 0
+
+    rows = []
+    for seed in _parse_seeds(args.seeds):
+        start = time.perf_counter()
+        state, _, log = play(cfg, seed, args.turns, continents, args.driver, (), args.start)
+        row = summary(state, log, int((time.perf_counter() - start) * 1000), cfg)
+        rows.append(row)
+        print(canonical.dumps(row))
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "batch.json").write_text(canonical.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

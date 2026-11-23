@@ -1,0 +1,114 @@
+# Materials and the city layout in the main game (docs/SPEC_M16.md, designer 2026-11-16).
+# Cities store timber, stone and iron from the tiles they work; buildings, walls and industrial
+# units cost them; buildings and walls are placed on a fine grid over the city's territory.
+
+goods:
+  status: placeholder
+  note: Stored per city, up to cap (a storehouse adds storehouse_cap of each). Capitals at the
+    start and a band's first town get `start`.
+  list: [timber, stone, iron]
+  cap: {timber: 150, stone: 150, iron: 80}
+  storehouse_cap: 150
+  start: {timber: 40, stone: 30, iron: 0}
+
+sources:
+  status: placeholder
+  note: Goods a worked tile (or the city's own tile) yields each turn, by feature, elevation,
+    improvement and resource; center - what every city tile adds. Added together.
+  centre: {timber: 1, stone: 1}
+  features: {forest: {timber: 2}, jungle: {timber: 2}}
+  elevations: {hills: {stone: 1}}
+  improvements: {mine: {stone: 2, iron: 1}, lumber_camp: {timber: 3}, extractor: {timber: 1},
+                 geothermal_vent: {stone: 1}}
+  resources: {timber: {timber: 2}, aluminum: {iron: 2}, rare_earths: {iron: 1}, gold_ore: {stone: 1}}
+
+costs:
+  status: placeholder
+  note: A building's materials, unless it lists its own `materials` - timber_pct of its
+    production cost, plus stone_pct when the cost is at least stone_from, plus iron_pct from tech
+    tier iron_tier up. Industrial units (by class) cost the listed percents of their production
+    cost in iron (and timber). Paid when the item completes; short stores make it wait.
+  timber_pct: 30
+  stone_pct: 20
+  stone_from: 80
+  iron_pct: 10
+  iron_tier: 3
+  units: {armour: {iron: 25}, artillery: {iron: 20}, naval: {iron: 20, timber: 10}}
+
+barracks:
+  status: placeholder
+  note: Designer 2026-11-16 - military units are trained only in a city with a barracks (the
+    military base). Recon units, civilians and city defense units do not need one.
+  building: military_base
+  trainable: [militia, infantry, marines, recon_team, anti_tank_team, exo_infantry, xeno_trooper]
+  train_per_strength: 10
+  train_min_turns: 2
+  first_pct: 25
+  first_note: Designer 2026-11-19 (SPEC_M20) - a player's first barracks costs first_pct of its
+    materials and labor, so the first town can train soldiers early.
+  train_note: Designer 2026-11-17 - in a city with a barracks a grown citizen may train as a
+    soldier (people only - no tanks, guns or ships). It works no tile and holds no seat while it
+    trains, for max(train_min_turns, strength / train_per_strength) turns, then leaves the city
+    (population -1) as that unit. No production is spent; the unit's tech applies.
+
+layout:
+  status: placeholder
+  note: The builder's fine grid - cells_per_hex cells across a hex. Buildings keep `gap` empty
+    cells from each other (walls may stand there). Footprints are squares of `size` cells; the
+    city hall stands at the center. AI walls make a square ring ai_ring cells from the center.
+  cells_per_hex: 8
+  gap: 1
+  hall_size: 4
+  default_size: 2
+  sizes: {market: 3, factory: 3, research_lab: 3, military_base: 3, port: 3, shipyard: 3,
+          autonomous_factory: 3, quantum_lab: 3, fusion_plant: 3, arcology: 4, financial_center: 3,
+          logistics_hub: 3, data_centre: 3, hospital: 3, metro: 3, climate_dome: 3, beacon_v: 3,
+          storehouse: 3}
+  ai_ring: 6
+
+walls:
+  status: placeholder
+  note: Wall pieces, one per cell. strength is in tenths of a city strength point per piece; hp
+    adds to the city's HP. Each piece costs materials and `production` (a "walls" queue item).
+    Replaces the defense perimeter (stone/steel), plasma shield and chitin bulwark buildings.
+  wood: {name: Wooden palisade, tech: null, cost: {timber: 1}, production: 1, strength: 1, hp: 2}
+  stone: {name: Stone wall, tech: null, cost: {stone: 1}, production: 1, strength: 2, hp: 3}
+  steel: {name: Steel wall, tech: mechanized_warfare, cost: {iron: 1, stone: 1}, production: 2, strength: 3, hp: 4}
+  chitin: {name: Chitin bulwark, tech: organic_armour, cost: {timber: 1, stone: 1}, production: 2, strength: 4, hp: 5}
+  plasma: {name: Plasma barrier, tech: directed_energy, cost: {iron: 2}, production: 3, strength: 5, hp: 6}
+
+labour:
+  status: placeholder
+  note: SPEC_M17 (designer 2026-11-16) - buildings, walls and tile works are works built by the
+    city's engineers. Each engineer adds per_engineer labor a turn. A building needs building_pct
+    of its production cost; a wall piece its production x per_wall; a tile work its turns x
+    per_engineer. Cities start with `start` engineers (capitals capital_start, a band's first
+    town town_start).
+  per_engineer: 8
+  building_pct: 100
+  per_wall: 4
+  start: 1
+  capital_start: 2
+  town_start: 2
+
+engineers:
+  status: placeholder
+  note: Training one more engineer (the "engineer" queue item) costs cost + cost_step for each
+    engineer the city has; each engineer costs upkeep gold a turn.
+  cost: 30
+  cost_step: 15
+  upkeep: 1
+
+exchange:
+  status: placeholder
+  note: The Galactic Exchange (from the M15 sandbox) - neutral alien traders any city can trade
+    with. They pay sell_pct and ask buy_pct of base x the shared price index (percent). The index
+    falls step_pct per 10 units sold and rises the same per 10 bought, stays within min_pct and
+    max_pct, and moves revert_pct back toward 100 each turn.
+  base: {timber: 4, stone: 5, iron: 10}
+  sell_pct: 60
+  buy_pct: 160
+  step_pct: 2
+  revert_pct: 2
+  min_pct: 50
+  max_pct: 180

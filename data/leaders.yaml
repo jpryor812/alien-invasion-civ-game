@@ -1,0 +1,142 @@
+# The leader (docs/SPEC_M11.md, designer 2026-11-15; SPEC_M9 section 5 and its answers).
+#
+# Every player has a leader: not a unit on the map, but the head of the council. The leader's six
+# skills add to every city as a council member's stats do (military adds city strength). Traits
+# and milestone bonuses are effects in the tech-effect format (beacon/techfx.py keys).
+
+looks:
+  status: placeholder
+  note: Rendered looks (Meshy 3D renders, web/static/leaders/). One man and one woman for now
+    (designer 2026-11-15). The AI's leaders are dealt from these by seed.
+  list:
+    - {id: man_1, sex: man}
+    - {id: woman_1, sex: woman}
+
+names:
+  status: placeholder
+  note: Fictional names for generated (AI) leaders. No real people.
+  man: [Aldren Voss, Corin Hale, Dorian Wexley, Emil Sarno, Idris Kade, Joran Pell, Marek Oduya,
+        Tobin Rask, Viktor Lunde, Yusef Arrin]
+  woman: [Ada Morrow, Brielle Katan, Dalia Venn, Esme Torvald, Ilse Marrow, Kesia Ombre,
+          Liora Fenn, Mira Solberg, Noor Calden, Saskia Vrell]
+
+start:
+  status: placeholder
+  note: Age at creation is chosen between age_min and age_max (the AI's from the seed); the
+    leader gains one year every turns_per_year turns (a turn is a month since SPEC_M19) and never dies
+    (designer). At creation the player spreads skill_points over the six skills, at most
+    skill_max in any one (designer 2026-11-16; the AI's are spread by seed); `traits` are chosen
+    at creation.
+  age_min: 30
+  age_max: 55
+  turns_per_year: 12
+  skill_points: 15
+  skill_max: 5
+  traits: 2
+
+traits:
+  status: placeholder
+  note: Leader traits. Two at creation; a third is chosen at level third_trait_level. `effects`
+    use the tech-effect keys (beacon/techfx.py).
+  third_trait_level: 5
+  list:
+    steady: {name: Steady, info: +5 strength for every city., effects: {city_strength: 5}}
+    visionary: {name: Visionary, info: +10% science in every city., effects: {yield_pct: {science: 10}}}
+    quartermaster: {name: Quartermaster, info: +1 unit per city free of gold upkeep., effects: {free_upkeep_per_city: 1}}
+    provider: {name: Provider, info: +10% food in every city., effects: {yield_pct: {food: 10}}}
+    industrious: {name: Industrious, info: +10% production in every city., effects: {yield_pct: {production: 10}}}
+    merchant: {name: Merchant, info: +10% gold in every city., effects: {yield_pct: {gold: 10}}}
+    mystic: {name: Mystic, info: +10% beacon in every city., effects: {yield_pct: {beacon: 10}}}
+    tactician: {name: Tactician, info: +10% strength per flanking unit., effects: {flanking_pct: 10}}
+    builder: {name: Builder, info: Engineers work 25% faster and tile works take 1 turn less., effects: {build_turns: -1, labour_pct: 25}}
+    nurturing: {name: Nurturing, info: Cities grow and children grow up 25% faster., effects: {growth_pct: 25}}
+
+xp:
+  status: placeholder
+  note: The leader's XP comes from the player's achievements (the MVP credit ledger, plus the
+    leader's own children growing up). Level L needs first x (L-1) + step x (L-1)(L-2)/2 XP
+    (40, 100, 180, 280...). Each level gives points_per_level skill points (designer).
+  sources: {cities_liberated: 30, cities_reclaimed: 30, cities_refounded: 15, kills: 2,
+            shards_claimed: 20, leader_children: 15}
+  first: 40
+  step: 20
+  points_per_level: 1
+
+milestones:
+  status: placeholder
+  note: In-game achievements (SPEC_M9 section 5). Reaching each threshold of a credit offers a
+    choice of one bonus for this game only. `key` is a credit (or leader_children); bonus
+    `effects` use the tech-effect keys. The AI takes the first option.
+  list:
+    liberator:
+      name: Liberator
+      key: cities_liberated
+      at: [1, 5, 10]
+      options:
+        flanking: {name: Shoulder to shoulder, info: +10% strength per flanking unit., effects: {flanking_pct: 10}}
+        cheap_units: {name: War footing, info: Units cost 10% less production., effects: {unit_cost_pct: -10}}
+        walls: {name: Hold the line, info: +5 strength for every city., effects: {city_strength: 5}}
+    hunter:
+      name: Hunter
+      key: kills
+      at: [10, 20, 30]
+      options:
+        ranged: {name: Marksmen, info: Ranged attacks +10%., effects: {ranged_attack_pct: 10}}
+        upkeep: {name: Volunteers, info: +1 unit per city free of gold upkeep., effects: {free_upkeep_per_city: 1}}
+    parent:
+      name: Parent of the nation
+      key: leader_children
+      at: [1, 3, 5]
+      options:
+        growth: {name: Many hands, info: Cities grow and children grow up 25% faster., effects: {growth_pct: 25}}
+        food: {name: Full tables, info: +10% food in every city., effects: {yield_pct: {food: 10}}}
+    starcatcher:
+      name: Starcatcher
+      key: shards_claimed
+      at: [1, 3]
+      options:
+        science: {name: Star lore, info: +10% science in every city., effects: {yield_pct: {science: 10}}}
+        purchase: {name: Salvage market, info: Buying with gold costs 10% less., effects: {purchase_pct: -10}}
+
+family:
+  status: placeholder
+  note: Start a family (designer SPEC_M9 Q5) - choose a grown citizen or a seated alien recruit;
+    the child is born in the capital birth_turns later; another may be started once the youngest
+    child has grown up and cooldown_turns have passed since the birth (the first batch gave about
+    15 children per leader in 100 turns). A hybrid's stat points are the average of the leader's skill total and
+    the alien parent's score total (designer Q4), spread over the domains in proportion to both
+    parents' values; it carries one citizen trait with trait_pct chance.
+  birth_turns: 3
+  cooldown_turns: 20
+  trait_pct: 50
+
+hybrids:
+  status: placeholder
+  note: Each city's attitude to hybrids is seeded at the start - refuse_pct of cities refuse
+    (most accept). A hybrid cannot work tiles in a refusing city but may sit on the council. A
+    hybrid on the council has vote_out_pct chance each turn of being voted out; it then cannot
+    sit on the council for ban_turns turns and moves to the owner's nearest accepting city.
+  refuse_pct: 25
+  vote_out_pct: 3
+  ban_turns: 10
+
+wardrobe:
+  status: placeholder
+  note: Outfits and accessories are cosmetic only (designer). `unlock` is a career total from the
+    local profile (runs/profile.json) that unlocks it; null means always available. Each outfit
+    is a rendered model per look; accessories are painted overlays.
+  outfits:
+    civilian: {name: Civilian coat, unlock: null}
+    field_uniform: {name: Field uniform, unlock: {cities_liberated: 10}}
+  accessories:
+    medal: {name: Liberation medal, unlock: {cities_liberated: 5}}
+    sash: {name: Council sash, unlock: {games_played: 3}}
+    star_pin: {name: Star pin, unlock: {shards_claimed: 3}}
+    family_crest: {name: Family crest, unlock: {leader_children: 3}}
+
+ai:
+  status: placeholder
+  note: AI leaders spend skill points on their lowest skill (ties in domain order), take the
+    first bonus offered, choose traits in list order from a seeded shuffle, and start a family
+    with their best seated recruit (else their best grown citizen) whenever they may.
+  family: true

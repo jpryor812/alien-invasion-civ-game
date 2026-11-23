@@ -1,0 +1,24 @@
+# MVP score weights (DESIGN.md 12, docs/SPEC_M7.md). Score = sum of ledger entry x weight
+# (per_10 entries are divided by 10 first). Tuned so builder and fighter characters both average in
+# the top half. Raised aid gold, recruits and barrage after the first M7 batch, where builders
+# (the biggest givers and recruiters) averaged rank 3.9 of 6. Final values from a grid search
+# over the M7 batch ledgers (docs/BALANCE_M7.md).
+
+weights:
+  status: placeholder
+  note: Points per ledger entry. liberation_share is in hundredths of a city (100 = one city freed
+    alone), so its weight is per whole city.
+  kills: 2
+  liberation_share: 20
+  cities_reclaimed: 10
+  cities_refounded: 10
+  pop_saved: 1
+  aid_gold_per_10: 6
+  aid_units: 8
+  aid_techs: 10
+  recruits_given: 10
+  unit_turns_abroad_per_10: 2
+  recruits_gained: 6
+  espionage_gold_per_10: 1
+  barrage_per_10: 4
+  shards_claimed: 15  # Starfall (docs/SPEC_M9.md)

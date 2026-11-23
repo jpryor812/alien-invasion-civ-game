@@ -1,0 +1,167 @@
+# Story: events, exploration finds and Starfall (docs/SPEC_M9.md, designer 2026-11-14).
+#
+# An event has a title, a picture key (placeholder art until the graphics push), a body, and
+# either `outcomes` (it simply happens) or 1-3 `choices`, each with a label and outcomes.
+# `big: true` shows the full wonder-style screen instead of a pop-up card.
+# Outcomes: {gold: n}, {science: n}, {citizen: 1} (a grown citizen in the nearest city of yours),
+# {unit: type} (beside the place of the event), {recruit: true}, {alien_unit: type} (an ambush
+# beside the place), {flag: name} (remembered for later events).
+# `ai_choice` is the choice index AI players take.
+
+events:
+  survivor_camp:
+    status: placeholder
+    note: Exploration find - survivors hiding in the ruins.
+    title: Survivors
+    picture: survivors
+    body: "Smoke from a chimney where there should be none. Inside a gutted school, twelve
+      people who have lived on canned food and rumor since the sky opened. They look at your
+      soldiers the way you look at the first warm day after winter."
+    choices:
+      - label: Take them home
+        detail: +1 citizen in your nearest city.
+        outcomes: [{citizen: 1}]
+      - label: Arm them
+        detail: They join you here as infantry.
+        outcomes: [{unit: infantry}]
+    ai_choice: 0
+  banished_alien:
+    status: placeholder
+    note: Exploration find - an alien cast out by its brood.
+    title: The Outcast
+    picture: outcast
+    body: "It sits alone in a crater ringed with its own kind's warning marks. When your patrol
+      approaches it lowers its head and opens its hands. Whatever it did, the Hive will not have
+      it back. It asks, in broken words, for a place at your table."
+    outcomes: [{recruit: true}]
+    ai_choice: 0
+  ship_wreckage:
+    status: placeholder
+    note: Exploration find - a downed alien craft. +100 science once (designer).
+    title: Wreckage
+    picture: wreckage
+    body: "A scout ship lies split along its spine, still warm. Your engineers pull out coils
+      that hum when you touch them and panels covered in a script nobody can read yet. Yet."
+    outcomes: [{science: 100}]
+    ai_choice: 0
+  supply_cache:
+    status: placeholder
+    note: Exploration find - a buried supply depot.
+    title: Supply Cache
+    picture: cache
+    body: "Under a collapsed overpass: a sealed military depot, untouched. Fuel, rations and a
+      strongbox someone was very careful to bury."
+    outcomes: [{gold: 60}]
+    ai_choice: 0
+  abandoned_armoury:
+    status: placeholder
+    note: Exploration find - an armory still stocked.
+    title: The Armory
+    picture: armoury
+    body: "The doors were welded shut from the inside. The crew who did it are long gone, but
+      the racks are full and one vehicle bay still has charge."
+    outcomes: [{unit: infantry}]
+    ai_choice: 0
+  ambush:
+    status: placeholder
+    note: Exploration find - a trap.
+    title: It Was Bait
+    picture: ambush
+    body: "The signal was a recording. By the time your unit understood that, the ground was
+      already moving."
+    outcomes: [{alien_unit: alien_warrior}]
+    ai_choice: 0
+
+sites:
+  per_continent:
+    value: 6
+    status: placeholder
+    note: Exploration finds hidden on each continent at the start (like Civ's ruins).
+  min_city_distance:
+    value: 3
+    status: placeholder
+    note: No find within this many hexes of a city.
+  weights:
+    status: placeholder
+    note: How often each find appears (relative). Ambushes are rare.
+    survivor_camp: 30
+    banished_alien: 12
+    ship_wreckage: 20
+    supply_cache: 20
+    abandoned_armoury: 12
+    ambush: 6
+
+starfall:
+  first_turn:
+    value: 20
+    status: placeholder
+    note: Turn of the first warning (designer - about every 20 turns).
+  interval:
+    value: 20
+    status: placeholder
+    note: Turns between shards (plus 0..jitter).
+  jitter:
+    value: 6
+    status: placeholder
+    note: Seeded extra turns between shards.
+  warning_turns:
+    value: 3
+    status: placeholder
+    note: Turns between the warning and the impact.
+  cone_radius:
+    value: 7
+    status: placeholder
+    note: Radius in hexes of the warned landing area; the shard is somewhere inside it.
+  mine_turns:
+    value: 5
+    status: placeholder
+    note: Turns a miner must spend on the shard to claim it (an engineer or a scout for players;
+      any alien unit for the aliens).
+  fade_turns:
+    value: 25
+    status: placeholder
+    note: A shard nobody has claimed this many turns after landing burns out (so the next can fall).
+  min_city_distance:
+    value: 4
+    status: placeholder
+    note: Shards land at least this far from any city.
+  growth_pct:
+    value: 100
+    status: placeholder
+    note: Reward values grow by this percent of their base per 100 turns (a late shard is worth
+      more).
+  alien_progress:
+    value: 300
+    status: placeholder
+    note: Alien tech progress the aliens gain if they claim a shard (scaled like the rewards).
+  kinds:
+    status: placeholder
+    note: Shard kinds - weight, the effect for the claimer (as tech effects, beacon/techfx.py, plus
+      unit_strength_pct), a name and a quote for the wonder screen.
+    preserving_compound:
+      weight: 30
+      name: Preserving Compound
+      effects: {growth_pct: 15}
+      quote: "Bread baked in the first winter was still soft in the spring. We stopped counting
+        what we had and started counting who we could feed."
+    starmetal:
+      weight: 30
+      name: Starmetal
+      effects: {yield_pct: {production: 10}}
+      quote: "It came down burning and it came down singing. When it cooled, nothing we owned could
+        scratch it."
+    new_elements:
+      weight: 25
+      name: New Elements
+      effects: {yield_pct: {science: 10}}
+      quote: "Three new rows on the table, and the old ones never looked the same again."
+    exotic_matter:
+      weight: 8
+      name: Exotic Matter
+      effects: {city_yields: {beacon: 2}}
+      quote: "Hold it near a beacon and the beacon starts to sing on its own."
+    living_alloy:
+      weight: 7
+      name: Living Alloy
+      effects: {unit_strength_pct: 8}
+      quote: "Plate it over a wound and the plate grows to fit. The soldiers stopped asking how."

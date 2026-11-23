@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "dream-loop": {
+      "source": "achimala/dream-loop",
+      "commit": "9bddb901f7d071cfefdd21e264267c757177a9df",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "6381e8fb0a57eca4ca62405972ce60c1de1fd42b35f4bdc29d66bb88808385f7"
+    }
+  }
+}
