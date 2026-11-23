@@ -794,6 +794,10 @@ class Bot:
             self.reserved.add(miner.id)
             if miner.tile != shard.tile and miner.moves_left > 0:
                 self.submit(MoveUnit(player=self.pid, unit=miner.id, target=shard.tile))
+            if miner.tile == shard.tile and miner.order != "mine":
+                from beacon.commands import MineShard
+
+                self.submit(MineShard(player=self.pid, unit=miner.id))
             guards = [
                 u
                 for u in mine
@@ -1173,6 +1177,8 @@ class Bot:
         run out (SPEC_M18). True if it moved."""
         from beacon import food
 
+        if not self.cfg.t("food.rations_on"):
+            return False  # no rations (SPEC_M22)
         if not food.eats_food(self.cfg, unit) or not self.state.players[self.pid].founded:
             return False
         if food.feeder(self.state, self.cfg, unit) is not None:

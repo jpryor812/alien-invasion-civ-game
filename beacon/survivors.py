@@ -308,14 +308,11 @@ def found(state: GameState, cfg: Config, city: City, pid: str) -> Events:
     player = state.players[pid]
     player.founded, player.band_town, player.band_claimed = True, city.id, True
     band = [u for u in state.sorted_units() if u.owner == pid and is_band(cfg, u)]
-    joined = 0
+    joined = 0  # survivors stay in the field as survivors (designer 2026-11-22, SPEC_M22)
     for u in band:
         if u.type == "band_leader":
-            remove_unit(state, u)  # leads from the capital now
-        elif not u.gear:
-            remove_unit(state, u)
-            joined += 1
-    city.pop = max(city.pop, sv["town_rescued"]) + joined  # the rescued, then the band (M18)
+            remove_unit(state, u)  # the leader joins the town and leads from it
+    city.pop = max(city.pop, sv["town_rescued"])  # the rescued (SPEC_M18)
     citizens.sync(state, cfg, city)
     city.production_store += player.scrap
     from beacon import layout, materials  # SPEC_M16

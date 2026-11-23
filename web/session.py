@@ -240,7 +240,19 @@ class Session:
                         // prod
                     ),
                 )
-            city_rows.append({"id": c.id, "production": prod, "head": head, "turns": turns})
+            from beacon import works as works_mod  # the town's current work (SPEC_M22)
+
+            work = None
+            if c.works:
+                w0 = c.works[0]
+                work = {
+                    "name": w0["what"].split(":", 1)[-1].replace("_", " "),
+                    "turns": (works_mod.turns(s, cfg, c) or [None])[0],
+                    "waiting": bool(w0.get("waiting")),
+                }
+            city_rows.append(
+                {"id": c.id, "production": prod, "head": head, "turns": turns, "work": work}
+            )
         upkeep = (
             economy.maintenance(s, cfg, me)
             + economy.unit_upkeep(s, cfg, me)
@@ -1500,9 +1512,15 @@ class Session:
 
         def side(pid: str) -> dict[str, Any]:
             stock = diplomacy.stock(s, pid)
+            to = other if pid == me else me
             return {
                 "gold": s.players[pid].gold,
                 "materials": {g: stock.get(g, 0) for g in materials.goods(cfg)},
+                # techs the other side can learn now, and alien recruits (SPEC_M22)
+                "techs": [
+                    t for t in s.players[pid].techs if t in tech.available(cfg, s.players[to])
+                ],
+                "recruits": [{"id": r.id, "name": r.name} for r in recruits.recruits_of(s, pid)],
             }
 
         need = cfg.t("trade.alliance_tech")

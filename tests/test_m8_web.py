@@ -35,7 +35,8 @@ def test_view_is_fog_safe(sess, cfg):
     v = sess.view()
     seen = fog.visible_tiles(sess.state, cfg, HUMAN)
     city_tiles = {c["tile"] for c in v["cities"].values()}
-    assert {int(k) for k in v["tiles"]} <= seen | city_tiles
+    explored = set(v["explored"])  # e.g. the hexes around met players' capitals (SPEC_M22)
+    assert {int(k) for k in v["tiles"]} <= seen | city_tiles | explored
     for u in v["units"]:
         assert u["owner"] == HUMAN or u["tile"] in seen
     hidden_aliens = [

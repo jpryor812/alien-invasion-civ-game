@@ -209,13 +209,65 @@ def end_of_turn(state: GameState, cfg: Config) -> Events:
             )
             continue
         for u in state.units_at(shard.tile):
-            if can_mine(cfg, u.owner, u.type):
+            # players mine with the Mine order (designer 2026-11-22); aliens just stand on it
+            if can_mine(cfg, u.owner, u.type) and (u.owner == ALIENS or u.order == "mine"):
                 shard.progress[u.owner] = shard.progress.get(u.owner, 0) + 1
                 if shard.progress[u.owner] >= s["mine_turns"]:
                     events.extend(_claim(state, cfg, shard, u.owner))
                     break
+    for shard in active(state):
+        events.extend(contest(state, cfg, shard))
     if state.turn >= state.next_shard_turn and not falling(state):
         events.extend(_drop(state, cfg))
         r = rng.stream(state.seed, "events", state.turn, "starfall-next")
         state.next_shard_turn = state.turn + s["interval"] + r.randint(0, s["jitter"])
     return events
+
+
+def mine_problem(state: GameState, cfg: Config, unit) -> str | None:
+    shard = next((x for x in active(state) if x.tile == unit.tile and landed(state, x)), None)
+    if shard is None:
+        return "stand on a shard to mine it"
+    if not can_mine(cfg, unit.owner, unit.type):
+        return "only a scout, a road crew or your band can mine"
+    return None
+
+
+def contest(state: GameState, cfg: Config, shard: Shard) -> Events:
+    """Once a player starts mining a shard, the aliens send warriors for it (designer
+    2026-11-22): they appear contest_distance hexes away and go to take it."""
+    from beacon.state import AlienOrder
+    from beacon.tiles import is_passable_land
+    from beacon.units import create_unit
+
+    if shard.contested or not any(p != ALIENS and n > 0 for p, n in shard.progress.items()):
+        return []
+    s = settings(cfg)
+    shard.contested = True
+    d = s["contest_distance"]
+    cont = state.tiles[shard.tile].continent
+    occupied = {u.tile for u in state.units.values()} | {c.tile for c in state.cities}
+    ring = [
+        i
+        for i in hexgrid.within(shard.tile, d, state.width, state.height)
+        if hexgrid.distance(i, shard.tile, state.width) == d
+        and state.tiles[i].continent == cont
+        and is_passable_land(cfg, state.tiles[i])
+        and i not in occupied
+    ]
+    spawned = []
+    for kind, i in zip(s["contest_units"], sorted(ring), strict=False):
+        u = create_unit(state, cfg, kind, ALIENS, i)
+        state.aliens.orders[str(u.id)] = AlienOrder(kind="mine", target=shard.tile)
+        spawned.append(u.id)
+    if not spawned:
+        return []
+    return [
+        {
+            "turn": state.turn,
+            "kind": "aliens_contest_shard",
+            "shard": shard.id,
+            "tile": shard.tile,
+            "units": spawned,
+        }
+    ]

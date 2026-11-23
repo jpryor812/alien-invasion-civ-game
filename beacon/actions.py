@@ -55,6 +55,7 @@ from beacon.commands import (
     ImproveTile,
     JoinCity,
     MergeUnits,
+    MineShard,
     MoveBuilding,
     MoveUnit,
     MoveWork,
@@ -257,6 +258,18 @@ def _set_focus(state: GameState, cfg: Config, cmd: SetFocus) -> Events:
         raise CommandError(f"unknown focus {cmd.focus!r}")
     city.focus = cmd.focus
     return [{"kind": "focus_set", "city": city.id, "focus": cmd.focus}]
+
+
+@handles(MineShard)
+def _mine_shard(state: GameState, cfg: Config, cmd: MineShard) -> Events:
+    from beacon import starfall
+
+    unit = own_unit(state, cmd.player, cmd.unit)
+    problem = starfall.mine_problem(state, cfg, unit)
+    if problem:
+        raise CommandError(problem)
+    unit.order = "mine"
+    return [{"kind": "mining_started", "unit": unit.id, "tile": unit.tile}]
 
 
 @handles(AnswerAlienLeader)

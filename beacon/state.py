@@ -308,6 +308,7 @@ class Shard:
     claimed_by: str | None = None
     claimed_turn: int | None = None
     remnant: bool = False  # placed at the start, waiting to be found (SPEC_M10)
+    contested: bool = False  # the aliens were sent for it (SPEC_M22)
 
 
 @dataclass

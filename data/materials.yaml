@@ -15,9 +15,11 @@ sources:
   status: placeholder
   note: Goods a worked tile (or the city's own tile) yields each turn, by feature, elevation,
     improvement and resource; center - what every city tile adds. Added together.
-  centre: {timber: 1, stone: 1}
-  features: {forest: {timber: 2}, jungle: {timber: 2}}
-  elevations: {hills: {stone: 1}}
+  centre: {}
+  features: {}
+  elevations: {}
+  m22_note: Designer 2026-11-22 (SPEC_M22) - no timber or stone until the town builds mines
+    (hills) and lumber camps (forests); a resource adds its goods only on an improved hex.
   improvements: {mine: {stone: 2, iron: 1}, lumber_camp: {timber: 3}, extractor: {timber: 1},
                  geothermal_vent: {stone: 1}}
   resources: {timber: {timber: 2}, aluminum: {iron: 2}, rare_earths: {iron: 1}, gold_ore: {stone: 1}}
@@ -27,7 +29,8 @@ costs:
   note: A building's materials, unless it lists its own `materials` - timber_pct of its
     production cost, plus stone_pct when the cost is at least stone_from, plus iron_pct from tech
     tier iron_tier up. Industrial units (by class) cost the listed percents of their production
-    cost in iron (and timber). Paid when the item completes; short stores make it wait.
+    cost in iron (and timber). Paid when the item completes; short stores make it wait. A
+    building's materials are paid when the engineers start it (SPEC_M22).
   timber_pct: 30
   stone_pct: 20
   stone_from: 80

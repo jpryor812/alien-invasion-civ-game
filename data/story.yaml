@@ -112,6 +112,15 @@ starfall:
     value: 7
     status: placeholder
     note: Radius in hexes of the warned landing area; the shard is somewhere inside it.
+  contest_distance:
+    value: 3
+    status: placeholder
+    note: Designer 2026-11-22 (SPEC_M22) - when a player starts mining a shard, contest_units
+      appear this many hexes away and go for it, so every shard is fought over.
+  contest_units:
+    value: [alien_warrior, alien_drone]
+    status: placeholder
+    note: The aliens sent for a shard being mined.
   mine_turns:
     value: 5
     status: placeholder

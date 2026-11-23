@@ -101,8 +101,8 @@ def test_the_town_holds_until_its_resistance_is_funded(cfg):
     assert town.status == ACTIVE and town.owner == EU and town.is_capital
     p = s.players[EU]
     assert p.founded and not any(u.type == "band_leader" for u in band_of(s, EU))
-    assert town.pop >= 2 + 3  # the bare survivors moved in
-    assert {u.type for u in s.units.values() if u.owner == EU} >= {"recon_team"}
+    assert town.pop == cfg.t("survivor.town_rescued")  # survivors stay units (SPEC_M22)
+    assert "recon_team" not in {u.type for u in s.units.values() if u.owner == EU}
     assert town.engineers == cfg.materials("labour.town_start")  # the crew (SPEC_M17)
 
 

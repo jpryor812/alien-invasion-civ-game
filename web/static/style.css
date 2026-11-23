@@ -752,3 +752,14 @@ select, input { border-radius: 2px !important; background: #0b0e10; border: 1px 
 #leaderbadge { background: #0d151c !important; border: 3px solid var(--brass) !important; box-shadow: 0 0 0 2px #05090c, 0 0 0 4px var(--brass-dim), 0 6px 18px rgba(0,0,0,0.7) !important; padding: 0 !important; }
 .gauges { height: auto !important; margin: 6px 0 4px !important; }
 .pcname { margin-bottom: 2px; }
+
+/* M22: the status panel, both leaders in talks */
+#statuspanel { position: absolute; left: 10px; top: 150px; width: 230px; max-height: calc(100% - 330px); overflow-y: auto; z-index: 3; padding: 10px 12px;
+  background: var(--corners), var(--grain), linear-gradient(180deg, var(--parchment), var(--obsidian)); border: 1px solid #05070a; border-radius: 3px; box-shadow: var(--frame-shadow); }
+#statuspanel h3 { margin-top: 2px; }
+#statuspanel .strow { padding: 5px 0; border-bottom: 1px solid rgba(120,90,40,0.35); cursor: pointer; }
+#statuspanel .strow:hover b { color: var(--brass-hi); }
+#statuspanel .small { font-family: var(--mono); font-size: 11px; }
+.tradefig.them { left: 22%; }
+.tradefig.us { left: 78%; transform: translateX(-50%) scaleX(-1); }
+.tsub { font: 600 10px var(--display); letter-spacing: 0.08em; color: var(--brass); margin: 6px 0 3px; text-transform: uppercase; }

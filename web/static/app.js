@@ -1986,6 +1986,7 @@ function centerOnTile(i) { centerOnWorld(...center(i)); }
 // top bar, pending list, event log
 
 function renderChrome() {
+  setTimeout(renderStatus, 0);  // the status panel (SPEC_M22)
   const v = S.view, e = v.economy;
   $("turninfo").innerHTML = `${ICON.turn}Turn <b>${v.turn}</b> · ${v.year}${v.winter ? ` <span class="winterbadge" data-tip="${esc(v.winter.left ? `<b>Galactic winter</b><div>Alien dust dims the sky: crops give half their food and pastures three quarters, for ${v.winter.left} more turn${v.winter.left === 1 ? "" : "s"}. Bank food, pause births, and research hardier crops (Vertical Farming, Climate Engineering).</div>` : `<b>A galactic winter is coming</b><div>In ${v.winter.coming_in} turn${v.winter.coming_in === 1 ? "" : "s"} crops lose half their food for a year. Fill your stores now.</div>`)}">❄ ${v.winter.left ? `Winter: ${v.winter.left}` : `Winter in ${v.winter.coming_in}`}</span>` : ""}`;
   const L = v.leader, lb = $("leaderbadge");  // the leader in the top-left corner (Civ style)
@@ -2118,6 +2119,8 @@ function describeEvent(e) {
     alien_bribe_taken: () => `${e.name} took your ${e.gold} gold and gave nothing back.`,
     alien_leader_defected: () => `${e.name} took your ${e.gold} gold and defected to your council: ${cityName(e.city)}'s defense is halved.`,
     city_liberated: () => `${cityName(e.city)} is free${e.gold && e.by === S.view.me ? `: its people paid you ${e.gold} gold` : ""}.`,
+    aliens_contest_shard: () => `The aliens have sent warriors for the shard you are mining. Guard your miner.`,
+    mining_started: () => `Your unit started mining the shard.`,
     unit_starved: () => `Your ${pretty(e.type)} starved to death.`,
     unit_hungry: () => `A unit is starving: no rations left (${e.hp} HP). Bring it home.`,
     rations_out: () => `A unit has eaten its last ration. Bring it into friendly land.`,
@@ -2182,7 +2185,32 @@ function describeEvent(e) {
 function clearSelection() {
   S.selected = null; S.options = null; S.city = null; S.targetMode = null;
   $("side").classList.add("hidden");
+  renderStatus();
   S.dirty = true;
+}
+// What is going on (designer 2026-11-22): research, each town's work and training, the army,
+// on the left whenever nothing is selected.
+function renderStatus() {
+  let p = $("statuspanel");
+  if (!p) { p = document.createElement("div"); p.id = "statuspanel"; $("stage").appendChild(p); }
+  const v = S.view;
+  if (!v || S.selected) { p.classList.add("hidden"); return; }
+  const r = v.research;
+  const towns = v.my_cities.map((c) => {
+    const w = c.work, head = c.head;
+    return `<div class="strow" data-gocity="${c.id}"><b>${esc(cityName(c.id))}</b>
+      <div class="small">🛠 ${w ? `${esc(pretty(w.name))} · ${w.waiting ? '<span class="bad">waiting for materials</span>' : w.turns != null ? `${w.turns} turns` : "no engineers"}` : '<span class="muted">engineers idle</span>'}</div>
+      <div class="small">⚙ ${head ? `${esc(pretty(head.split(":")[1] || head))}${c.turns != null ? ` · ${c.turns} turns` : ""}` : '<span class="muted">nothing in training</span>'}</div></div>`;
+  }).join("");
+  const mine = v.units.filter((u) => u.owner === v.me);
+  const mil = mine.filter((u) => !["civilian"].includes((v.unit_types[u.type] || {}).role)).length;
+  p.innerHTML = `<h3>This turn</h3>
+    <div class="strow" data-goscreen="techs"><b>🔬 Research</b><div class="small">${r ? `${esc(pretty(r.tech))} · ${r.turns != null ? `${r.turns} turns` : "no science"}` : '<span class="bad">choose research</span>'}</div></div>
+    ${towns}
+    <div class="strow" data-goscreen="units"><b>⚔ Units</b><div class="small">${mine.length} in all · ${mil} fighting · ${mine.length - mil} civilian</div></div>`;
+  p.classList.remove("hidden");
+  p.querySelectorAll("[data-gocity]").forEach((el) => el.onclick = () => selectCity(Number(el.dataset.gocity), true));
+  p.querySelectorAll("[data-goscreen]").forEach((el) => el.onclick = () => openScreen(el.dataset.goscreen));
 }
 async function selectUnit(id, centerIt = false) {
   try { S.options = await api(`/api/unit/${id}`); } catch (err) { clearSelection(); return; }
@@ -2208,6 +2236,7 @@ function actIcon(label) {
   return `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0">${ACT_SVG[k]}</svg>${cap}`;
 }
 function renderUnitPanel() {
+  if ($("statuspanel")) $("statuspanel").classList.add("hidden");
   const o = S.options, u = o.unit, spec = o.spec, side = $("side");
   const moves = (u.moves_left / 30).toFixed(1).replace(/\.0$/, "");
   const ranged = spec.ranged_strength ? ` · ranged ${spec.ranged_strength} (range ${spec.range})` : "";
@@ -2220,7 +2249,7 @@ function renderUnitPanel() {
     ${u.type === "band_leader" ? '<div class="muted">Your leader, leading the survivors (30 strength; survivors 20)</div>' : ""}
     <div class="muted">${esc(spec.role)} · strength ${spec.strength * u.count}${ranged}</div>
     ${(u.gear || []).length ? `<div class="row">Gear: ${u.gear.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")}</div>` : ""}
-    ${(() => { const sh = (S.view.shards || []).find((x) => x.tile === u.tile && !x.claimed_by); return sh && u.owner === S.view.me ? `<div class="row small good">✦ Mining the ${esc(sh.name)} shard: ${(sh.progress || {})[S.view.me] || 0}/${sh.needed}. Stay here at the end of each turn; ${spec.survivor || spec.can_build || spec.role === "recon" ? "this unit can mine it" : '<span class="bad">only a scout, a road crew or your band can mine</span>'}.</div>` : ""; })()}
+    ${(() => { const sh = (S.view.shards || []).find((x) => x.tile === u.tile && !x.claimed_by); return sh && u.owner === S.view.me ? `<div class="row small good">✦ ${esc(sh.name)} shard: ${(sh.progress || {})[S.view.me] || 0}/${sh.needed} mined. ${u.order === "mine" ? "Mining: stay here each turn." : spec.survivor || spec.can_build || spec.role === "recon" ? "Press Mine to start." : '<span class="bad">only a scout, a road crew or your band can mine</span>'}</div>` : ""; })()}
     ${o.gear && o.gear.pack.length ? `<div class="row small">Carrying: ${o.gear.pack.map((g) => `<span class="tag">${esc(GEAR_NAME[g] || pretty(g))}</span>`).join(" ")} <span class="muted">· left in your nearest town's armory when it is inside your land</span></div>` : ""}
     ${o.gear && Object.keys(o.gear.armoury).length ? `<div class="row small">Armory here: ${Object.entries(o.gear.armoury).map(([g, n]) => `${esc(GEAR_NAME[g] || pretty(g))} ×${n}`).join(", ")}</div>` : ""}
     ${spec.survivor && S.view.founded === false ? `<div class="muted small">${S.view.band_town != null
@@ -2230,7 +2259,7 @@ function renderUnitPanel() {
     ${spec.fixed && !spec.air ? `<div class="muted">City defence: never moves${spec.no_attack ? " and never attacks; it only protects its city" : "; fires at anything in range"}. It adds to the city's strength.</div>` : ""}
     <div class="row">HP ${u.hp}/${100 * u.count}${spec.fixed ? "" : ` · moves ${moves}/${spec.moves}`}${u.fortified ? " · fortified" : ""}${u.job ? ` · building ${pretty(u.job.improvement)} (${u.job.turns_left})` : ""}</div>
     <div class="bar"><i style="width:${Math.round(100 * u.hp / (100 * u.count))}%"></i></div>
-    ${u.eats && u.rations != null && u.owner === S.view.me ? `<div class="row rations${!u.supplied && u.rations <= 3 ? " bad" : ""}" data-tip="${esc(`<b>Rations</b><div>${u.supplied ? "Inside friendly land: the nearest town feeds this unit and refills its rations." : "Outside friendly land it eats 1 ration a turn; with none left it loses 10 HP a turn. Food crates refill them."}</div>`)}">🍞 Rations ${u.rations}/${u.max_rations}${u.supplied ? ' <span class="muted">· fed by a town</span>' : u.rations === 0 ? " · starving!" : u.rations <= 3 ? " · head home soon" : ""}</div>` : ""}
+    
     <div class="actions" id="uactions"></div>
     <div class="muted" style="font-size:12px">${spec.fixed ? (spec.no_attack ? "" : "Red hexes can be fired on (hover for the odds).") : "Click a highlighted hex to move; red hexes can be attacked (hover for the odds)."}</div>`;
   const a = $("uactions");
@@ -2268,6 +2297,11 @@ function renderUnitPanel() {
   }
   for (const cid of o.sabotage || []) add(`Sabotage ${cityName(cid)}`, () => send({ kind: "sabotage", unit: u.id, city: cid }), "Cut its hit points; the saboteur may be hurt");
   for (const cid of o.arm || []) add(`Arm the resistance in ${cityName(cid)}`, () => send({ kind: "arm_resistance", unit: u.id, city: cid }), `${o.arm_gold} gold: each level gives a ${S.view.uprising_pct}% chance a turn of an uprising inside`);
+  {  // mining a shard is an order (designer 2026-11-22)
+    const sh = (S.view.shards || []).find((x) => x.tile === u.tile && x.landed);
+    const miner = spec.survivor || spec.can_build || (spec.role === "recon" && spec.domain === "land");
+    if (sh && miner && u.owner === S.view.me && u.order !== "mine") { add(`Mine the ${sh.name} shard`, () => send({ kind: "mine_shard", unit: u.id }), `Each turn this unit stays and mines adds 1 of ${sh.needed}. The aliens will come for it.`); a.lastChild.classList.add("primary"); }
+  }
   if (o.refound) add("Refound city", () => send({ kind: "refound_city", unit: u.id }));
   if (o.gear && u.owner === S.view.me) {  // the armory and joining a town (SPEC_M20)
     for (const e of o.gear.equip) if (!e.why) add(`Equip ${GEAR_NAME[e.item] || pretty(e.item)}`, () => send({ kind: "equip_gear", unit: u.id, item: e.item }), "Take it from the town's armoury");
@@ -2312,6 +2346,7 @@ function foodHtml(d) {
   </div>`;
 }
 function renderCityPanel() {
+  if ($("statuspanel")) $("statuspanel").classList.add("hidden");
   const d = S.city, c = d.city, side = $("side");
   side.classList.remove("unitmode");
   if (window.Advisors) Advisors.trigger("production");
@@ -3979,15 +4014,18 @@ function renderTrade() {
   const T = S.trade, d = T.data, o = d.other, L = o.leader || {};
   const body = $("modal-body");
   const items = (who, side) => [["gold", side.gold], ...Object.entries(side.materials)].map(([g, n]) =>
-    `<button class="titem" data-add="${who}:${g}" ${n <= 0 ? "disabled" : ""}>${g === "gold" ? "💰" : MAT_ICON_T[g] || ""} ${pretty(g)} <span class="muted">(${n})</span></button>`).join("");
-  const line = (list, key) => list.map((x, k) => `<div class="tline">${x.good === "gold" ? "💰" : MAT_ICON_T[x.good] || ""} <input type="number" min="1" value="${x.n}" data-n="${key}:${k}"> ${pretty(x.good)}
+    `<button class="titem" data-add="${who}:${g}" ${n <= 0 ? "disabled" : ""}>${g === "gold" ? "💰" : MAT_ICON_T[g] || ""} ${pretty(g)} <span class="muted">(${n})</span></button>`).join("")
+    + ((side.techs || []).length ? `<div class="tsub">Techs</div>` + side.techs.map((t) => `<button class="titem" data-add="${who}:tech:${t}">🔬 ${pretty(t)}</button>`).join("") : "")
+    + ((side.recruits || []).length ? `<div class="tsub">Recruits</div>` + side.recruits.map((r) => `<button class="titem" data-add="${who}:recruit:${r.id}">👽 ${esc(r.name)}</button>`).join("") : "");
+  const line = (list, key) => list.map((x, k) => x.tech || x.recruit ? `<div class="tline">${x.tech ? `🔬 ${pretty(x.tech)}` : `👽 ${esc(x.name)}`} <span class="muted small">(once)</span> <button class="small" data-del="${key}:${k}">✕</button></div>`
+      : `<div class="tline">${x.good === "gold" ? "💰" : MAT_ICON_T[x.good] || ""} <input type="number" min="1" value="${x.n}" data-n="${key}:${k}"> ${pretty(x.good)}
       <select data-per="${key}:${k}"><option value="once" ${x.per ? "" : "selected"}>once</option><option value="turn" ${x.per ? "selected" : ""}>every turn</option></select>
       <button class="small" data-del="${key}:${k}">✕</button></div>`).join("") || '<div class="muted small">Click items on this side to add them.</div>';
   const per = [...T.give, ...T.take].some((x) => x.per);
   const greet = AGENDA_GREETING[o.agenda] || "We have heard your radio. It is good to know we are not alone.";
   const deals = d.deals.filter((x) => x.active).map((x) => `<div class="small muted">In force: ${termsText(x.give)} for ${termsText(x.take)} (until turn ${x.ends_turn})</div>`).join("");
   body.innerHTML = `<div class="tradescreen" style="background-image:url(leaders/backdrop_hall.webp)">
-    ${L.look ? `<img class="tradefig" alt="" src="leaders/${L.look}_${L.outfit || "civilian"}.webp" onerror="this.src='leaders/${L.look}_civilian.webp'">` : ""}
+    ${(() => { const me = S.view.leader || {}; const fig = (X, cls) => X && X.look ? `<img class="tradefig ${cls}" alt="" src="leaders/${X.look}_${X.outfit || "civilian"}.webp" onerror="this.src='leaders/${X.look}_civilian.webp'">` : ""; return fig(L, "them") + fig(me, "us"); })()}
     <div class="tradesay"><b>${esc(L.name || o.name)}</b> <span class="muted">· ${esc(o.name)}${o.agenda ? ` · ${esc(pretty(o.agenda))}` : ""}</span>
       <div>"${esc(T.first ? greet : "What do you have in mind?")}"</div></div>
     <div class="tradecols">
@@ -4005,8 +4043,10 @@ function renderTrade() {
   $("modal").classList.remove("hidden"); S.screen = "trade";
   const list = (key) => (key === "give" ? T.give : T.take);
   body.querySelectorAll("[data-add]").forEach((el) => el.onclick = () => {
-    const [who, g] = el.dataset.add.split(":");
-    if (!list(who).some((x) => x.good === g)) list(who).push({ good: g, n: g === "gold" ? 50 : 10, per: false });
+    const [who, g, id] = el.dataset.add.split(":");
+    if (g === "tech") { if (!list(who).some((x) => x.tech === id)) list(who).push({ tech: id }); }
+    else if (g === "recruit") { const side = who === "give" ? d.me : d.them; const r = side.recruits.find((x) => String(x.id) === id); if (r && !list(who).some((x) => x.recruit === r.id)) list(who).push({ recruit: r.id, name: r.name }); }
+    else if (!list(who).some((x) => x.good === g)) list(who).push({ good: g, n: g === "gold" ? 50 : 10, per: false });
     renderTrade();
   });
   body.querySelectorAll("[data-n]").forEach((el) => el.onchange = () => { const [k, i] = el.dataset.n.split(":"); list(k)[Number(i)].n = Math.max(1, Number(el.value) || 1); });
@@ -4016,6 +4056,8 @@ function renderTrade() {
   const terms = (xs) => {
     const t = {};
     for (const x of xs) {
+      if (x.tech) { t.techs = [...(t.techs || []), x.tech]; continue; }
+      if (x.recruit) { t.recruits = [...(t.recruits || []), x.recruit]; continue; }
       if (x.good === "gold") t[x.per ? "gold_per_turn" : "gold"] = x.n;
       else { const k = x.per ? "materials_per_turn" : "materials"; t[k] = { ...(t[k] || {}), [x.good]: x.n }; }
     }
@@ -4089,6 +4131,9 @@ function showNewStory() {
   if (bar && !S.seenStory.has(`barracks-${bar.city}`) && window.Advisors && Advisors.isOff()) {
     S.seenStory.add(`barracks-${bar.city}`); toast("Your barracks is ready: citizens can train as soldiers."); openPopulation(bar.city);
   }
+  // the leader leveled up: straight to the leader page to spend the points (SPEC_M22)
+  const lvl = (S.view.events || []).find((e) => e.kind === "leader_level" && e.player === S.view.me);
+  if (lvl && !S.seenStory.has(`lvl-${lvl.level}`)) { S.seenStory.add(`lvl-${lvl.level}`); toast(`Your leader reached level ${lvl.level}: choose what to improve.`); return openScreen("leader"); }
   // births and children growing up (SPEC_M21): one card each per turn
   const mineEv = (k) => (S.view.events || []).filter((e) => e.kind === k && e.player === S.view.me && e.turn >= S.view.turn - 1);
   const born = mineEv("citizen_born"), grown = mineEv("citizen_grew_up");
@@ -4172,7 +4217,7 @@ function drawStarfall(R, t) {
     ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(sx, sy, gr, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(14, R * 0.6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("✦", sx, sy);
     const best = Object.entries(sh.progress).sort((a, b) => b[1] - a[1]);
-    const label = `✦ ${sh.name}${best.length ? ` · ${best.map(([k, v]) => `${k === S.view.me ? "you" : pretty(k)} ${v}/${sh.needed}`).join(", ")}` : ` · stand on it ${sh.needed} turns to claim`}`;
+    const label = `✦ ${sh.name}${best.length ? ` · ${best.map(([k, v]) => `${k === S.view.me ? "you" : pretty(k)} ${v}/${sh.needed}`).join(", ")}` : ` · mine it ${sh.needed} turns to claim`}`;
     ctx.font = `600 ${Math.max(11, R * 0.3)}px Roboto, sans-serif`;
     const tw = ctx.measureText(label).width + 14, ly = sy + gr + 4;
     ctx.fillStyle = "rgba(22,12,36,0.88)"; roundRect(sx - tw / 2, ly, tw, 20, 10); ctx.fill();

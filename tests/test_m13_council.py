@@ -40,7 +40,12 @@ def test_radio_contact_at_the_start_without_sharing_cities(cfg):
         assert sorted(s.players[pid].met) == sorted(p for p in ids if p != pid)
         for cid in s.players[pid].known_cities:
             city = s.cities[int(cid)]
-            assert city.continent == pid or city.owner == pid or city.status == OVERRUN
+            assert (  # met players see each other's capitals (SPEC_M22)
+                city.continent == pid
+                or city.owner == pid
+                or city.status == OVERRUN
+                or city.is_capital
+            )
     agendas = [s.players[p].agenda for p in ids]
     goals = [s.players[p].objective for p in ids]
     assert len(set(agendas)) == len(cfg.council("agendas")) and len(set(goals)) == len(ids)

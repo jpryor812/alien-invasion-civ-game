@@ -38,10 +38,10 @@ def test_worked_tiles_bring_materials_up_to_a_cap(cfg, world):
     s, c = world
     t = s.tiles[c.tile]
     got = materials.income(s, cfg, c, [])
-    assert got["timber"] >= 1 and got["stone"] >= 1  # the city's own hex
+    assert got["timber"] == 0 and got["stone"] == 0  # nothing without works (SPEC_M22)
     forest = next(i for i, x in enumerate(s.tiles) if x.feature == "forest")
     s.tiles[forest].improvement = "lumber_camp"
-    assert materials.income(s, cfg, c, [forest])["timber"] >= got["timber"] + 5
+    assert materials.income(s, cfg, c, [forest])["timber"] >= got["timber"] + 3  # the camp
     c.stores["timber"] = 149
     materials.gather(s, cfg, c, [forest])
     assert c.stores["timber"] == materials.caps(cfg, c)["timber"]

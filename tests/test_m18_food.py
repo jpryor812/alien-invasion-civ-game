@@ -95,7 +95,8 @@ def test_food_crates_refill_rations(cfg):
     )
 
 
-def test_the_band_lives_on_rations(cfg):
+def test_the_band_lives_on_rations(cfg_legacy):
+    cfg = cfg_legacy  # stacking and rations are off by default (SPEC_M22)
     s = new_game(cfg, seed=2, start="survivor")
     band = [u for u in s.units.values() if u.owner == EU]
     s.caches = {}
@@ -120,8 +121,7 @@ def test_the_first_town_rescues_three_and_asks_for_the_farm(cfg):
     lead.hp = 100
     apply_command(s, cfg, Attack(player=EU, unit=lead.id, target=town.tile))
     assert town.status == ACTIVE and town.owner == EU
-    survivors_in = sum(1 for u in band if u.type == "survivor" and not u.gear)
-    assert town.pop == 3 + survivors_in  # three rescued, then the band
+    assert town.pop == 3  # three rescued; the survivors stay units (SPEC_M22)
     assert town.food_store >= food.F(cfg, "freed_store")
     radio = cfg.t("contact.radio_building")
     assert town.works == []  # nothing is built for you (designer 2026-11-19)
@@ -158,7 +158,8 @@ def test_every_freed_town_has_a_damaged_farm(cfg):
     assert city.food_store >= food.F(cfg, "freed_store")
 
 
-def test_the_ai_brings_hungry_units_home_and_spares_its_food(cfg):
+def test_the_ai_brings_hungry_units_home_and_spares_its_food(cfg_legacy):
+    cfg = cfg_legacy  # stacking and rations are off by default (SPEC_M22)
     from beacon.ai import AIPlayer
 
     s, city = _city(cfg)

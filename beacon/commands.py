@@ -73,6 +73,15 @@ class SetConvoy(Command):
 
 @register
 @dataclass(frozen=True)
+class MineShard(Command):
+    """Start mining the shard the unit stands on; it mines each turn it stays (SPEC_M22)."""
+
+    kind: ClassVar[str] = "mine_shard"
+    unit: int
+
+
+@register
+@dataclass(frozen=True)
 class AnswerAlienLeader(Command):
     """Answer an alien town's leader: bribe it, or leave (SPEC_M21)."""
 

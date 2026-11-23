@@ -298,7 +298,8 @@ def test_city_guns_upgrade_with_gold_not_experience(cfg):
     assert combat.unit_strength(s, cfg, gun, ranged=True, defending=False).total > before
 
 
-def test_moving_onto_a_twin_merges_and_jobs_can_be_cancelled(cfg):
+def test_moving_onto_a_twin_merges_and_jobs_can_be_cancelled(cfg_legacy):
+    cfg = cfg_legacy  # stacking and rations are off by default (SPEC_M22)
     from beacon.commands import BuildImprovement, CancelJob, MoveUnit
 
     s = arena(cfg)

@@ -31,7 +31,7 @@ def tile_goods(cfg: Config, tile: Any) -> dict[str, int]:
         ("features", tile.feature),
         ("elevations", tile.elevation),
         ("improvements", tile.improvement),
-        ("resources", tile.resource),
+        ("resources", tile.resource if tile.improvement else None),  # improved only (M22)
     ):
         for g, n in (s[table].get(key) or {}).items() if key else []:
             out[g] += n

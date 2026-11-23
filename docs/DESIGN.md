@@ -403,3 +403,11 @@ live in the main game, and the sandbox page is gone.*
 - Talks are with one civ at a time, Civ V style: gold and materials once or every turn. An
   alliance has its own button. First contact opens the talks.
 - Screens live in one Menu; American English in all text players see.
+
+## M22: fixes from play (designer 2026-11-22, docs/SPEC_M22.md)
+
+- Survivors stay units after the first town; the leader joins the town. No stacking, no rations.
+- Buildings take their materials when started; timber and stone come only from mines and camps.
+- Shards are mined with a Mine order, and the aliens come for every shard being mined.
+- Meeting a civ shows its capital; techs and recruits can be traded; both leaders in talks.
+- A status panel shows research, works and training; the leader page opens on a level-up.

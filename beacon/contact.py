@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from beacon import fog
+from beacon import fog, hexgrid
 from beacon.config import Config
 from beacon.state import ACTIVE, CityMemory, GameState
 
@@ -41,7 +41,23 @@ def meet(state: GameState, a: str, b: str, how: str, share: bool = True) -> Even
     if share:
         _share_cities(state, a, b)
         _share_cities(state, b, a)
+    _share_capital(state, a, b)  # each sees the other's capital (designer 2026-11-22, M22)
+    _share_capital(state, b, a)
     return [{"turn": state.turn, "kind": "contact_made", "player": a, "other": b, "how": how}]
+
+
+def _share_capital(state: GameState, to: str, of: str) -> None:
+    from beacon.fog import remember
+
+    cap = next(
+        (c for c in state.cities if c.owner == of and c.is_capital and c.status == ACTIVE), None
+    )
+    if cap is None:
+        return
+    state.players[to].known_cities[str(cap.id)] = CityMemory(
+        status=cap.status, owner=cap.owner, pop=cap.pop, turn_seen=state.turn
+    )
+    remember(state, to, hexgrid.within(cap.tile, 1, state.width, state.height))
 
 
 def check(state: GameState, cfg: Config, only: str | None = None) -> Events:

@@ -148,8 +148,7 @@ def building_problem(state: GameState, cfg: Config, city: City, b: str) -> str |
         return why
     if ordered(city, f"building:{b}"):
         return "already being built"
-    lack = materials.short(city, building_cost(state, cfg, city, b))
-    return short_text(lack) if lack else None
+    return None  # materials are paid when the engineers start it (SPEC_M22)
 
 
 def order_building(
@@ -163,8 +162,7 @@ def order_building(
         layout.order(cfg, city, b, spot[0], spot[1])
     cost = building_cost(state, cfg, city, b)
     labour = labour_for(state, cfg, city, b)
-    materials.pay(city, cost)
-    return add(city, f"building:{b}", labour, cost)
+    return add(city, f"building:{b}", labour, {}, cost=cost)  # paid on start (SPEC_M22)
 
 
 def order_walls(
@@ -263,6 +261,12 @@ def progress(state: GameState, cfg: Config, city: City) -> Events:
     events: Events = []
     while r > 0 and city.works:
         job = city.works[0]
+        if job.get("cost") and not job["paid"]:  # starts now: take the materials (SPEC_M22)
+            if materials.short(city, job["cost"]):
+                job["waiting"] = True
+                break  # the crew waits for timber and stone
+            materials.pay(city, job["cost"])
+            job["paid"], job["waiting"] = dict(job["cost"]), False
         use = min(r, job["left"])
         job["left"] -= use
         r -= use

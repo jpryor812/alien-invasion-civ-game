@@ -40,20 +40,18 @@ def test_cities_have_a_crew_and_no_engineer_units(cfg, world):
     assert not any(i.startswith("building:") for i in economy.production_options(s, cfg, c))
 
 
-def test_a_building_is_paid_up_front_and_built_by_labour(cfg, world):
+def test_a_building_is_paid_when_started_and_built_by_labour(cfg, world):
     s, c = world
     spot = layout.auto_spot(s, cfg, c, "storehouse")
+    c.works = []
     c.stores["timber"] = 5
-    with pytest.raises(CommandError, match="more timber"):  # must have the materials
-        apply_command(
-            s, cfg, PlaceBuilding(player=EU, city=c.id, building="storehouse", x=spot[0], y=spot[1])
-        )
-    c.stores["timber"] = 100
-    apply_command(
+    apply_command(  # ordering needs no materials; starting does (SPEC_M22)
         s, cfg, PlaceBuilding(player=EU, city=c.id, building="storehouse", x=spot[0], y=spot[1])
     )
+    works.progress(s, cfg, c)
+    assert c.works[0]["waiting"] and c.stores["timber"] == 5
+    c.stores["timber"] = 100
     paid = materials.building_cost(cfg, "storehouse")["timber"]
-    assert c.stores["timber"] == 100 - paid and not c.queue
     labour = works.building_labour(cfg, "storehouse")
     rate = works.rate(s, cfg, c)
     assert works.turns(s, cfg, c) == [-(-labour // rate)]
@@ -61,6 +59,7 @@ def test_a_building_is_paid_up_front_and_built_by_labour(cfg, world):
     assert works.turns(s, cfg, c)[0] < -(-labour // rate)
     for _ in range(works.turns(s, cfg, c)[0]):
         events = works.progress(s, cfg, c)
+    assert c.stores["timber"] == 100 - paid and not c.queue
     assert any(e["kind"] == "building_completed" for e in events)
     assert "storehouse" in c.buildings and layout.pending(c, "storehouse") is None
     assert state_to_json(state_from_json(state_to_json(s))) == state_to_json(s)
@@ -81,9 +80,11 @@ def test_works_go_top_down_and_cancel_refunds(cfg, world):
     apply_command(s, cfg, MoveWork(player=EU, city=c.id, work=second, to=0))
     assert c.works[0]["id"] == second
     before = dict(c.stores)
+    works.progress(s, cfg, c)  # the top work starts and pays (SPEC_M22)
+    paid = dict(c.works[0]["paid"])
+    assert paid and all(c.stores[g] == before[g] - n for g, n in paid.items())
     apply_command(s, cfg, CancelWork(player=EU, city=c.id, work=second))
-    refund = materials.building_cost(cfg, other)
-    assert all(c.stores[g] == before[g] + n for g, n in refund.items())
+    assert all(c.stores[g] == before[g] for g in paid)  # a cancelled work refunds what it paid
     assert layout.pending(c, other) is None
     with pytest.raises(CommandError, match="engineers"):
         apply_command(s, cfg, Purchase(player=EU, city=c.id, item="building:market"))

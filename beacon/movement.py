@@ -226,6 +226,8 @@ def move_along(state: GameState, cfg: Config, unit: Unit, path: list[int]) -> Ev
 
 
 def merge_problem(state: GameState, cfg: Config, unit: Unit, into: Unit) -> str | None:
+    if not cfg.t("combat.stacking"):
+        return "units do not stack (designer 2026-11-22)"
     if unit.id == into.id:
         return "a unit cannot merge with itself"
     if unit.owner != into.owner or unit.type != into.type:

@@ -78,7 +78,8 @@ def test_shard_is_mined_and_claimed_by_engineers_not_soldiers(cfg):
     create_unit(s, cfg, "infantry", EU, tile)  # soldiers guard but cannot mine
     starfall.end_of_turn(s, cfg)
     assert s.shards["1"].progress == {}
-    create_unit(s, cfg, "engineers", EU, tile)
+    miner = create_unit(s, cfg, "engineers", EU, tile)
+    miner.order = "mine"  # mining is an order (SPEC_M22)
     events = []
     for _ in range(cfg.story("starfall.mine_turns")):
         events += starfall.end_of_turn(s, cfg)

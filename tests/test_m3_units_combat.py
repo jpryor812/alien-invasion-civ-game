@@ -163,7 +163,8 @@ def test_unseen_enemy_interrupts_a_move(cfg):
 # -- stacking --------------------------------------------------------------------------------
 
 
-def test_merge_doubles_strength_and_pools_hp(cfg):
+def test_merge_doubles_strength_and_pools_hp(cfg_legacy):
+    cfg = cfg_legacy  # stacking and rations are off by default (SPEC_M22)
     s = arena(cfg)
     a = at(5, 5)
     one = create_unit(s, cfg, "infantry", EU, a)
@@ -178,7 +179,8 @@ def test_merge_doubles_strength_and_pools_hp(cfg):
     assert combat.unit_strength(s, cfg, one, ranged=False, defending=True).total == 2 * single
 
 
-def test_merge_rules(cfg):
+def test_merge_rules(cfg_legacy):
+    cfg = cfg_legacy  # stacking and rations are off by default (SPEC_M22)
     s = arena(cfg)
     a = at(5, 5)
     inf = create_unit(s, cfg, "infantry", EU, a)

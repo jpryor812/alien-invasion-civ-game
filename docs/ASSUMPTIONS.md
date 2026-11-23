@@ -1208,3 +1208,23 @@ Every modelling choice not fixed by `DESIGN.md`, with the reason. Numbers themse
   Population panel.
 - Not done yet: CK3-style hoverable keywords in event text, and the 4-layer map (it waits for
   the renderer decision).
+
+## Fixes from play (SPEC_M22, designer 2026-11-22)
+- Founding: the leader leaves the map (leads from the town); survivors stay survivors; no recon
+  team; the town holds its 3 rescued people.
+- Stacking (`combat.stacking`) and rations (`food.rations_on`) are switched off, not deleted;
+  tests of those rules run with them switched on (the `cfg_legacy` fixture).
+- Works: a building's job carries its `cost` and pays it when it reaches the top of the list;
+  short stores stop the crew ("waiting"). Ordering no longer checks materials. Cancelling
+  refunds only what was paid. Walls and tile works are unchanged.
+- Materials come only from improvements (and a resource on an improved hex); the town hex,
+  forests and hills give none by themselves.
+- Shards: players mine with the Mine order (kept while the unit stays; moving clears it); aliens
+  mine by standing. When any player's progress on a shard first passes 0, the aliens send an
+  alien warrior and an alien drone, placed on free land 3 hexes from the shard (lowest hex
+  first), with orders to mine it. The AI miner gives the Mine order on arrival.
+- Meeting another player reveals each other's capital and the hexes around it (known city and
+  explored), even by radio.
+- Talks list techs the other side can learn now and alien recruits as one-off items.
+- With nothing selected a status panel on the left shows research, each town's top work and
+  training with turns left, and unit counts; a leader level-up opens the leader page.

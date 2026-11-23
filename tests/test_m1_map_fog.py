@@ -167,7 +167,7 @@ def test_lost_cities_unknown_until_seen(cfg, world):
     assert len(player.met) == len(world.players) - 1
     for city in world.cities:
         known = str(city.id) in player.known_cities
-        if city.continent != pid:
+        if city.continent != pid and not city.is_capital:  # capitals shown on meeting (M22)
             assert not known
 
 

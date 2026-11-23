@@ -276,6 +276,10 @@ combat:
     value: 100
     status: calibrated
     note: HP of one unit. Designer rule - a two-unit stack has combined HP (max 200).
+  stacking:
+    value: false
+    status: calibrated
+    note: Designer 2026-11-22 (SPEC_M22) - units no longer stack; old stacks stay until split.
   stack_size:
     value: 2
     status: calibrated
@@ -600,7 +604,7 @@ survivor:
     food: {weight: 3, radius: 3}
   hunt_radius: 2
   escape_survivors: 2
-  founding_units: [recon_team]
+  founding_units: []  # designer 2026-11-22 (SPEC_M22): no recon team; survivors stay units
   ai_attack_turn: 9
   ai_min_hp: 20
 
@@ -614,6 +618,9 @@ food:
     food, or store_cap + granary_cap with the granary building. A freed town starts with
     freed_store food and a damaged farm; each repair (repair_labour) is one engineer-turn.
   child_eats: 4
+  rations_on: false
+  rations_note: Designer 2026-11-22 (SPEC_M22) - units no longer carry rations or starve in the
+    field; towns still feed the units in their land.
   unit_eats: 2
   supply_radius: 4
   rations: 10

@@ -117,8 +117,9 @@ def advance_turn(state: GameState, cfg: Config) -> list[dict[str, Any]]:
         network.update_connections(state, cfg, pid)
     from beacon import food  # units no town fed eat rations (SPEC_M18), after every town ate
 
-    for pid in state.player_ids():
-        events.extend(food.field(state, cfg, pid))
+    if cfg.t("food.rations_on"):  # rations are off (designer 2026-11-22, SPEC_M22)
+        for pid in state.player_ids():
+            events.extend(food.field(state, cfg, pid))
     events.extend(diplomacy.end_of_turn(state, cfg))
     events.extend(endgame.end_of_turn(state, cfg))
     for pid in state.player_ids():
